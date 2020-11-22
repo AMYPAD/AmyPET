@@ -1,4 +1,9 @@
 *.py[cod]
+__pycache__/
+/amypad/_dist_ver.py
+/.eggs/
 /*.egg-info/
 /build/
 /dist/
+/.coverage*
+/coverage.xml
