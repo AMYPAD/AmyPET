@@ -5,48 +5,21 @@ Download image data from XNAT, process it and upload back
 
 __author__      = "Pawel Markiewicz"
 __copyright__   = "Copyright 2020"
-
-
-
-import numpy as np
+import csv
+import glob
+import logging
 import os
 import re
 import sys
-import glob
-import csv
 
-import matplotlib.pyplot as plt
-
-from niftypet import nixnat
 from niftypet import nimpa
+from niftypet import nixnat
+import matplotlib.pyplot as plt
 import nibabel as nib
-
-#> for registration purposes
-import matlab.engine
-eng = matlab.engine.start_matlab()
+import numpy as np
 
 
-#-------------------------------------------------------------------------------
-# LOGGING
-#-------------------------------------------------------------------------------
-import logging
-
-#> console handler
-ch = logging.StreamHandler()
-formatter = logging.Formatter(
-    '\n%(levelname)s> %(asctime)s - %(name)s - %(funcName)s\n> %(message)s'
-    )
-ch.setFormatter(formatter)
-logging.getLogger(__name__).addHandler(ch)
-
-def get_logger(name):
-    return logging.getLogger(name)
-
-#> default log level (10-debug, 20-info, ...)
-log_default = logging.WARNING
-#-------------------------------------------------------------------------------
-
-
+log = logging.getLogger(__name__)
 
 fwhm_mri = 0.
 fwhm_pet = 4.
@@ -54,7 +27,7 @@ fwhm_pet = 4.
 
 dcm_ext = nixnat.xnat.dcm_ext
 
-#> run it every time when access to XNAT is needed using credentials 
+#> run it every time when access to XNAT is needed using credentials
 #> fcrdntls which are stored when running setup for the first time.
 #: nixnat.setup_access(outpath='', fcrdntls='xnat_blsa.json'):
 
@@ -117,30 +90,16 @@ def trim(fim, fcomment=''):
 
 #===============================================================================
 def icom_correction(imdct, Cnt=None, com=None):
-    ''' Image centre of mass correction.  The O point is in the middle of the 
+    ''' Image centre of mass correction.  The O point is in the middle of the
         image centre of radio-activity mass
 
-        imdct -    must be a dictionary of the input image as by 
+        imdct -    must be a dictionary of the input image as by
                     nimpa.getnii(path_im, output='all').  Preferably trimmed using
                     nimpa.trimim().
     '''
-
-
     #> check if the dictionary of constants is given
     if Cnt is None:
         Cnt = {}
-
-    #-------------------------------------------
-    #> set the logger and its level of verbose
-    log = get_logger(__name__)
-
-    if 'LOG' not in Cnt and verbose>=1:
-        log.setLevel(logging.INFO)
-    elif 'LOG' in Cnt:
-        log.setLevel(Cnt['LOG'])
-    else:
-        log.setLevel(log_default)
-    #-------------------------------------------
 
     #> output the centre of mass if image radiodistribution in each dimension in mm.
     if com is None:
@@ -172,11 +131,7 @@ def icom_correction(imdct, Cnt=None, com=None):
 
         com_nii.append(com_rel)
 
-    log.info('''
-        \r relative CoM values are:
-        \r {}
-        '''.format(com_nii))
-
+    log.info('relative CoM values are:\n{}'.format(com_nii))
     #>------------------------------------------------------
     #> save to NIfTI
     innii = nib.load(imdct['fim'])
@@ -187,7 +142,7 @@ def icom_correction(imdct, Cnt=None, com=None):
     fsplt = os.path.split(imdct['fim'])
     fnew = os.path.join(fsplt[0], fsplt[1].split('.nii')[0]+'_CoM-modified.nii.gz')
 
-    #> save into a new file name for the T1w                 
+    #> save into a new file name for the T1w
     nib.save(newnii, fnew)
     #>------------------------------------------------------
 
@@ -291,7 +246,7 @@ for p in pets:
         ft1bc = [f for f in gifdct['nii'] if 'BiasCorrected' in f][0]
         fsgmt = [f for f in gifdct['nii'] if 'Segmentation' in f][0]
         #-----------------------------------------------------------------------
-        
+
         for k in petdct:
             if k[:3].isnumeric():
 
@@ -318,9 +273,9 @@ for p in pets:
                     imcom_dyn = {'fim': ''}
                     imcom = icom_correction(imtdct, Cnt={'LOG':20})
 
-                
 
-                
+
+
 
                 spm_res = nimpa.coreg_spm(
                     imcom['fim'],
@@ -330,7 +285,6 @@ for p in pets:
                     #fwhm = [13,13],
                     costfun='nmi',
                     #fcomment = '',
-                    matlab_eng = eng,
                     outpath = os.path.dirname(imcom['fim']),
                     visual = 0,
                     save_txt = True,
@@ -347,7 +301,6 @@ for p in pets:
                     imcom['fim'],
                     ft1bc,
                     spm_res['faff'],
-                    matlab_eng = eng,
                     intrp = 0.,
                     fimout=fout_t1,
                     del_ref_uncmpr = True,
@@ -358,7 +311,6 @@ for p in pets:
                     imcom['fim'],
                     fprcl,
                     spm_res['faff'],
-                    matlab_eng = eng,
                     intrp = 0.,
                     fimout=fout_pr,
                     del_ref_uncmpr = True,
@@ -368,7 +320,7 @@ for p in pets:
                 print('''
                     \r==========================================================
                     \rFiles to be uploaded to XNAT:
-                    \r1) Parcellation: {} 
+                    \r1) Parcellation: {}
                     \r2) PET CoM: {}
                     \r3) PET CoM dynamic: {}
                     \r==========================================================
