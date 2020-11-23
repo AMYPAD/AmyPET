@@ -59,26 +59,26 @@ def run(
     for i_subj in trange(n_subj_PET):
         with tic("Step 0: Reorient PET subject"):
             d_PET = s_PET_dir[i_subj]
-            eng.f_acpcReorientation(d_PET)
+            eng.f_acpcReorientation(d_PET, nargout=0)
 
         with tic("Step 0: Reorient MRI subject"):
             d_MRI = s_MRI_dir[i_subj]
-            eng.f_acpcReorientation(d_MRI)
+            eng.f_acpcReorientation(d_MRI, nargout=0)
 
         with tic("Step 1: CorregisterEstimate"):
-            eng.f_1CorregisterEstimate(d_MRI, dir_spm)
+            eng.f_1CorregisterEstimate(d_MRI, dir_spm, nargout=0)
         # Check Reg
 
         with tic("Step 2: CorregisterEstimate"):
-            eng.f_2CorregisterEstimate(d_MRI, d_PET)
+            eng.f_2CorregisterEstimate(d_MRI, d_PET, nargout=0)
         # Check Reg
 
         with tic("Step 3: Segment"):
-            eng.f_3Segment(d_MRI, dir_spm)
+            eng.f_3Segment(d_MRI, dir_spm, nargout=0)
 
         with tic("Step 4: Normalise"):
             d_file_norm = path.join(dir_MRI, "y_" + path.basename(s_MRI_dir[i_subj]))
-            eng.f_4Normalise(d_file_norm, d_MRI, d_PET)
+            eng.f_4Normalise(d_file_norm, d_MRI, d_PET, nargout=0)
 
     s_PET = glob(path.join(dir_PET, "w*PET.nii"))  # MODIFY
-    eng.f_Quant_centiloid(s_PET, dir_RR, dir_quant)
+    return eng.f_Quant_centiloid(s_PET, dir_RR, dir_quant)
