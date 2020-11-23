@@ -2,13 +2,14 @@
 Converted from Pipeline_Centiloid_BBRC.m
 """
 from contextlib import contextmanager
-from functools import wraps
-from os import path
+from functools import lru_cache, wraps
 from glob import glob
+from os import path
+from pkg_resources import resource_filename
 import logging
 
 from spm12 import ensure_spm
-from tqdm import tqdm
+from tqdm.auto import tqdm, trange
 
 log = logging.getLogger(__name__)
 PATH_M = resource_filename(__name__, "")
@@ -25,16 +26,24 @@ def get_matlab(**kwargs):
 
 @contextmanager
 def tic(desc, leave=True, **kwargs):
-    with tqdm(desc=desc, leave=leave, **kwargs) as t:
+    with tqdm(desc=desc, leave=leave, **kwargs) as _:
         yield
 
 
 def run(
-    dir_MRI="Projects/ALFA_PET",  # MRI directory
-    dir_PET="Projects/ALFA_PET",  # PET directory
-    dir_RR="Atlas/CL_2mm",  # Reference regions ROIs directory (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
-    dir_quant="Projects/ALFA_PET/Quant_realigned",  # Quantification directory
+    dir_MRI="Projects/ALFA_PET",
+    dir_PET="Projects/ALFA_PET",
+    dir_RR="Atlas/CL_2mm",
+    dir_quant="Projects/ALFA_PET/Quant_realigned",
 ):
+    """
+    Args:
+        dir_MRI: MRI directory
+        dir_PET: PET directory
+        dir_RR: Reference regions ROIs directory
+            (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
+        dir_quant: Quantification directory
+    """
     s_PET_dir = glob(path.join(dir_PET, "*_PET.nii"))  # PET images list
     s_MRI_dir = glob(path.join(dir_MRI, "*_MRI.nii"))  # MR images lsit
     n_subj_PET = len(s_PET_dir)  # Number of PET images
@@ -58,11 +67,11 @@ def run(
 
         with tic("Step 1: CorregisterEstimate"):
             eng.f_1CorregisterEstimate(d_MRI, dir_spm)
-        ## Check Reg
+        # Check Reg
 
         with tic("Step 2: CorregisterEstimate"):
             eng.f_2CorregisterEstimate(d_MRI, d_PET)
-        ## Check Reg
+        # Check Reg
 
         with tic("Step 3: Segment"):
             eng.f_3Segment(d_MRI, dir_spm)
