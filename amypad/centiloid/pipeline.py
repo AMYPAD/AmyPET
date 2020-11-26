@@ -8,8 +8,10 @@ from os import path
 from pkg_resources import resource_filename
 import logging
 
+from miutil.imio import nii
 from spm12 import ensure_spm
-from tqdm.auto import tqdm, trange
+from tqdm.auto import tqdm
+from tqdm.contrib import tzip, tmap
 
 log = logging.getLogger(__name__)
 PATH_M = resource_filename(__name__, "")
@@ -30,11 +32,20 @@ def tic(desc, leave=True, **kwargs):
         yield
 
 
+def gunzip(nii_gz):
+    """`nii_ugzip` but skips if already existing"""
+    fdir, base = nii.file_parts(nii_gz)[:2]
+    fout = path.join(fdir, base, ".nii")
+    return fout if path.exists(fout) else nii.nii_ugzip(nii_gz)
+
+
 def run(
-    dir_MRI="Projects/ALFA_PET",
-    dir_PET="Projects/ALFA_PET",
-    dir_RR="Atlas/CL_2mm",
-    dir_quant="Projects/ALFA_PET/Quant_realigned",
+    dir_MRI="data/ALFA_PET",
+    dir_PET="data/ALFA_PET",
+    dir_RR="data/Atlas/CL_2mm",
+    dir_quant="data/ALFA_PET/Quant_realigned",
+    glob_PET="*_PET.nii.gz",
+    glob_MRI="*_MRI.nii.gz",
 ):
     """
     Args:
@@ -44,25 +55,21 @@ def run(
             (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
         dir_quant: Quantification directory
     """
-    s_PET_dir = glob(path.join(dir_PET, "*_PET.nii"))  # PET images list
-    s_MRI_dir = glob(path.join(dir_MRI, "*_MRI.nii"))  # MR images lsit
-    n_subj_PET = len(s_PET_dir)  # Number of PET images
-    n_subj_MRI = len(s_MRI_dir)  # Number of MR images
-
-    if n_subj_PET != n_subj_MRI:
+    # PET & MR images lists
+    s_PET_dir = list(tmap(gunzip, glob(path.join(dir_PET, glob_PET)), leave=False))
+    s_MRI_dir = list(tmap(gunzip, glob(path.join(dir_MRI, glob_MRI)), leave=False))
+    if len(s_PET_dir) != len(s_MRI_dir):
         raise IndexError("Different number of PET and MR images")
 
     eng = get_matlab()
     dir_spm = path.dirname(eng.which("spm"))
 
     # TODO: in parallel
-    for i_subj in trange(n_subj_PET):
+    for d_PET, d_MRI in tzip(s_PET_dir, s_MRI_dir):
         with tic("Step 0: Reorient PET subject"):
-            d_PET = s_PET_dir[i_subj]
             eng.f_acpcReorientation(d_PET, nargout=0)
 
         with tic("Step 0: Reorient MRI subject"):
-            d_MRI = s_MRI_dir[i_subj]
             eng.f_acpcReorientation(d_MRI, nargout=0)
 
         with tic("Step 1: CorregisterEstimate"):
@@ -77,7 +84,7 @@ def run(
             eng.f_3Segment(d_MRI, dir_spm, nargout=0)
 
         with tic("Step 4: Normalise"):
-            d_file_norm = path.join(dir_MRI, "y_" + path.basename(s_MRI_dir[i_subj]))
+            d_file_norm = path.join(dir_MRI, "y_" + path.basename(d_MRI))
             eng.f_4Normalise(d_file_norm, d_MRI, d_PET, nargout=0)
 
     s_PET = glob(path.join(dir_PET, "w*PET.nii"))  # MODIFY
