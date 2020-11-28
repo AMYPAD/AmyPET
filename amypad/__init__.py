@@ -1,3 +1,7 @@
+from os import path
+
+from pkg_resources import DistributionNotFound, get_distribution
+
 # version detector. Precedence: installed dist, git, 'UNKNOWN'
 try:
     from ._dist_ver import __version__
@@ -10,15 +14,8 @@ except ImportError:
         __version__ = "UNKNOWN"
 
 try:
-    from pkg_resources import DistributionNotFound, get_distribution
-
-    try:
-        __licence__ = get_distribution("amypad").get_metadata("LICENCE.md")
-    except DistributionNotFound:
-        raise ImportError
-except ImportError:
-    from os import path
-
+    __licence__ = get_distribution("amypad").get_metadata("LICENCE.md")
+except DistributionNotFound:
     try:
         __licence__ = open(
             path.join(path.dirname(path.dirname(__file__)), "LICENCE.md")
