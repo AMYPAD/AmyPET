@@ -9,11 +9,9 @@ import logging
 import os
 import re
 
-from niftypet import nimpa
-from niftypet import nixnat
 import nibabel as nib
 import numpy as np
-
+from niftypet import nimpa, nixnat
 
 log = logging.getLogger(__name__)
 
@@ -147,9 +145,7 @@ def icom_correction(imdct, Cnt=None, com=None):
     nib.save(newnii, fnew)
     # >------------------------------------------------------
 
-    out = dict(fim=fnew, com_rel=com_nii, com_abs=com)
-
-    return out
+    return {"fim": fnew, "com_rel": com_nii, "com_abs": com}
 
 
 # ===============================================================================
@@ -237,12 +233,7 @@ for p in pets:
         nimpa.create_dir(gif_path)
 
         # > download the files
-        gifdct = nixnat.getresources(
-            rsrcs,
-            xc,
-            outpath=gif_path,
-            cookie=xc["cookie"],
-        )
+        gifdct = nixnat.getresources(rsrcs, xc, outpath=gif_path, cookie=xc["cookie"],)
 
         fprcl = [f for f in gifdct["nii"] if "Parcellation" in f][0]
         ft1bc = [f for f in gifdct["nii"] if "BiasCorrected" in f][0]
