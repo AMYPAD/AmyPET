@@ -71,7 +71,7 @@ class Cmd(Base):
             dedent(doc),
             argparser=argparser,
             formatter_class=formatter_class,
-            version=version,
+            # version=version,
         )
         self.parser.set_defaults(main=self.main)
         self.cmd = cmd
@@ -125,7 +125,7 @@ class Func(Base):
             dedent(doc),
             argparser=argparser,
             formatter_class=formatter_class,
-            version=version,
+            # version=version,
         )
         self.parser.set_defaults(run=func)
         # self.func = func
@@ -213,7 +213,7 @@ def main(args=None, gui_mode=True):
     cuinfo = Cmd(
         [sys.executable, "-m", "miutil.cuinfo"],
         miutil.cuinfo.__doc__,
-        version="1",
+        version=miutil.__version__,
         python_deps=["miutil[cuda]"],
         argparser=argparser,
     )
@@ -230,7 +230,7 @@ def main(args=None, gui_mode=True):
           <fname>  : path to file
           <ext>    : extension (with or without `.` prefix)
         """,
-        version="1",
+        version=__version__,
         python_deps=["miutil"],
         argparser=argparser,
     )
