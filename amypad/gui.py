@@ -9,7 +9,7 @@ from textwrap import dedent
 from argopt import argopt
 from pkg_resources import resource_filename
 
-from amypad import __version__
+from amypad import __licence__, __version__
 
 try:
     from gooey import Gooey
@@ -22,9 +22,6 @@ except ImportError:
         return wrapper
 
 
-__licence__ = __license__ = open(
-    path.join(path.dirname(path.dirname(__file__)), "LICENCE.md")
-).read()
 ENCODING = sys.getfilesystemencoding()
 log = logging.getLogger(__name__)
 
