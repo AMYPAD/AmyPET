@@ -5,6 +5,7 @@ from argparse import SUPPRESS, ArgumentParser, RawDescriptionHelpFormatter
 from os import path
 from subprocess import PIPE, Popen
 from textwrap import dedent
+from weakref import WeakSet
 
 from argopt import argopt
 from pkg_resources import resource_filename
@@ -27,25 +28,48 @@ log = logging.getLogger(__name__)
 
 
 class CmdException(Exception):
-    def __init__(self, code, cmd, stderr):
+    def __init__(self, code, cmd, stdout, stderr):
         super(CmdException, self).__init__(
-            "Code %d:\n===\n%s\n===\n%s" % (code, cmd, stderr)
+            dedent(
+                """\
+                Code {:d}:
+                === command ===
+                {}
+                === stderr ===
+                {}=== stdout ===
+                {}==="""
+            ).format(code, cmd, stderr, stdout)
         )
 
 
 class Base(object):
-    def __init__(self, python_deps=None, matlab_deps=None):
+    _instances = WeakSet()
+
+    def __init__(self, python_deps=None, matlab_deps=None, version=__version__):
         self.python_deps = python_deps or []
         self.matlab_deps = matlab_deps or []
+        self.version = version
+
+    def __new__(cls, *_, **__):
+        self = object.__new__(cls)
+        cls._instances.add(self)
+        return self
 
     def __str__(self):
+        pydeps = ""
+        if self.python_deps:
+            pydeps = "\n  - " + "\n  - ".join(self.python_deps)
+        mdeps = ""
+        if self.matlab_deps:
+            mdeps = "\n  - " + "\n  - ".join(self.matlab_deps)
+
         return dedent(
             """\
-              python_deps:
-                - {}
-              matlab_deps:
-                - {}"""
-        ).format("\n  - ".join(self.python_deps), "\n  - ".join(self.matlab_deps))
+            .
+              version: {}
+              python_deps:{}
+              matlab_deps:{}"""
+        )[2:].format(self.version, pydeps, mdeps)
 
 
 class Cmd(Base):
@@ -64,15 +88,15 @@ class Cmd(Base):
           doc (str): an `argopt`-compatible docstring for `cmd`
           version (str): optional
         """
+        super(Cmd, self).__init__(**kwargs)
         self.parser = argopt(
             dedent(doc),
             argparser=argparser,
             formatter_class=formatter_class,
             # version=version,
         )
-        self.parser.set_defaults(main=self.main)
+        self.parser.set_defaults(main__=self.main)
         self.cmd = cmd
-        super(Cmd, self).__init__(**kwargs)
 
     def __str__(self):
         return dedent(
@@ -98,7 +122,12 @@ class Cmd(Base):
             out = Popen(self.cmd + args, stdout=PIPE, stderr=PIPE)
             stdout, stderr = out.communicate()
             if out.returncode != 0:
-                raise CmdException(out.returncode, str(self), stderr.decode(ENCODING))
+                raise CmdException(
+                    out.returncode,
+                    str(self),
+                    stdout.decode(ENCODING),
+                    stderr.decode(ENCODING),
+                )
             return stdout.decode(ENCODING)
 
 
@@ -118,15 +147,15 @@ class Func(Base):
           doc (str): an `argopt`-compatible docstring for `func`
           version (str): optional
         """
+        super(Func, self).__init__(**kwargs)
         self.parser = argopt(
             dedent(doc),
             argparser=argparser,
             formatter_class=formatter_class,
             # version=version,
         )
-        self.parser.set_defaults(run=func)
+        self.parser.set_defaults(run__=func)
         # self.func = func
-        super(Func, self).__init__(**kwargs)
 
     def __str__(self):
         return dedent(
@@ -143,6 +172,11 @@ def fix_subparser(subparser, gui_mode=True):
         help="don't run command (implies print_command)" if gui_mode else SUPPRESS,
     )
     return subparser
+
+
+def print_not_none(value, **kwargs):
+    if value is not None:
+        print(value, **kwargs)
 
 
 @Gooey(
@@ -207,17 +241,16 @@ def main(args=None, gui_mode=True):
         )
 
     # example of how to wrap any CLI command using an `argopt`-style docstring
-    cuinfo = Cmd(
+    Cmd(
         [sys.executable, "-m", "miutil.cuinfo"],
         miutil.cuinfo.__doc__,
         version=miutil.__version__,
         python_deps=["miutil[cuda]"],
         argparser=argparser,
     )
-    log.debug(cuinfo)
 
     # example of how to wrap any callable using an `argopt`-style docstring
-    hasext = Func(
+    Func(
         miutil.hasext,
         """\
         Usage:
@@ -227,11 +260,10 @@ def main(args=None, gui_mode=True):
           <fname>  : path to file
           <ext>    : extension (with or without `.` prefix)
         """,
-        version=__version__,
+        version=miutil.__version__,
         python_deps=["miutil"],
         argparser=argparser,
     )
-    log.debug(hasext)
 
     args = args or sys.argv[1:]
     opts = parser.parse_args(args=args)
@@ -242,18 +274,14 @@ def main(args=None, gui_mode=True):
         print(" ".join([path.basename(sys.executable), "-m amypad"] + args))
     if opts.dry_run:
         pass
-    elif hasattr(opts, "main"):  # Cmd
-        print(opts.main(args[1:], verify_args=False), end="")
-    elif hasattr(opts, "run"):  # Func
+    elif hasattr(opts, "main__"):  # Cmd
+        print_not_none(opts.main__(args[1:], verify_args=False), end="")
+    elif hasattr(opts, "run__"):  # Func
         # strip opts
         kwargs = {
-            k: v
-            for (k, v) in opts._get_kwargs()
-            if k not in ("dry_run", "print_command", "run")
+            k: v for (k, v) in opts._get_kwargs() if k not in ("dry_run", "run__")
         }
-        res = opts.run(*opts._get_args(), **kwargs)
-        if res is not None:
-            print(res)
+        print_not_none(opts.run__(*opts._get_args(), **kwargs))
 
 
 if __name__ == "__main__":
