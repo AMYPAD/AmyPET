@@ -1,17 +1,18 @@
 """
 Converted from Pipeline_Centiloid_BBRC.m
 """
+import logging
 from contextlib import contextmanager
 from functools import lru_cache, wraps
 from glob import glob
 from os import path
+
 from pkg_resources import resource_filename
-import logging
+from tqdm.auto import tqdm
+from tqdm.contrib import tmap, tzip
 
 from miutil.imio import nii
 from spm12 import ensure_spm
-from tqdm.auto import tqdm
-from tqdm.contrib import tzip, tmap
 
 log = logging.getLogger(__name__)
 PATH_M = resource_filename(__name__, "")
