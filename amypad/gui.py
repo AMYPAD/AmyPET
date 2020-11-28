@@ -10,7 +10,11 @@ from weakref import WeakSet
 from argopt import argopt
 from pkg_resources import resource_filename
 
-from amypad import __licence__, __version__
+try:
+    from . import __licence__, __version__
+except ImportError:
+    __version__, __licence__ = "", "Apache-2.0"
+
 
 try:
     from gooey import Gooey
@@ -268,7 +272,7 @@ def main(args=None, gui_mode=True):
     args = args or sys.argv[1:]
     opts = parser.parse_args(args=args)
     # strip args
-    args = [i for i in args if i not in ("--dry-run")]
+    args = [i for i in args if i not in ("--dry-run",)]
 
     if gui_mode:
         print(" ".join([path.basename(sys.executable), "-m amypad"] + args))
