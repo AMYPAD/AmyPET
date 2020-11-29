@@ -7,6 +7,7 @@ from subprocess import PIPE, Popen
 from textwrap import dedent
 from weakref import WeakSet
 
+import shtab
 from argopt import argopt
 from pkg_resources import resource_filename
 
@@ -233,6 +234,11 @@ def main(args=None, gui_mode=True):
     if sys.version_info[:2] >= (3, 7):
         sub_kwargs["required"] = True
     subparsers = parser.add_subparsers(help="pipeline to run", **sub_kwargs)
+    if not gui_mode:
+        subparser = subparsers.add_parser(
+            "completion", help="Print tab completion scripts"
+        )
+        shtab.add_argument_to(subparser, "shell", parent=parser)
 
     def argparser(prog, description=None, epilog=None, formatter_class=None):
         """handle (prog, description, epilog) => (title, help)"""
