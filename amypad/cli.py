@@ -8,5 +8,5 @@ from .gui import main as gui_main
 
 main = partial(gui_main, gui_mode=False)
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

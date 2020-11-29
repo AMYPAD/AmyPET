@@ -257,6 +257,8 @@ def main(args=None, gui_mode=True):
     Func(
         miutil.hasext,
         """\
+        Check if a given filename has a given extension
+
         Usage:
           hasext <fname> <ext>
 
@@ -288,5 +290,5 @@ def main(args=None, gui_mode=True):
         print_not_none(opts.run__(*opts._get_args(), **kwargs))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
