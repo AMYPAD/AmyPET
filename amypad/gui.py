@@ -98,7 +98,7 @@ class Cmd(Base):
             dedent(doc),
             argparser=argparser,
             formatter_class=formatter_class,
-            # version=version,
+            # version=version,  # https://github.com/chriskiehl/Gooey/issues/655
         )
         self.parser.set_defaults(main__=self.main)
         self.cmd = cmd
@@ -157,7 +157,7 @@ class Func(Base):
             dedent(doc),
             argparser=argparser,
             formatter_class=formatter_class,
-            # version=version,
+            # version=version,  # https://github.com/chriskiehl/Gooey/issues/655
         )
         self.parser.set_defaults(run__=func)
         # self.func = func
