@@ -14,7 +14,7 @@ from pkg_resources import resource_filename
 try:
     from . import __licence__, __version__
 except ImportError:
-    __version__, __licence__ = "", "Apache-2.0"
+    __version__, __licence__ = "", "MPL-2.0"
 
 
 try:

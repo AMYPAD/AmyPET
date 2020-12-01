@@ -21,4 +21,4 @@ except DistributionNotFound:
             path.join(path.dirname(path.dirname(__file__)), "LICENCE.md")
         ).read()
     except FileNotFoundError:
-        __licence__ = "Apache-2.0"
+        __licence__ = "MPL-2.0"
