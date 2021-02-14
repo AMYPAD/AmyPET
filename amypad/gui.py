@@ -28,6 +28,7 @@ WIDGETS = (
     "MultiFileSaver",
     "Slider",
 )
+RE_DEFAULT = re.compile(f"\\[default: (None:.*?|{'|'.join(WIDGETS)})\\]", flags=re.M)
 RE_PRECOLON = re.compile(r"^\s*:\s*", flags=re.M)
 ENCODING = sys.getfilesystemencoding()
 
@@ -36,11 +37,15 @@ def patch_argument_kwargs(kwargs, gooey=True):
     log.debug("%r", kwargs)
     kwargs = kwargs.copy()
     if "help" in kwargs:
-        kwargs["help"] = RE_PRECOLON.sub("", kwargs["help"])
+        kwargs["help"] = RE_PRECOLON.sub("", RE_DEFAULT.sub("", kwargs["help"]))
 
-    if gooey:
+    default = kwargs.get("default", None)
+    if default in WIDGETS:
+        if gooey:
+            kwargs["widget"] = default
+        kwargs["default"] = None
+    elif gooey:
         typ = kwargs.get("type", None)
-        default = kwargs.get("default", None)
         if typ == open:
             nargs = kwargs.get("nargs", 1)
             if nargs and (nargs > 1 if isinstance(nargs, int) else nargs in "+*"):
@@ -51,9 +56,7 @@ def patch_argument_kwargs(kwargs, gooey=True):
             kwargs["widget"] = "IntegerField"
         elif typ == float:
             kwargs["widget"] = "DecimalField"
-        elif default in WIDGETS:
-            kwargs["widget"] = default
-            kwargs["default"] = None
+
     return kwargs
 
 
