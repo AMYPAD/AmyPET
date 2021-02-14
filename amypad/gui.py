@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import re
 import sys
 from argparse import SUPPRESS, ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
@@ -27,12 +28,16 @@ WIDGETS = (
     "MultiFileSaver",
     "Slider",
 )
+RE_PRECOLON = re.compile(r"^\s*:\s*", flags=re.M)
 ENCODING = sys.getfilesystemencoding()
 
 
 def patch_argument_kwargs(kwargs, gooey=True):
     log.debug("%r", kwargs)
     kwargs = kwargs.copy()
+    if "help" in kwargs:
+        kwargs["help"] = RE_PRECOLON.sub("", kwargs["help"])
+
     if gooey:
         typ = kwargs.get("type", None)
         default = kwargs.get("default", None)
