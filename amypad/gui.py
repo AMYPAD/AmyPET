@@ -2,6 +2,7 @@
 import logging
 import sys
 from argparse import SUPPRESS, ArgumentParser, RawDescriptionHelpFormatter
+from functools import partial
 from os import path
 from subprocess import PIPE, Popen
 from textwrap import dedent
@@ -17,9 +18,48 @@ except ImportError:
     __version__, __licence__ = "", "MPL-2.0"
 
 
+log = logging.getLogger(__name__)
+WIDGETS = (
+    "FileChooser",
+    "MultiFileChooser",
+    "DirChooser",
+    "FileSaver",
+    "MultiFileSaver",
+    "Slider",
+)
+ENCODING = sys.getfilesystemencoding()
+
+
+def patch_argument_kwargs(kwargs, gooey=True):
+    log.debug("%r", kwargs)
+    kwargs = kwargs.copy()
+    if gooey:
+        typ = kwargs.get("type", None)
+        default = kwargs.get("default", None)
+        if typ == open:
+            nargs = kwargs.get("nargs", 1)
+            if nargs and (nargs > 1 if isinstance(nargs, int) else nargs in "+*"):
+                kwargs["widget"] = "MultiFileChooser"
+            else:
+                kwargs["widget"] = "FileChooser"
+        elif typ == int:
+            kwargs["widget"] = "IntegerField"
+        elif typ == float:
+            kwargs["widget"] = "DecimalField"
+        elif default in WIDGETS:
+            kwargs["widget"] = default
+            kwargs["default"] = None
+    return kwargs
+
+
 try:
     from gooey import Gooey
+    from gooey import GooeyParser as BaseParser
+
+    patch_argument_kwargs = partial(patch_argument_kwargs, gooey=True)
 except ImportError:
+    BaseParser = ArgumentParser
+    patch_argument_kwargs = partial(patch_argument_kwargs, gooey=False)
 
     def Gooey(**_):
         def wrapper(func):
@@ -28,8 +68,10 @@ except ImportError:
         return wrapper
 
 
-ENCODING = sys.getfilesystemencoding()
-log = logging.getLogger(__name__)
+class MyParser(BaseParser):
+    def add_argument(self, *args, **kwargs):
+        kwargs = patch_argument_kwargs(kwargs)
+        return super(MyParser, self).add_argument(*args, **kwargs)
 
 
 class CmdException(Exception):
@@ -83,9 +125,9 @@ class Cmd(Base):
         cmd,
         doc,
         version=None,
-        argparser=ArgumentParser,
+        argparser=MyParser,
         formatter_class=RawDescriptionHelpFormatter,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:
@@ -142,9 +184,9 @@ class Func(Base):
         func,
         doc,
         version=None,
-        argparser=ArgumentParser,
+        argparser=MyParser,
         formatter_class=RawDescriptionHelpFormatter,
-        **kwargs
+        **kwargs,
     ):
         """
         Args:
@@ -228,7 +270,7 @@ def main(args=None, gui_mode=True):
     import miutil.cuinfo
 
     parser = fix_subparser(
-        ArgumentParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode
+        MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode
     )
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
@@ -269,7 +311,7 @@ def main(args=None, gui_mode=True):
           hasext <fname> <ext>
 
         Arguments:
-          <fname>  : path to file
+          <fname>  : path to file [default: FileChooser]
           <ext>    : extension (with or without `.` prefix)
         """,
         version=miutil.__version__,
