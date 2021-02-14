@@ -34,7 +34,6 @@ ENCODING = sys.getfilesystemencoding()
 
 
 def patch_argument_kwargs(kwargs, gooey=True):
-    log.debug("%r", kwargs)
     kwargs = kwargs.copy()
     if "help" in kwargs:
         kwargs["help"] = RE_PRECOLON.sub("", RE_DEFAULT.sub("", kwargs["help"]))
@@ -79,6 +78,7 @@ except ImportError:
 class MyParser(BaseParser):
     def add_argument(self, *args, **kwargs):
         kwargs = patch_argument_kwargs(kwargs)
+        log.debug("%r, %r", args, kwargs)
         return super(MyParser, self).add_argument(*args, **kwargs)
 
 
