@@ -255,12 +255,12 @@ def print_not_none(value, **kwargs):
             "items": [
                 {
                     "type": "Link",
-                    "menuTitle": "Source code",
+                    "menuTitle": "🌐 View source (online)",
                     "url": "https://github.com/AMYPAD/amypad",
                 },
                 {
                     "type": "AboutDialog",
-                    "menuTitle": "About",
+                    "menuTitle": "🔍 About",
                     "name": "AMYPAD Pipeline",
                     "description": "GUI to run AMYPAD tools",
                     "version": __version__,
