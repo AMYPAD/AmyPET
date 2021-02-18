@@ -264,7 +264,7 @@ def print_not_none(value, **kwargs):
                     "name": "AMYPAD Pipeline",
                     "description": "GUI to run AMYPAD tools",
                     "version": __version__,
-                    "copyright": "2020",
+                    "copyright": "2021",
                     "website": "https://amypad.eu",
                     "developer": "https://github.com/AMYPAD",
                     "license": __licence__,

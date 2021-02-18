@@ -1,4 +1,4 @@
-Copyright (c) 2020 AMYPAD
+Copyright (c) 2021 AMYPAD
 
 Mozilla Public License Version 2.0 (MPL-2.0)
 
