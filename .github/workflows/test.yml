@@ -2,6 +2,7 @@ name: Test
 on: [push, pull_request]
 jobs:
   check:
+    if: github.event_name != 'push' || github.ref != 'refs/heads/devel'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -36,6 +37,7 @@ jobs:
         EVENT: ${{ github.event_name }}
     - run: pre-commit run -a --show-diff-on-failure
   test:
+    if: github.event_name != 'pull_request' || github.head_ref != 'devel'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -48,7 +50,9 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python }}
-    - run: pip install -U .[dev]
+    - run: pip install -U -e .[dev]
+    - run: pytest
+    - run: codecov
   deploy:
     needs: [check, test]
     name: PyPI Deploy
@@ -61,8 +65,8 @@ jobs:
     - id: dist
       uses: casperdcl/deploy-pypi@v2
       with:
+        requirements: twine setuptools wheel setuptools_scm[toml]
         build: true
-        gpg_key: ${{ secrets.GPG_KEY }}
         password: ${{ secrets.PYPI_TOKEN }}
         upload: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
     - name: Changelog
@@ -86,12 +90,3 @@ jobs:
         asset_path: dist/${{ steps.dist.outputs.whl }}
         asset_name: ${{ steps.dist.outputs.whl }}
         asset_content_type: application/zip
-    - if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: dist/${{ steps.dist.outputs.whl_asc }}
-        asset_name: ${{ steps.dist.outputs.whl_asc }}
-        asset_content_type: text/plain
