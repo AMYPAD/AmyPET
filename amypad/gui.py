@@ -327,14 +327,16 @@ def main(args=None, gui_mode=True):
         argparser=argparser,
     )
 
-    args = [i for i in (args or sys.argv[1:]) if i not in ("--ignore-gooey",)]
+    if args is None:
+        args = sys.argv[1:]
+    args = [i for i in args if i not in ("--ignore-gooey",)]
     opts = parser.parse_args(args=args)
     # strip args
     args = [i for i in args if i not in ("--dry-run",)]
 
     if gui_mode:
         print(" ".join([path.basename(sys.executable), "-m amypad"] + args))
-    if getattr(opts, "dry_run", False):
+    if opts.dry_run:
         pass
     elif hasattr(opts, "main__"):  # Cmd
         print_not_none(opts.main__(args[1:], verify_args=False), end="")
