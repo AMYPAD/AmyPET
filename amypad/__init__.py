@@ -15,7 +15,7 @@ except ImportError:
 
 try:
     __licence__ = get_distribution("amypad").get_metadata("LICENCE.md")
-except DistributionNotFound:
+except (DistributionNotFound, FileNotFoundError):
     try:
         __licence__ = open(
             path.join(path.dirname(path.dirname(__file__)), "LICENCE.md")
