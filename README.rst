@@ -13,7 +13,7 @@ Choose one of the following:
 
 .. code:: sh
 
-    pip install amypad[cli]  # command line interface (CLI) version
+    pip install amypad  # command line interface (CLI) version
     pip install amypad[gui]  # CLI and graphical user interface (GUI) version
 
 
