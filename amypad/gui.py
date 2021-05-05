@@ -276,6 +276,7 @@ def print_not_none(value, **kwargs):
 def main(args=None, gui_mode=True):
     logging.basicConfig(level=logging.INFO)
     import miutil.cuinfo
+    import niftypad.api
 
     parser = fix_subparser(
         MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode
@@ -299,6 +300,48 @@ def main(args=None, gui_mode=True):
             ),
             gui_mode=gui_mode,
         )
+
+    kinetic_model = Func(
+        niftypad.api.kinetic_model,
+        """\
+        Kinetic modelling
+
+        Usage:
+          kinetic_model [options] <src>
+
+        Arguments:
+          <src>  : Input file/folder [default: FileChooser]
+
+        Options:
+          -d PATH, --dst PATH      : Output file/folder (default: input folder)
+          -m MODEL, --model MODEL  : model [default: srtmb_basis]
+          -p FILE, --params FILE   : config file hint (relative to `--input`)
+                                     [default: FileChooser]
+          --w W                : (default: None)
+          --r1 R1              : [default: 0.905:float]
+          --k2p K2P            : [default: 0.000250:float]
+          --beta_lim BETA_LIM  : (default: None)
+          --n_beta N_BETA      : [default: 40:int]
+          --linear_phase_start LINEAR_PHASE_START  : [default: 500:int]
+          --linear_phase_end LINEAR_PHASE_END      : (default: None)
+          --km_outputs KM_OUTPUTS                  : (default: None)
+          --thr THR                                : [default: 0.1:float]
+        """,
+        version=niftypad.__version__,
+        python_deps=["niftypad"],
+        argparser=argparser,
+    )
+    opts = kinetic_model.parser._get_optional_actions()
+    model = next(i for i in opts if i.dest == "model")
+    model.choices = [
+        "srtmb_basis",
+        "srtmb_k2p_basis",
+        "srtmb_asl_basis",
+        "logan_ref",
+        "logan_ref_k2p",
+        "mrtm",
+        "mrtm_k2p",
+    ]
 
     # example of how to wrap any CLI command using an `argopt`-style docstring
     Cmd(
