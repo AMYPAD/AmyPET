@@ -1,10 +1,7 @@
 import multiprocessing
 import os
-import shutil
-import sys
 from subprocess import run
 
-import SimpleITK as sitk
 from niftypet import nimpa
 
 nthrds = multiprocessing.cpu_count()
@@ -21,7 +18,7 @@ def rungif(fimin, gifpath=None, outpath=None):
     if gifpath is None or not os.path.exists(gifpath):
         raise ValueError("wrong path to GIF.")
 
-    if not os.path.isfile(fimin) or not "nii" in fimin:
+    if not os.path.isfile(fimin) or "nii" not in fimin:
         raise ValueError("incorrect input image file.")
 
     gifexe = os.path.join(gifpath, "bin", "seg_GIF")
@@ -83,13 +80,20 @@ def rungif(fimin, gifpath=None, outpath=None):
 
 
 # test input
-# fimin = '/home/pawel/cs_nifty/DPUK_dl/py_test/TP0/DICOM_MPRAGE_20200226150442_15_N4bias.nii.gz'
-fimin = "/home/pawel/cs_nifty/DPUK_dl/py_test/NEW002_PETMR_V1_00015_MR_images_MPRAGE_MPRAGE_20200212145346_15.nii"
+fimin = (
+    "/home/pawel/cs_nifty/DPUK_dl/py_test/TP0/"
+    "DICOM_MPRAGE_20200226150442_15_N4bias.nii.gz"
+)
+fimin = (
+    "/home/pawel/cs_nifty/DPUK_dl/py_test/"
+    "NEW002_PETMR_V1_00015_MR_images_MPRAGE_MPRAGE_20200212145346_15.nii"
+)
 
 outpath = os.path.dirname(fimin)
 
 
-if not "N4bias" in fimin:
+if "N4bias" not in fimin:
+    # import SimpleITK as sitk
     biascorr = nimpa.bias_field_correction(fimin, executable="sitk", outpath=outpath)
     fingif = biascorr["fim"]
 else:
