@@ -1,61 +1,53 @@
-import multiprocessing
-import os
-from subprocess import run
+import errno
+from os import fspath, getenv
+from pathlib import Path
+from subprocess import run as subprocess_run
 
-from niftypet import nimpa
-
-nthrds = multiprocessing.cpu_count()
+from .utils import cpu_count
 
 
-# ====================================
-def rungif(fimin, gifpath=None, outpath=None):
+def run(fimin, outpath=None, gif=None):
     """
-    fimin   - NIfTI image input file (T1w MR image)
-    gifpath - path to the GIF folders with executables and database
-
+    Args:
+      fimin: NIfTI image input file (T1w MR image)
+      gif: GIF directory (containing `bin/` & `db/`)
+        [default: ${PATHTOOLS}/GIF2BBRC]
     """
+    if not gif and getenv("PATHTOOLS"):
+        gif = Path(getenv("PATHTOOLS")) / "GIF2BBRC"
+    gif = Path(gif)
+    if not all(i.is_dir() for i in [gif, gif / "bin", gif / "db"]):
+        raise FileNotFoundError("GIF required")
 
-    if gifpath is None or not os.path.exists(gifpath):
-        raise ValueError("wrong path to GIF.")
+    fimin = Path(fimin)
+    if not fimin.is_file() or "nii" not in fspath(fimin):
+        raise IOError(errno.ENOENT, "Nifty input file required", fimin)
 
-    if not os.path.isfile(fimin) or "nii" not in fimin:
-        raise ValueError("incorrect input image file.")
-
-    gifexe = os.path.join(gifpath, "bin", "seg_GIF")
-    gifdb = os.path.join(gifpath, "db", "db.xml")
-
-    # ---------------------------------------------
-    # > create outputs
     if outpath is None:
-        opth = os.path.join(os.path.dirname(fimin), "out")
+        opth = fimin.parent / "out"
     else:
-        opth = outpath
-    nimpa.create_dir(opth)
-    logerr = os.path.join(opth, "err.log")
-    logout = os.path.join(opth, "out.log")
-    # ---------------------------------------------
-
-    # ---------------------------------------------
-    gifresults = run(
+        opth = Path(outpath)
+    opth.mkdir(mode=0o775, parents=True, exist_ok=True)
+    gifresults = subprocess_run(
         [
-            gifexe,
+            fspath(gif / "bin" / "seg_GIF"),
             "-in",
             fimin,
             "-db",
-            gifdb,
+            fspath(gif / "db" / "db.xml"),
             "-v",
             "1",
             "-regNMI",
             "-segPT",
             "0.1",
             "-out",
-            opth,
+            fspath(opth),
             "-temper",
             "0.05",
             "-lncc_ker",
             "-4",
             "-omp",
-            str(nthrds),
+            str(cpu_count()),
             "-regBE",
             "0.001",
             "-regJL",
@@ -63,44 +55,7 @@ def rungif(fimin, gifpath=None, outpath=None):
         ],
         capture_output=True,
     )
-    # ---------------------------------------------
-
-    # ---------------------------------------------
-    # > output logs
-    with open(logerr, "wb") as f:
-        f.write(gifresults.stderr)
-    with open(logout, "wb") as f:
-        f.write(gifresults.stdout)
-    # ---------------------------------------------
+    (opth / "out.log").write_bytes(gifresults.stdout)
+    (opth / "err.log").write_bytes(gifresults.stderr)
 
     return gifresults
-
-
-# ====================================
-
-
-# test input
-fimin = (
-    "/home/pawel/cs_nifty/DPUK_dl/py_test/TP0/"
-    "DICOM_MPRAGE_20200226150442_15_N4bias.nii.gz"
-)
-fimin = (
-    "/home/pawel/cs_nifty/DPUK_dl/py_test/"
-    "NEW002_PETMR_V1_00015_MR_images_MPRAGE_MPRAGE_20200212145346_15.nii"
-)
-
-outpath = os.path.dirname(fimin)
-
-
-if "N4bias" not in fimin:
-    # import SimpleITK as sitk
-    biascorr = nimpa.bias_field_correction(fimin, executable="sitk", outpath=outpath)
-    fingif = biascorr["fim"]
-else:
-    fingif = fimin
-
-    print("make sure that SimpleITK is installed: conda install -c simpleitk simpleitk")
-
-rungif(
-    fingif, gifpath="/home/pawel/AMYPET/GIF2BBRC", outpath=os.path.join(outpath, "GIF")
-)
