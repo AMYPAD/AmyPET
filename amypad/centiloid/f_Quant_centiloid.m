@@ -1,4 +1,4 @@
-function v_quant = f_Quant_centiloid(s_PET_dir, dir_RR, dir_quant)
+function [RR, GreyCerebellum, WholeCerebellum, WholeCerebellumBrainStem, Pons] = f_Quant_centiloid(s_PET_dir, dir_RR, dir_quant)
 
 d_roi_cort = [dir_RR, filesep, 'voi_ctx_2mm.nii'];
 d_roi_cergy = [dir_RR, filesep, 'voi_CerebGry_2mm.nii'];
@@ -62,3 +62,9 @@ for i_subj = 1:length(s_PET_dir)
 end
 
 save([dir_quant, filesep, 'Quant_', date, '.mat'], 'v_quant')
+
+RR = {v_quant{2:end, 1}};
+GreyCerebellum = {v_quant{2:end, 2}};
+WholeCerebellum = {v_quant{2:end, 3}};
+WholeCerebellumBrainStem = {v_quant{2:end, 4}};
+Pons = {v_quant{2:end, 5}};

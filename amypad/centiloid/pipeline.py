@@ -4,8 +4,7 @@ Converted from Pipeline_Centiloid_BBRC.m
 import logging
 from contextlib import contextmanager
 from functools import lru_cache, wraps
-from glob import glob
-from os import path
+from os import fspath
 from pathlib import Path
 
 from miutil.imio import nii
@@ -36,8 +35,8 @@ def tic(desc, leave=True, **kwargs):
 def gunzip(nii_gz):
     """`nii_ugzip` but skips if already existing"""
     fdir, base = nii.file_parts(nii_gz)[:2]
-    fout = path.join(fdir, base, ".nii")
-    return fout if path.exists(fout) else nii.nii_ugzip(nii_gz)
+    fout = Path(fdir) / (base + ".nii")
+    return fspath(fout) if fout.is_file() else nii.nii_ugzip(nii_gz)
 
 
 def run(
@@ -50,20 +49,26 @@ def run(
 ):
     """
     Args:
-        dir_MRI: MRI directory
-        dir_PET: PET directory
-        dir_RR: Reference regions ROIs directory
-            (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
-        dir_quant: Output quantification directory
+      dir_MRI (str or Path): MRI directory
+      dir_PET (str or Path): PET directory
+      dir_RR (str or Path): Reference regions ROIs directory
+        (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
+      dir_quant (str or Path): Output quantification directory
+    Returns:
+      RR (list[str])
+      GreyCerebellum (list[float])
+      WholeCerebellum (list[float])
+      WholeCerebellumBrainStem (list[float])
+      Pons (list[float])
     """
     # PET & MR images lists
-    s_PET_dir = list(tmap(gunzip, glob(path.join(dir_PET, glob_PET)), leave=False))
-    s_MRI_dir = list(tmap(gunzip, glob(path.join(dir_MRI, glob_MRI)), leave=False))
+    s_PET_dir = list(tmap(gunzip, Path(dir_PET).glob(glob_PET), leave=False))
+    s_MRI_dir = list(tmap(gunzip, Path(dir_MRI).glob(glob_MRI), leave=False))
     if len(s_PET_dir) != len(s_MRI_dir):
         raise IndexError("Different number of PET and MR images")
 
     eng = get_matlab()
-    dir_spm = path.dirname(eng.which("spm"))
+    dir_spm = fspath(Path(eng.which("spm")).parent)
 
     # TODO: in parallel
     for d_PET, d_MRI in tzip(s_PET_dir, s_MRI_dir):
@@ -85,16 +90,16 @@ def run(
             eng.f_3Segment(d_MRI, dir_spm, nargout=0)
 
         with tic("Step 4: Normalise"):
-            d_file_norm = path.join(dir_MRI, "y_" + path.basename(d_MRI))
+            d_file_norm = fspath(Path(d_MRI).parent / ("y_" + Path(d_MRI).name))
             eng.f_4Normalise(d_file_norm, d_MRI, d_PET, nargout=0)
 
-    s_PET = glob(
-        path.join(
-            dir_PET,
-            "w" + (glob_PET[:-3] if glob_PET.lower().endswith(".gz") else glob_PET),
+    s_PET = list(
+        map(
+            fspath,
+            Path(dir_PET).glob(
+                "w" + (glob_PET[:-3] if glob_PET.lower().endswith(".gz") else glob_PET),
+            ),
         )
     )
     Path(dir_quant).mkdir(mode=0o755, parents=True, exist_ok=True)
-    eng.f_Quant_centiloid(
-        s_PET, dir_RR, dir_quant, nargout=0
-    )  # TODO: return this as a `dict`
+    return eng.f_Quant_centiloid(s_PET, fspath(dir_RR), fspath(dir_quant), nargout=5)
