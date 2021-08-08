@@ -1,4 +1,4 @@
-function [RR, GreyCerebellum, WholeCerebellum, WholeCerebellumBrainStem, Pons] = f_Quant_centiloid(s_PET_dir, dir_RR, dir_quant)
+function [fnbase, greyCerebellum, wholeCerebellum, wholeCerebellumBrainStem, pons] = f_Quant_centiloid(s_PET_dir, dir_RR)
 
 d_roi_cort = [dir_RR, filesep, 'voi_ctx_2mm.nii'];
 d_roi_cergy = [dir_RR, filesep, 'voi_CerebGry_2mm.nii'];
@@ -18,53 +18,34 @@ m_roi_pons = spm_read_vols(v_roi_pons);
 m_roi_whcer = spm_read_vols(v_roi_whcer);
 m_roi_cerbst = spm_read_vols(v_roi_cerbst);
 
-v_ref = zeros(4, 1);
-v_quant = cell(length(s_PET_dir)+1, 5);
-
 ind_cergy = (m_roi_cergy == 1);
 ind_pons = (m_roi_pons == 1);
 ind_whcer = (m_roi_whcer == 1);
 ind_cerbst = (m_roi_cerbst == 1);
 ind_cort = (m_roi_cort == 1);
 
-v_quant{1, 1} = 'RR';
-v_quant{1, 2} = 'GreyCerebellum';
-v_quant{1, 5} = 'Pons';
-v_quant{1, 3} = 'WholeCerebellum';
-v_quant{1, 4} = 'WholeCerebellumBrainStem';
+fnbase = cell(1, length(s_PET_dir));
+greyCerebellum = cell(1, length(s_PET_dir));
+wholeCerebellum = cell(1, length(s_PET_dir));
+wholeCerebellumBrainStem = cell(1, length(s_PET_dir));
+pons = cell(1, length(s_PET_dir));
 
-
+fprintf(2, 'Subject %d/%d done\r', 0, length(s_PET_dir));
 for i_subj = 1:length(s_PET_dir)
-
     d_PET = s_PET_dir{i_subj};
     [~, name, ~] = fileparts(d_PET);
 
     f_noNaN(d_PET);
     v_pet = spm_vol(d_PET);
     m_pet = spm_read_vols(v_pet);
-
-    v_ref(1) = mean(m_pet(ind_cergy));
-    v_ref(4) = mean(m_pet(ind_pons));
-    v_ref(2) = mean(m_pet(ind_whcer));
-    v_ref(3) = mean(m_pet(ind_cerbst));
-
     v_cort = mean(m_pet(ind_cort));
-    v_quant{i_subj+1, 1} = name;
 
-    for i = 1:4
+    fnbase{1, i_subj} = name;
+    greyCerebellum{1, i_subj} = v_cort / mean(m_pet(ind_cergy));
+    wholeCerebellum{1, i_subj} = v_cort / mean(m_pet(ind_whcer));
+    wholeCerebellumBrainStem{1, i_subj} = v_cort / mean(m_pet(ind_cerbst));
+    pons{1, i_subj} = v_cort / mean(m_pet(ind_pons));
 
-        v_quant{i_subj+1, i+1} = v_cort / v_ref(i);
-
-    end
-
-    fprintf(1, ['Subject ', num2str(i_subj), ' done\n']);
-
+    fprintf(2, 'Subject %d/%d done\r', i_subj, length(s_PET_dir));
 end
-
-save([dir_quant, filesep, 'Quant_', date, '.mat'], 'v_quant')
-
-RR = {v_quant{2:end, 1}};
-GreyCerebellum = {v_quant{2:end, 2}};
-WholeCerebellum = {v_quant{2:end, 3}};
-WholeCerebellumBrainStem = {v_quant{2:end, 4}};
-Pons = {v_quant{2:end, 5}};
+fprintf(2, '\n');

@@ -3,6 +3,7 @@ Converted from Pipeline_Centiloid_BBRC.m
 """
 import logging
 from contextlib import contextmanager
+from csv import writer as csv_writer
 from functools import lru_cache, wraps
 from os import fspath
 from pathlib import Path
@@ -43,7 +44,7 @@ def run(
     dir_MRI="data/ALFA_PET",
     dir_PET="data/ALFA_PET",
     dir_RR="data/Atlas/CL_2mm",
-    dir_quant="data/ALFA_PET/Quant_realigned",
+    outfile="data/ALFA_PET/Quant_realigned.csv",
     glob_PET="*_PET.nii.gz",
     glob_MRI="*_MRI.nii.gz",
 ):
@@ -53,13 +54,13 @@ def run(
       dir_PET (str or Path): PET directory
       dir_RR (str or Path): Reference regions ROIs directory
         (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
-      dir_quant (str or Path): Output quantification directory
+      outfile (str or Path): Output quantification file
     Returns:
-      RR (list[str])
-      GreyCerebellum (list[float])
-      WholeCerebellum (list[float])
-      WholeCerebellumBrainStem (list[float])
-      Pons (list[float])
+      fname (list[str])
+      greyCerebellum (list[float])
+      wholeCerebellum (list[float])
+      wholeCerebellumBrainStem (list[float])
+      pons (list[float])
     """
     # PET & MR images lists
     s_PET_dir = list(tmap(gunzip, Path(dir_PET).glob(glob_PET), leave=False))
@@ -101,5 +102,18 @@ def run(
             ),
         )
     )
-    Path(dir_quant).mkdir(mode=0o755, parents=True, exist_ok=True)
-    return eng.f_Quant_centiloid(s_PET, fspath(dir_RR), fspath(dir_quant), nargout=5)
+    res = eng.f_Quant_centiloid(s_PET, fspath(dir_RR), nargout=5)
+    if outfile:
+        with open(outfile, "w") as fd:
+            f = csv_writer(fd)
+            f.writerow(
+                (
+                    "Fname",
+                    "GreyCerebellum",
+                    "WholeCerebellum",
+                    "WholeCerebellumBrainStem",
+                    "Pons",
+                )
+            )
+            f.writerows(zip(*res))
+    return res
