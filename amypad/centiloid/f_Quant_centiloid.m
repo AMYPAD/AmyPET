@@ -1,6 +1,5 @@
 function v_quant = f_Quant_centiloid(s_PET_dir, dir_RR, dir_quant)
 
-
 d_roi_cort = [dir_RR, filesep, 'voi_ctx_2mm.nii'];
 d_roi_cergy = [dir_RR, filesep, 'voi_CerebGry_2mm.nii'];
 d_roi_pons = [dir_RR, filesep, 'voi_Pons_2mm.nii'];
@@ -37,7 +36,8 @@ v_quant{1, 4} = 'WholeCerebellumBrainStem';
 
 for i_subj = 1:length(s_PET_dir)
 
-    d_PET = [s_PET_dir(i_subj).folder, filesep, 'w', s_PET_dir(i_subj).name];
+    d_PET = s_PET_dir{i_subj};
+    [~, name, ~] = fileparts(d_PET);
 
     f_noNaN(d_PET);
     v_pet = spm_vol(d_PET);
@@ -49,7 +49,7 @@ for i_subj = 1:length(s_PET_dir)
     v_ref(3) = mean(m_pet(ind_cerbst));
 
     v_cort = mean(m_pet(ind_cort));
-    v_quant{i_subj+1, 1} = s_PET_dir(i_subj).name;
+    v_quant{i_subj+1, 1} = name;
 
     for i = 1:4
 

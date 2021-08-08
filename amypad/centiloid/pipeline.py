@@ -6,13 +6,13 @@ from contextlib import contextmanager
 from functools import lru_cache, wraps
 from glob import glob
 from os import path
-
-from pkg_resources import resource_filename
-from tqdm.auto import tqdm
-from tqdm.contrib import tmap, tzip
+from pathlib import Path
 
 from miutil.imio import nii
+from pkg_resources import resource_filename
 from spm12 import ensure_spm
+from tqdm.auto import tqdm
+from tqdm.contrib import tmap, tzip
 
 log = logging.getLogger(__name__)
 PATH_M = resource_filename(__name__, "")
@@ -54,7 +54,7 @@ def run(
         dir_PET: PET directory
         dir_RR: Reference regions ROIs directory
             (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
-        dir_quant: Quantification directory
+        dir_quant: Output quantification directory
     """
     # PET & MR images lists
     s_PET_dir = list(tmap(gunzip, glob(path.join(dir_PET, glob_PET)), leave=False))
@@ -88,5 +88,13 @@ def run(
             d_file_norm = path.join(dir_MRI, "y_" + path.basename(d_MRI))
             eng.f_4Normalise(d_file_norm, d_MRI, d_PET, nargout=0)
 
-    s_PET = glob(path.join(dir_PET, "w*PET.nii"))  # MODIFY
-    return eng.f_Quant_centiloid(s_PET, dir_RR, dir_quant)
+    s_PET = glob(
+        path.join(
+            dir_PET,
+            "w" + (glob_PET[:-3] if glob_PET.lower().endswith(".gz") else glob_PET),
+        )
+    )
+    Path(dir_quant).mkdir(mode=0o755, parents=True, exist_ok=True)
+    eng.f_Quant_centiloid(
+        s_PET, dir_RR, dir_quant, nargout=0
+    )  # TODO: return this as a `dict`
