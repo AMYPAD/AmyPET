@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 def run(
     dyndir,
-    glob="*itr5*dyn_i.nii*",
+    glob="*.nii*",
     scale=2,
     memlim=True,
     refim="",
