@@ -10,6 +10,7 @@ def run(fimin, outpath=None, gif=None):
     """
     Args:
       fimin: NIfTI image input file (T1w MR image)
+      outpath: where to write outputs of GIF
       gif: GIF directory (containing `bin/` & `db/`)
         [default: ${PATHTOOLS}/GIF2BBRC]
     """
