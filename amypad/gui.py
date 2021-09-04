@@ -4,7 +4,7 @@ import re
 import sys
 from argparse import SUPPRESS, ArgumentParser, RawDescriptionHelpFormatter
 from functools import partial
-from os import path
+from pathlib import Path
 from subprocess import PIPE, Popen
 from textwrap import dedent
 from weakref import WeakSet
@@ -378,7 +378,7 @@ def main(args=None, gui_mode=True):
     args = [i for i in args if i not in ("--dry-run",)]
 
     if gui_mode:
-        print(" ".join([path.basename(sys.executable), "-m amypad"] + args))
+        print(" ".join([Path(sys.executable).name, "-m amypad"] + args))
     if opts.dry_run:
         pass
     elif hasattr(opts, "main__"):  # Cmd

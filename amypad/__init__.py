@@ -1,4 +1,4 @@
-from os import path
+from pathlib import Path
 
 from pkg_resources import DistributionNotFound, get_distribution
 
@@ -17,8 +17,6 @@ try:
     __licence__ = get_distribution("amypad").get_metadata("LICENCE.md")
 except (DistributionNotFound, FileNotFoundError):
     try:
-        __licence__ = open(
-            path.join(path.dirname(path.dirname(__file__)), "LICENCE.md")
-        ).read()
+        __licence__ = (Path(__file__).parent.parent / "LICENCE.md").read_text()
     except FileNotFoundError:
         __licence__ = "MPL-2.0"
