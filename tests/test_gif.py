@@ -26,4 +26,4 @@ def test_gif(fimin):
 @pytest.mark.timeout(60 * 60 * 24)
 def test_amypet_gif(dimin, caplog):
     amypet_gif = pytest.importorskip("scripts.amypet_gif")
-    amypet_gif.main([fspath(dimin)])
+    amypet_gif.main(["-O", fspath(dimin)])

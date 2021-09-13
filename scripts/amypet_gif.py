@@ -1,6 +1,9 @@
 """Usage:
   amypet_gif [options] <path>
 
+Options:
+  -O, --overwrite-existing  : whether to run even if outputs already exist
+
 Arguments:
   <path>  : directory. Layout: <path>/*/*/*MPRAGE*.nii*
 """
@@ -11,7 +14,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from argopt import argopt
-from miutil import hasext
+from miutil import hasext, nsort
 from niftypet import nimpa
 
 from amypad import gif
@@ -24,7 +27,7 @@ def filter_dir(path):
 
 
 def filter_nii(path):
-    return list(filter(lambda i: i.is_file() and hasext(i, (".nii", "nii.gz")), path))
+    return list(filter(lambda i: i.is_file() and hasext(i, ("nii", "nii.gz")), path))
 
 
 def main(argv=None):
@@ -34,11 +37,10 @@ def main(argv=None):
 
     for spth in filter_dir(gpth.iterdir()):
         for tpth in spth.iterdir():
-            # check if MPRAGE DICOM folder is present
             for fldr in filter_dir(tpth.glob("*MPRAGE*")):
-                # run dcm2niix to convert the DICOMs into NIfTI
                 fnii = filter_nii(tpth.glob("*MPRAGE*"))
                 if not len(fnii):
+                    # convert DICOMs to NIfTI
                     subprocess.run(
                         [nimpa.resources.DCM2NIIX]
                         + "-i y -v n -f %f_%s".split()
@@ -65,14 +67,12 @@ def main(argv=None):
                             `pip install SimpleITK`"""
                         )
                     )
-            elif len(fn4b) == 1 and len(fgif) == 0:
-                fingif = fn4b[0]
+            elif len(fn4b) >= 1:
+                if len(fn4b) > 1:
+                    log.warning("%d inputs found, selecting latest")
+                fingif = nsort(fn4b)[-1]
                 log.debug("found N4-bias corrected:%s", fingif)
-            else:
-                if len(fn4b) == 1:
-                    log.debug("TODO: not skipping?")
-                    fingif = fn4b[0]
-                else:
+                if len(fgif) != 0 or not args.overwrite_existing:
                     log.warning("skipping")
                     continue
 
