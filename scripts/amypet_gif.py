@@ -69,7 +69,12 @@ def main(argv=None):
                 fingif = fn4b[0]
                 log.debug("found N4-bias corrected:%s", fingif)
             else:
-                continue
+                if len(fn4b) == 1:
+                    log.debug("TODO: not skipping?")
+                    fingif = fn4b[0]
+                else:
+                    log.warning("skipping")
+                    continue
 
             log.info("running GIF on:%s", fingif)
             gif.run(fingif, outpath=os.path.join(tpth, "GIF"))

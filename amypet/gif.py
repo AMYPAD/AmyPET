@@ -1,7 +1,7 @@
 import errno
+import subprocess
 from os import fspath, getenv
 from pathlib import Path
-from subprocess import run as subprocess_run
 
 from .utils import cpu_count
 
@@ -29,7 +29,7 @@ def run(fimin, outpath=None, gif=None):
     else:
         opth = Path(outpath)
     opth.mkdir(mode=0o775, parents=True, exist_ok=True)
-    gifresults = subprocess_run(
+    gifresults = subprocess.run(
         [
             fspath(gif / "bin" / "seg_GIF"),
             "-in",
@@ -54,7 +54,8 @@ def run(fimin, outpath=None, gif=None):
             "-regJL",
             "0.00005",
         ],
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     (opth / "out.log").write_bytes(gifresults.stdout)
     (opth / "err.log").write_bytes(gifresults.stderr)
