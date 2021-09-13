@@ -1,126 +1,77 @@
+"""Usage:
+  amypet_gif [options] <path>
 
-import SimpleITK as sitk
-import sys, os
-import os, sys
-import shutil
-import glob
-from subprocess import run
-from niftypet import nimpa
-
-import multiprocessing
-nthrds = multiprocessing.cpu_count()
-
-
-#====================================
-def rungif(fimin, gifpath=None, outpath=None):
-    '''
-    fimin   - NIfTI image input file (T1w MR image)
-    gifpath - path to the GIF folders with executables and database
-
-    '''
-
-    if gifpath is None or not os.path.exists(gifpath):
-        raise ValueError('wrong path to GIF.')
-
-    if not os.path.isfile(fimin) or not 'nii' in fimin:
-        raise ValueError('incorrect input image file.')
-
-
-    gifexe = os.path.join(gifpath, 'bin', 'seg_GIF')
-    gifdb = os.path.join(gifpath, 'db', 'db.xml')
-
-
-    #---------------------------------------------
-    # > create outputs
-    if outpath is None:
-        opth = os.path.join(os.path.dirname(fimin), 'out')
-    else:
-        opth = outpath
-    nimpa.create_dir(opth)
-    logerr = os.path.join(opth, 'err.log')
-    logout = os.path.join(opth, 'out.log')
-    #---------------------------------------------
-
-    #---------------------------------------------
-    gifresults = run(
-        [gifexe, 
-            '-in', fimin,
-            '-db', gifdb,
-            '-v', '1', '-regNMI', '-segPT', '0.1',
-            '-out', opth,
-            '-temper', '0.05', '-lncc_ker', '-4', '-omp', str(nthrds), '-regBE', '0.001', '-regJL', '0.00005'
-        ],
-        capture_output=True)
-    #---------------------------------------------
-
-
-    #---------------------------------------------
-    # > output logs
-    with open(logerr, 'wb') as f:
-        f.write(gifresults.stderr)
-    with open(logout, 'wb') as f:
-        f.write(gifresults.stdout)
-    #---------------------------------------------
-
-    return gifresults
-#====================================
-
-
-
-'''
+Arguments:
+  <path>  : directory. Layout: <path>/*/*/*MPRAGE*.nii*
+"""
+import logging
 import os
-import glob
-from subprocess import run
+import subprocess
+from pathlib import Path
+from textwrap import dedent
 
-fimin = glob.glob(os.path.join(gpth, 'N4bias', '*N4bias*.nii*'))[0]
-fimin = '/home/pawel/cs_nifty/DPUK_dl/py_test/TP0/DICOM_MPRAGE_20200226150442_15_N4bias.nii.gz'
-fimin = '/home/pawel/cs_nifty/DPUK_dl/py_test/NEW002_PETMR_V1_00015_MR_images_MPRAGE_MPRAGE_20200212145346_15.nii'
-'''
+from argopt import argopt
+from miutil import hasext
+from niftypet import nimpa
+from niftypet.nimpa import resources as rs
+
+from amypad import gif
+
+log = logging.getLogger(__name__)
 
 
-gpth = '/data/DPUK/TRT'
-for d in os.listdir(gpth):
-    spth = os.path.join(gpth,d)
-    if os.path.isdir(spth):
-        for tp in os.listdir(spth):
-            tpth = os.path.join(spth,tp)
+def filter_dir(path):
+    return filter(lambda i: i.is_dir(), path)
 
-            # > check if MPRAGE DICOM folder is present
-            fglb = [f for f in glob.glob(os.path.join(tpth, '*MPRAGE*')) if os.path.isdir(f)]
-            for fldr in fglb:
-                # > run dcm2niix to convert the DICOMs into NIfTI
-                fnii = [f for f in glob.glob(os.path.join(tpth, '*MPRAGE*')) if os.path.isfile(f) and f.endswith(('.nii', 'nii.gz'))]
-                if len(fnii)==0:
-                    run(
-                        ['/home/pawel/NiftyPET_tools/dcm2niix/bin/dcm2niix',
-                         '-i', 'y',
-                         '-v', 'n',
-                         '-o', tpth,
-                         'f', '%f_%s',
-                         fldr])
 
-            fn4b = glob.glob(os.path.join(tpth, 'N4bias', '*N4bias*.nii*'))
-            fgif = glob.glob(os.path.join(tpth, 'GIF', '*Parcellation*.nii*'))
-            
-            if len(fn4b)<1:
-                fnii = [f for f in glob.glob(os.path.join(tpth, '*MPRAGE*')) if os.path.isfile(f) and f.endswith(('.nii', 'nii.gz'))]
-                print(f'N4bias input: {fnii}')
+def filter_nii(path):
+    return list(filter(lambda i: i.is_file() and hasext(i, (".nii", "nii.gz")), path))
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    args = argopt(__doc__).parse_args()
+    gpth = Path(args.path)
+    assert gpth.is_dir()
+
+    for spth in filter_dir(gpth.iterdir()):
+        for tpth in spth.iterdir():
+            # check if MPRAGE DICOM folder is present
+            for fldr in filter_dir(tpth.glob("*MPRAGE*")):
+                # run dcm2niix to convert the DICOMs into NIfTI
+                fnii = filter_nii(tpth.glob("*MPRAGE*"))
+                if not len(fnii):
+                    subprocess.run(
+                        [rs.DCM2NIIX]
+                        + "-i y -v n -f %f_%s".split()
+                        + ["-o", tpth, fldr]
+                    )
+
+            fn4b = list((tpth / "N4bias").glob("*N4bias*.nii*"))
+            fgif = list((tpth / "GIF").glob("*Parcellation*.nii*"))
+
+            if len(fn4b) < 1:
+                fnii = filter_nii(tpth.glob("*MPRAGE*"))
+                log.info("N4bias input:%s", fnii)
                 biascorr = nimpa.bias_field_correction(
-                    fnii[0],
-                    executable='sitk',
-                    outpath=tpth)
-                fingif = biascorr['fim']
-
-            elif len(fn4b)==1 and len(fgif)==0:
+                    fnii[0], executable="sitk", outpath=tpth
+                )
+                try:
+                    fingif = biascorr["fim"]
+                except TypeError:
+                    raise ImportError(
+                        dedent(
+                            """\
+                            please install SimpleITK:
+                            `conda install -c simpleitk simpleitk` or
+                            `pip install SimpleITK`"""
+                        )
+                    )
+            elif len(fn4b) == 1 and len(fgif) == 0:
                 fingif = fn4b[0]
-                #print(f'i> found N4-bias corrected {fingif}')
+                log.debug("found N4-bias corrected:%s", fingif)
+            else:
+                continue
 
-            else: continue
-
-
-            # > make use that SimpleITK is installed: conda install -c simpleitk simpleitk
-            print(f'i> running GIF on {fingif}')
-            rungif(fingif, gifpath='/home/pawel/AMYPET/GIF2BBRC', outpath=os.path.join(tpth, 'GIF'))
-
-
-#nohup python amypet_gif.py > ~/amypet_gif.log 2>&1 &
+            log.info("running GIF on:%s", fingif)
+            gif.run(fingif, outpath=os.path.join(tpth, "GIF"))
