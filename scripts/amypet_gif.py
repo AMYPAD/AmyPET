@@ -13,7 +13,6 @@ from textwrap import dedent
 from argopt import argopt
 from miutil import hasext
 from niftypet import nimpa
-from niftypet.nimpa import resources as rs
 
 from amypad import gif
 
@@ -28,9 +27,9 @@ def filter_nii(path):
     return list(filter(lambda i: i.is_file() and hasext(i, (".nii", "nii.gz")), path))
 
 
-if __name__ == "__main__":
+def main(argv=None):
     logging.basicConfig(level=logging.INFO)
-    args = argopt(__doc__).parse_args()
+    args = argopt(__doc__).parse_args(args=argv)
     gpth = Path(args.path)
     assert gpth.is_dir()
 
@@ -42,7 +41,7 @@ if __name__ == "__main__":
                 fnii = filter_nii(tpth.glob("*MPRAGE*"))
                 if not len(fnii):
                     subprocess.run(
-                        [rs.DCM2NIIX]
+                        [nimpa.resources.DCM2NIIX]
                         + "-i y -v n -f %f_%s".split()
                         + ["-o", tpth, fldr]
                     )
@@ -75,3 +74,7 @@ if __name__ == "__main__":
 
             log.info("running GIF on:%s", fingif)
             gif.run(fingif, outpath=os.path.join(tpth, "GIF"))
+
+
+if __name__ == "__main__":
+    main()

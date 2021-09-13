@@ -1,24 +1,6 @@
 from os import fspath
-from pathlib import Path
 
 import pytest
-
-
-@pytest.fixture
-def fimin():
-    """test input"""
-    res = (
-        "/home/pawel/cs_nifty/DPUK_dl/py_test/TP0/"
-        "DICOM_MPRAGE_20200226150442_15_N4bias.nii.gz"
-    )
-    res = (
-        "/home/pawel/cs_nifty/DPUK_dl/py_test/"
-        "NEW002_PETMR_V1_00015_MR_images_MPRAGE_MPRAGE_20200212145346_15.nii"
-    )
-    res = Path(res)
-    if not res.is_file():
-        pytest.skip("fimin not found")
-    return res
 
 
 def test_gif(fimin):
@@ -39,3 +21,9 @@ def test_gif(fimin):
         fin = fimin
 
     gif.run(fin, outpath=outpath / "GIF")
+
+
+@pytest.mark.timeout(60 * 60 * 24)
+def test_amypet_gif(dimin):
+    amypet_gif = pytest.importorskip("scripts.amypet_gif")
+    amypet_gif.main([fspath(dimin)])
