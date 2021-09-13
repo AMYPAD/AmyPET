@@ -3,37 +3,19 @@ from pathlib import Path
 
 import pytest
 
+nipet = pytest.importorskip("niftypet.nipet")
+
 
 @pytest.fixture
-def dyndir(datain):
-    """
-    TODO: use data like
-    https://github.com/NiftyPET/NIPET/blob/master/tests/test_amyloid_pvc.py?
-    """
-    dyndir = datain / "amydyn"
-    if dyndir.is_dir():
-        return dyndir
-
-    from functools import partial
-
-    nipet = pytest.importorskip(
-        "niftypet.nipet",
-        reason="no existing data & no no NIPET so no way to reconstruct some",
-    )
-
-    # get all the constants and LUTs
-    mMRpars = nipet.get_mmrparams()  # mMRpars["Cnt"]["VERBOSE"] = True
-    # recognise the input data as much as possible
-    classify_input = partial(nipet.classify_input, params=mMRpars)
-
-    # ------------------------------------------------------
-    # datain = classify_input("/store/downloads/1946/S00151_18715520/TP0")
-    datain = classify_input("/data/amyloid_brain")
+def dyndir(datain, mMRpars):
     # definition of dynamic frames for kinetic analysis
     frmdef = ["def", [4, 15], [8, 30], [9, 60], [2, 180], [8, 300]]
     # output path
     opth = fspath(Path(datain["corepath"]) / "output_dyn")
-    # ------------------------------------------------------
+
+    res = Path(opth) / "PET" / "multiple-frames"  # datain / "amydyn"
+    if res.is_dir():
+        return res
 
     hst = nipet.mmrhist(datain, mMRpars)
     # offset for the time from which meaningful events are detected

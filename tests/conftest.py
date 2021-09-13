@@ -1,9 +1,10 @@
+import logging
 from os import getenv
 from pathlib import Path
 
 import pytest
 
-HOME = Path(getenv("DATA_ROOT", "~")).expanduser()
+HOME = Path(getenv("DATA_ROOT", "~")).expanduser() / "amypad"
 
 
 @pytest.fixture(scope="session")
@@ -18,11 +19,33 @@ def nvml():
 
 
 @pytest.fixture(scope="session")
+def mMRpars():
+    nipet = pytest.importorskip("niftypet.nipet")
+    params = nipet.get_mmrparams()
+    # params["Cnt"]["VERBOSE"] = True
+    params["Cnt"]["LOG"] = logging.INFO
+    return params
+
+
+@pytest.fixture(scope="session")
+def datain(mMRpars):
+    nipet = pytest.importorskip("niftypet.nipet")
+    folder_in = HOME / "1946" / "S00151_18715520" / "TP0"
+    if not folder_in.is_dir():
+        pytest.skip(
+            f"""Cannot find 1946/S00151_18715520/TP0 in
+${{DATA_ROOT:-~}} ({HOME}).
+"""
+        )
+    return nipet.classify_input(folder_in, mMRpars)
+
+
+@pytest.fixture(scope="session")
 def dimin():
-    trt = HOME / "amypad" / "DPUK" / "TRT"
+    trt = HOME / "DPUK" / "TRT"
     if not trt.is_dir():
         pytest.skip(
-            f"""Cannot find amypad/DPUK/TRT in
+            f"""Cannot find DPUK/TRT in
 ${{DATA_ROOT:-~}} ({HOME}).
 """
         )
