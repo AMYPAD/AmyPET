@@ -1,3 +1,4 @@
+import logging
 from os import fspath
 
 import pytest
@@ -23,7 +24,8 @@ def test_gif(fimin):
     gif.run(fin, outpath=outpath / "GIF")
 
 
-@pytest.mark.timeout(60 * 60 * 24)
-def test_amypet_gif(dimin):
+def test_amypet_gif(dimin, caplog):
     amypet_gif = pytest.importorskip("scripts.amypet_gif")
-    amypet_gif.main([fspath(dimin)])
+    with caplog.at_level(logging.DEBUG):
+        amypet_gif.main([fspath(dimin)])
+        assert not caplog.record_tuples

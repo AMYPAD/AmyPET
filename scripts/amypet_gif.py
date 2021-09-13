@@ -28,7 +28,6 @@ def filter_nii(path):
 
 
 def main(argv=None):
-    logging.basicConfig(level=logging.INFO)
     args = argopt(__doc__).parse_args(args=argv)
     gpth = Path(args.path)
     assert gpth.is_dir()
@@ -77,4 +76,5 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
