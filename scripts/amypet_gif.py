@@ -67,12 +67,12 @@ def main(argv=None):
                             `pip install SimpleITK`"""
                         )
                     )
-            elif len(fn4b) >= 1:
+            else:
                 if len(fn4b) > 1:
                     log.warning("%d inputs found, selecting latest")
-                fingif = nsort(fn4b)[-1]
+                fingif = nsort(list(map(str, fn4b)))[-1]
                 log.debug("found N4-bias corrected:%s", fingif)
-                if len(fgif) != 0 or not args.overwrite_existing:
+                if fgif and not args.overwrite_existing:
                     log.warning("skipping")
                     continue
 

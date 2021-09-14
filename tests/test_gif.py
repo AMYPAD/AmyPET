@@ -20,6 +20,7 @@ def test_gif(fimin):
     else:
         fin = fimin
 
+    print(fin)
     gif.run(fin, outpath=outpath / "GIF")
 
 
