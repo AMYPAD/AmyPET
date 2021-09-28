@@ -348,7 +348,7 @@ def main(args=None, gui_mode=True):
         [sys.executable, "-m", "miutil.cuinfo"],
         miutil.cuinfo.__doc__,
         version=miutil.__version__,
-        python_deps=["miutil[cuda]"],
+        python_deps=["miutil[cuda]>=0.8.0"],
         argparser=argparser,
     )
 
@@ -366,7 +366,7 @@ def main(args=None, gui_mode=True):
           <ext>    : extension (with or without `.` prefix)
         """,
         version=miutil.__version__,
-        python_deps=["miutil"],
+        python_deps=["miutil>=0.8.0"],
         argparser=argparser,
     )
 
