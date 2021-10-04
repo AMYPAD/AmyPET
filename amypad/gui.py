@@ -47,13 +47,15 @@ def patch_argument_kwargs(kwargs, gooey=True):
         if typ == open:
             nargs = kwargs.get("nargs", 1)
             if nargs and (nargs > 1 if isinstance(nargs, int) else nargs in "+*"):
-                kwargs["widget"] = "MultiFileChooser"
+                kwargs['widget'] = "MultiFileChooser"
             else:
-                kwargs["widget"] = "FileChooser"
+                kwargs['widget'] = "FileChooser"
         elif typ == int:
-            kwargs["widget"] = "IntegerField"
+            kwargs['widget'] = "IntegerField"
+            kwargs['gooey_options'] = {'min': 0, 'max': 1_000}
         elif typ == float:
-            kwargs["widget"] = "DecimalField"
+            kwargs['widget'] = "DecimalField"
+            kwargs['gooey_options'] = {'min': -1, 'max': 1e3, 'increment': 1e-6}
 
     return kwargs
 
