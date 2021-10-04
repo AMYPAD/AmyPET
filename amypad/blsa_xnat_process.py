@@ -233,7 +233,7 @@ for p in pets:
         nimpa.create_dir(gif_path)
 
         # > download the files
-        gifdct = nixnat.getresources(rsrcs, xc, outpath=gif_path, cookie=xc["cookie"],)
+        gifdct = nixnat.getresources(rsrcs, xc, outpath=gif_path, cookie=xc["cookie"])
 
         fprcl = [f for f in gifdct["nii"] if "Parcellation" in f][0]
         ft1bc = [f for f in gifdct["nii"] if "BiasCorrected" in f][0]
