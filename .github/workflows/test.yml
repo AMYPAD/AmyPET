@@ -44,7 +44,7 @@ jobs:
     - name: Run setup-python
       run: setup-python -p${{ matrix.python }} miutil scikit-build cmake ninja
     - name: Install
-      run: pip install -U --no-binary nimpa,nipet "git+git://github.com/AMYPAD/NiftyPAD@master#egg=niftypad" "git+git://github.com/NiftyPET/NIMPA@devel#egg=nimpa" "git+git://github.com/NiftyPET/NIPET@devel#egg=nipet" -e .[dev,imtrimup]
+      run: pip install -U --no-binary nimpa,nipet -e .[dev,niftypet]
     - run: pytest
     - uses: codecov/codecov-action@v1
     - name: Post Run setup-python

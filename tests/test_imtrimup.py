@@ -3,8 +3,6 @@ from pathlib import Path
 
 import pytest
 
-nipet = pytest.importorskip("niftypet.nipet")
-
 
 @pytest.fixture
 def dyndir(datain, mMRpars):
@@ -17,6 +15,7 @@ def dyndir(datain, mMRpars):
     if res.is_dir():
         return res
 
+    nipet = pytest.importorskip("niftypet.nipet")
     hst = nipet.mmrhist(datain, mMRpars)
     # offset for the time from which meaningful events are detected
     toff = nipet.lm.get_time_offset(hst)
