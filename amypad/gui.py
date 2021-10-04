@@ -18,7 +18,6 @@ try:
 except ImportError:
     __version__, __licence__ = "", "MPL-2.0"
 
-
 log = logging.getLogger(__name__)
 WIDGETS = (
     "FileChooser",
@@ -85,16 +84,13 @@ class MyParser(BaseParser):
 class CmdException(Exception):
     def __init__(self, code, cmd, stdout, stderr):
         super(CmdException, self).__init__(
-            dedent(
-                """\
+            dedent("""\
                 Code {:d}:
                 === command ===
                 {}
                 === stderr ===
                 {}=== stdout ===
-                {}==="""
-            ).format(code, cmd, stderr, stdout)
-        )
+                {}===""").format(code, cmd, stderr, stdout))
 
 
 class Base(object):
@@ -118,13 +114,11 @@ class Base(object):
         if self.matlab_deps:
             mdeps = "\n  - " + "\n  - ".join(self.matlab_deps)
 
-        return dedent(
-            """\
+        return dedent("""\
             .
               version: {}
               python_deps:{}
-              matlab_deps:{}"""
-        )[2:].format(self.version, pydeps, mdeps)
+              matlab_deps:{}""")[2:].format(self.version, pydeps, mdeps)
 
 
 class Cmd(Base):
@@ -154,11 +148,10 @@ class Cmd(Base):
         self.cmd = cmd
 
     def __str__(self):
-        return dedent(
-            """\
+        return dedent("""\
             {}
-            {}"""
-        ).format(self.parser.prog, super(Cmd, self).__str__())
+            {}""").format(self.parser.prog,
+                          super(Cmd, self).__str__())
 
     def main(self, args, verify_args=True):
         """
@@ -213,11 +206,10 @@ class Func(Base):
         # self.func = func
 
     def __str__(self):
-        return dedent(
-            """\
+        return dedent("""\
             {}
-            {}"""
-        ).format(self.parser.prog, super(Func, self).__str__())
+            {}""").format(self.parser.prog,
+                          super(Func, self).__str__())
 
 
 def fix_subparser(subparser, gui_mode=True):
@@ -234,68 +226,40 @@ def print_not_none(value, **kwargs):
         print(value, **kwargs)
 
 
-@Gooey(
-    default_size=(768, 768),
-    # progress_regex="^\s*(?P<percent>\d[.\d]*)%|",
-    # progress_expr="float(percent or 0)",
-    # hide_progress_msg=True,
-    program_name="amypad",
-    sidebar_title="pipeline",
-    image_dir=resource_filename(__name__, ""),
-    show_restart_button=False,
-    # richtext_controls=True,
-    header_bg_color="#ffffff",
-    sidebar_bg_color="#a3b5cd",
-    body_bg_color="#a3b5cd",
-    footer_bg_color="#2a569f",
-    terminal_font_family="monospace",
-    menu=[
-        {
-            "name": "Help",
-            "items": [
-                {
-                    "type": "Link",
-                    "menuTitle": "🌐 View source (online)",
-                    "url": "https://github.com/AMYPAD/amypad",
-                },
-                {
-                    "type": "AboutDialog",
-                    "menuTitle": "🔍 About",
-                    "name": "AMYPAD Pipeline",
-                    "description": "GUI to run AMYPAD tools",
-                    "version": __version__,
-                    "copyright": "2021",
-                    "website": "https://amypad.eu",
-                    "developer": "https://github.com/AMYPAD",
-                    "license": __licence__,
-                },
-            ],
-        }
-    ],
-)
+# progress_regex="^\s*(?P<percent>\d[.\d]*)%|",
+# progress_expr="float(percent or 0)",
+# hide_progress_msg=True,
+# richtext_controls=True,
+@Gooey(default_size=(768, 768), program_name="amypad", sidebar_title="pipeline",
+       image_dir=resource_filename(__name__, ""), show_restart_button=False,
+       header_bg_color="#ffffff", sidebar_bg_color="#a3b5cd", body_bg_color="#a3b5cd",
+       footer_bg_color="#2a569f", terminal_font_family="monospace", menu=[{
+           "name": "Help", "items": [{
+               "type": "Link", "menuTitle": "🌐 View source (online)",
+               "url": "https://github.com/AMYPAD/amypad"}, {
+                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AMYPAD Pipeline",
+                   "description": "GUI to run AMYPAD tools", "version": __version__,
+                   "copyright": "2021", "website": "https://amypad.eu",
+                   "developer": "https://github.com/AMYPAD", "license": __licence__}]}])
 def main(args=None, gui_mode=True):
     logging.basicConfig(level=logging.INFO)
     import miutil.cuinfo
     import niftypad.api
 
-    parser = fix_subparser(
-        MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode
-    )
+    parser = fix_subparser(MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode)
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
         sub_kwargs["required"] = True
     subparsers = parser.add_subparsers(help="pipeline to run", **sub_kwargs)
     if not gui_mode:
-        subparser = subparsers.add_parser(
-            "completion", help="Print tab completion scripts"
-        )
+        subparser = subparsers.add_parser("completion", help="Print tab completion scripts")
         shtab.add_argument_to(subparser, "shell", parent=parser)
 
     def argparser(prog, description=None, epilog=None, formatter_class=None):
         """handle (prog, description, epilog) => (title, help)"""
         return fix_subparser(
             subparsers.add_parser(
-                {"miutil.cuinfo": "cuinfo"}.get(prog, prog),  # override
+                {"miutil.cuinfo": "cuinfo"}.get(prog, prog),               # override
                 help="\n".join([description or "", epilog or ""]).strip(),
             ),
             gui_mode=gui_mode,
@@ -334,14 +298,8 @@ def main(args=None, gui_mode=True):
     opts = kinetic_model.parser._get_optional_actions()
     model = next(i for i in opts if i.dest == "model")
     model.choices = [
-        "srtmb_basis",
-        "srtmb_k2p_basis",
-        "srtmb_asl_basis",
-        "logan_ref",
-        "logan_ref_k2p",
-        "mrtm",
-        "mrtm_k2p",
-    ]
+        "srtmb_basis", "srtmb_k2p_basis", "srtmb_asl_basis", "logan_ref", "logan_ref_k2p", "mrtm",
+        "mrtm_k2p"]
 
     # example of how to wrap any CLI command using an `argopt`-style docstring
     Cmd(
@@ -374,22 +332,19 @@ def main(args=None, gui_mode=True):
         args = sys.argv[1:]
     args = [i for i in args if i not in ("--ignore-gooey",)]
     opts = parser.parse_args(args=args)
-    # strip args
-    args = [i for i in args if i not in ("--dry-run",)]
+    args = [i for i in args if i not in ("--dry-run",)] # strip args
 
     if gui_mode:
         print(" ".join([Path(sys.executable).name, "-m amypad"] + args))
     if opts.dry_run:
         pass
-    elif hasattr(opts, "main__"):  # Cmd
+    elif hasattr(opts, "main__"):                                                    # Cmd
         print_not_none(opts.main__(args[1:], verify_args=False), end="")
-    elif hasattr(opts, "run__"):  # Func
-        # strip opts
-        kwargs = {
-            k: v for (k, v) in opts._get_kwargs() if k not in ("dry_run", "run__")
-        }
+    elif hasattr(opts, "run__"):                                                     # Func
+        kwargs = {k: v
+                  for (k, v) in opts._get_kwargs() if k not in ("dry_run", "run__")} # strip opts
         print_not_none(opts.run__(*opts._get_args(), **kwargs))
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__": # pragma: no cover
     main()
