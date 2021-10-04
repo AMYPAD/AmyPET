@@ -280,6 +280,7 @@ def main(args=None, gui_mode=True):
 
         Options:
           -d PATH, --dst PATH      : Output file/folder (default: input folder)
+                                     [default: FileChooser]
           -m MODEL, --model MODEL  : model [default: srtmb_basis]
           -p FILE, --params FILE   : config file hint (relative to `--input`)
                                      [default: FileChooser]
