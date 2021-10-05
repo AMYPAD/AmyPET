@@ -247,6 +247,7 @@ def main(args=None, gui_mode=True):
     logging.basicConfig(level=logging.INFO)
     import miutil.cuinfo
     import niftypad.api
+    import niftypad.models
 
     parser = fix_subparser(MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode)
     sub_kwargs = {}
@@ -295,14 +296,12 @@ def main(args=None, gui_mode=True):
           --thr THR                                : [default: 0.1:float]
         """,
         version=niftypad.__version__,
-        python_deps=["niftypad"],
+        python_deps=["niftypad>=1.1.0"],
         argparser=argparser,
     )
     opts = kinetic_model.parser._get_optional_actions()
     model = next(i for i in opts if i.dest == "model")
-    model.choices = [
-        "srtmb_basis", "srtmb_k2p_basis", "srtmb_asl_basis", "logan_ref", "logan_ref_k2p", "mrtm",
-        "mrtm_k2p"]
+    model.choices = niftypad.models.NAMES
 
     # example of how to wrap any CLI command using an `argopt`-style docstring
     Cmd(
