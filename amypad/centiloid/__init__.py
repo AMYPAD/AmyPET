@@ -37,7 +37,7 @@ def tic(desc, leave=True, **kwargs):
 def gunzip(nii_gz):
     """`nii_ugzip` but skips if already existing"""
     fdir, base = nii.file_parts(nii_gz)[:2]
-    fout = Path(fdir) / (base + ".nii")
+    fout = Path(fdir) / (base+".nii")
     return fspath(fout) if fout.is_file() else nii.nii_ugzip(nii_gz)
 
 
@@ -98,23 +98,13 @@ def run(
     s_PET = list(
         map(
             fspath,
-            Path(dir_PET).glob(
-                "w" + (glob_PET[:-3] if glob_PET.lower().endswith(".gz") else glob_PET),
-            ),
-        )
-    )
+            Path(dir_PET).glob("w" +
+                               (glob_PET[:-3] if glob_PET.lower().endswith(".gz") else glob_PET))))
     res = eng.f_Quant_centiloid(s_PET, fspath(dir_RR), nargout=5)
     if outfile:
         with open(outfile, "w") as fd:
             f = csv_writer(fd)
             f.writerow(
-                (
-                    "Fname",
-                    "GreyCerebellum",
-                    "WholeCerebellum",
-                    "WholeCerebellumBrainStem",
-                    "Pons",
-                )
-            )
+                ("Fname", "GreyCerebellum", "WholeCerebellum", "WholeCerebellumBrainStem", "Pons"))
             f.writerows(zip(*res))
     return res
