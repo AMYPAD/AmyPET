@@ -34,14 +34,14 @@ ENCODING = sys.getfilesystemencoding()
 
 def patch_argument_kwargs(kwargs, gooey=True):
     kwargs = kwargs.copy()
-    if "help" in kwargs:
-        kwargs["help"] = RE_PRECOLON.sub("", RE_DEFAULT.sub("", kwargs["help"]))
+    if 'help' in kwargs:
+        kwargs['help'] = RE_PRECOLON.sub("", RE_DEFAULT.sub("", kwargs['help']))
 
-    default = kwargs.get("default", None)
+    default = kwargs.get('default', None)
     if default in WIDGETS:
         if gooey:
-            kwargs["widget"] = default
-        kwargs["default"] = None
+            kwargs['widget'] = default
+        kwargs['default'] = None
     elif gooey:
         typ = kwargs.get("type", None)
         if typ == open:
@@ -249,6 +249,8 @@ def main(args=None, gui_mode=True):
     import niftypad.api
     import niftypad.models
 
+    from amypad import centiloid
+
     parser = fix_subparser(MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode)
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
@@ -268,9 +270,29 @@ def main(args=None, gui_mode=True):
             gui_mode=gui_mode,
         )
 
+    Func(
+        centiloid.run, """\
+        Centiloid pipeline
+
+        Usage:
+          centiloid [options] <dir_MRI> <dir_PET> <dir_RR>
+
+        Arguments:
+          <dir_MRI>  : MRI directory [default: DirChooser]
+          <dir_PET>  : PET directory [default: DirChooser]
+          <dir_RR>  : Reference regions ROIs directory
+            (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
+            [default: DirChooser]
+
+        Options:
+          --glob-PET GLOB  : pattern for matching files in dir_PET [default: *_PET.nii.gz]
+          --glob-MRI GLOB  : pattern for matching files in dir_MRI [default: *_MRI.nii.gz]
+          --outfile FILE  : Output CSV quantification file
+        """, version=niftypad.__version__,
+        python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
+
     kinetic_model = Func(
-        niftypad.api.kinetic_model,
-        """\
+        niftypad.api.kinetic_model, """\
         Kinetic modelling
 
         Usage:
@@ -294,28 +316,18 @@ def main(args=None, gui_mode=True):
           --linear_phase_end LINEAR_PHASE_END      : (default: None)
           --km_outputs KM_OUTPUTS                  : (default: None)
           --thr THR                                : [default: 0.1:float]
-        """,
-        version=niftypad.__version__,
-        python_deps=["niftypad>=1.1.0"],
-        argparser=argparser,
-    )
+        """, version=niftypad.__version__, python_deps=["niftypad>=1.1.0"], argparser=argparser)
     opts = kinetic_model.parser._get_optional_actions()
     model = next(i for i in opts if i.dest == "model")
     model.choices = niftypad.models.NAMES
 
     # example of how to wrap any CLI command using an `argopt`-style docstring
-    Cmd(
-        [sys.executable, "-m", "miutil.cuinfo"],
-        miutil.cuinfo.__doc__,
-        version=miutil.__version__,
-        python_deps=["miutil[cuda]>=0.8.0"],
-        argparser=argparser,
-    )
+    Cmd([sys.executable, "-m", "miutil.cuinfo"], miutil.cuinfo.__doc__, version=miutil.__version__,
+        python_deps=["miutil[cuda]>=0.8.0"], argparser=argparser)
 
     # example of how to wrap any callable using an `argopt`-style docstring
     Func(
-        miutil.hasext,
-        """\
+        miutil.hasext, """\
         Check if a given filename has a given extension
 
         Usage:
@@ -324,11 +336,7 @@ def main(args=None, gui_mode=True):
         Arguments:
           <fname>  : path to file [default: FileChooser]
           <ext>    : extension (with or without `.` prefix)
-        """,
-        version=miutil.__version__,
-        python_deps=["miutil>=0.8.0"],
-        argparser=argparser,
-    )
+        """, version=miutil.__version__, python_deps=["miutil>=0.8.0"], argparser=argparser)
 
     if args is None:
         args = sys.argv[1:]
