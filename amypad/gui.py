@@ -316,7 +316,7 @@ def main(args=None, gui_mode=True):
           --linear_phase_end LINEAR_PHASE_END      : (default: None)
           --km_outputs KM_OUTPUTS                  : (default: None)
           --thr THR                                : [default: 0.1:float]
-        """, version=niftypad.__version__, python_deps=["niftypad>=1.1.0"], argparser=argparser)
+        """, version=niftypad.__version__, python_deps=["niftypad>=1.1.1"], argparser=argparser)
     opts = kinetic_model.parser._get_optional_actions()
     model = next(i for i in opts if i.dest == "model")
     model.choices = niftypad.models.NAMES
