@@ -33,10 +33,27 @@ jobs:
   test:
     if: github.event_name != 'pull_request' || github.repository_owner != 'AMYPAD'
     name: py${{ matrix.python }}
-    runs-on: [self-hosted, python, cuda]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python: [3.6, 3.9]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+    - run: pip install -U -e .[dev]
+    - run: pytest
+    - uses: codecov/codecov-action@v1
+  cuda:
+    if: github.event_name != 'pull_request' || github.repository_owner != 'AMYPAD'
+    name: CUDA py${{ matrix.python }}
+    runs-on: [self-hosted, python, matlab, cuda]
+    strategy:
+      matrix:
+        python: [3.9]
     steps:
     - uses: actions/checkout@v2
       with:
@@ -51,7 +68,7 @@ jobs:
       run: setup-python -p${{ matrix.python }} -Dr
       if: ${{ always() }}
   deploy:
-    needs: [check, test]
+    needs: [check, test, cuda]
     name: PyPI Deploy
     runs-on: ubuntu-latest
     steps:
