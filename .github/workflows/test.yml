@@ -45,7 +45,7 @@ jobs:
       with:
         python-version: ${{ matrix.python }}
     - run: pip install -U -e .[dev]
-    - run: pytest
+    - run: pytest -k "not gif"
     - uses: codecov/codecov-action@v1
   cuda:
     if: github.event_name != 'pull_request' || github.repository_owner != 'AMYPAD'
