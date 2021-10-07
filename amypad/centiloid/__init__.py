@@ -72,7 +72,6 @@ def run(
     eng = get_matlab()
     dir_spm = fspath(Path(eng.which("spm")).parent)
 
-    # TODO: in parallel
     for d_PET, d_MRI in tzip(s_PET_dir, s_MRI_dir):
         with tic("Step 0: Reorient PET subject"):
             eng.f_acpcReorientation(d_PET, nargout=0)
