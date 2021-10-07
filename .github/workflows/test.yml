@@ -29,7 +29,7 @@ jobs:
       env:
         REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         EVENT: ${{ github.event_name }}
-    - run: pre-commit run -a --show-diff-on-failure
+    - run: SKIP=mbeautify pre-commit run -a --show-diff-on-failure
   test:
     if: github.event_name != 'pull_request' || github.repository_owner != 'AMYPAD'
     name: py${{ matrix.python }}

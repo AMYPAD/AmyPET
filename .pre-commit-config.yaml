@@ -44,3 +44,7 @@ repos:
   rev: 5.9.3
   hooks:
   - id: isort
+- hooks:
+  - id: mbeautify
+  repo: https://github.com/AMYPAD/miutil
+  rev: v0.9.0
