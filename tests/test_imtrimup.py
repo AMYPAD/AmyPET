@@ -11,7 +11,7 @@ def dyndir(datain, mMRpars):
     # output path
     opth = fspath(Path(datain["corepath"]) / "output_dyn")
 
-    res = Path(opth) / "PET" / "multiple-frames"  # datain / "amydyn"
+    res = Path(opth) / "PET" / "multiple-frames" # datain / "amydyn"
     if res.is_dir():
         return res
 
@@ -45,7 +45,7 @@ def dyndir(datain, mMRpars):
         mMRpars,
         frames=frm_timings["timings"],
         mu_h=muhdct,
-        mu_o=mupdct,  # muodct,
+        mu_o=mupdct,                   # muodct,
         itr=5,
         fwhm=0.0,
         outpath=opth,
