@@ -219,7 +219,7 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
     import niftypad.api
     import niftypad.models
 
-    from amypet import centiloid, dcm2nii, imscroll, imtrimup
+    from amypet import centiloid, dcm2nii, gif, imscroll, imtrimup
 
     def fix_subparser(subparser, gui_mode=gui_mode):
         subparser.add_argument(
@@ -259,6 +259,8 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
 
     Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
          python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
+
+    Func(gif.run, gif.__doc__, version=niftypad.__version__, python_deps=[], argparser=argparser)
 
     kinetic_model = Func(
         niftypad.api.kinetic_model, """\

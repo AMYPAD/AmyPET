@@ -1,3 +1,16 @@
+"""Parcellation
+
+Usage:
+  GIF [options] <fimin>
+
+Arguments:
+  <fimin>  : NIfTI image input file (T1w MR image) [default: FileChooser]
+
+Options:
+  --outpath DIR  : where to write outputs of GIF
+  --gif DIR  : GIF directory (containing `bin/` & `db/`)
+               (default: ${PATHTOOLS}/GIF2BBRC) [default: DirChooser]
+"""
 import errno
 import subprocess
 from os import fspath, getenv
@@ -7,13 +20,6 @@ from .utils import cpu_count
 
 
 def run(fimin, outpath=None, gif=None):
-    """
-    Args:
-      fimin: NIfTI image input file (T1w MR image)
-      outpath: where to write outputs of GIF
-      gif: GIF directory (containing `bin/` & `db/`)
-        [default: ${PATHTOOLS}/GIF2BBRC]
-    """
     if not gif and getenv("PATHTOOLS"):
         gif = Path(getenv("PATHTOOLS")) / "GIF2BBRC"
     gif = Path(gif)
