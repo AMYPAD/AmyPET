@@ -1,5 +1,19 @@
-"""
-Converted from Pipeline_Centiloid_BBRC.m
+"""Centiloid pipeline
+
+Usage:
+  centiloid [options] <dir_MRI> <dir_PET> <dir_RR>
+
+Arguments:
+  <dir_MRI>  : MRI directory [default: DirChooser]
+  <dir_PET>  : PET directory [default: DirChooser]
+  <dir_RR>  : Reference regions ROIs directory
+    (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
+    [default: DirChooser]
+
+Options:
+  --glob-PET GLOB  : pattern for matching files in dir_PET [default: *_PET.nii.gz]
+  --glob-MRI GLOB  : pattern for matching files in dir_MRI [default: *_MRI.nii.gz]
+  --outfile FILE  : Output CSV quantification file
 """
 import logging
 from contextlib import contextmanager
