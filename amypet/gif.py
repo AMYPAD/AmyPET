@@ -29,34 +29,12 @@ def run(fimin, outpath=None, gif=None):
     else:
         opth = Path(outpath)
     opth.mkdir(mode=0o775, parents=True, exist_ok=True)
-    gifresults = subprocess.run(
-        [
-            fspath(gif / "bin" / "seg_GIF"),
-            "-in",
-            fimin,
-            "-db",
-            fspath(gif / "db" / "db.xml"),
-            "-v",
-            "1",
-            "-regNMI",
-            "-segPT",
-            "0.1",
-            "-out",
-            fspath(opth),
-            "-temper",
-            "0.05",
-            "-lncc_ker",
-            "-4",
-            "-omp",
-            str(cpu_count()),
-            "-regBE",
-            "0.001",
-            "-regJL",
-            "0.00005",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    gifresults = subprocess.run([
+        fspath(gif / "bin" / "seg_GIF"), '-in', fimin, '-db',
+        fspath(gif / "db" / "db.xml"), '-v', "1", '-regNMI', '-segPT', "0.1", '-out',
+        fspath(opth), '-temper', "0.05", '-lncc_ker', "-4", '-omp',
+        str(cpu_count()), '-regBE', "0.001", '-regJL', "0.00005"], stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
     (opth / "out.log").write_bytes(gifresults.stdout)
     (opth / "err.log").write_bytes(gifresults.stderr)
 

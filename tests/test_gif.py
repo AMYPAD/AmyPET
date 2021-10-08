@@ -13,9 +13,8 @@ def test_gif(fimin):
             "SimpleITK",
             reason="conda install -c simpleitk simpleitk or pip install SimpleITK",
         )
-        biascorr = nimpa.bias_field_correction(
-            fspath(fimin), executable="sitk", outpath=fspath(outpath)
-        )
+        biascorr = nimpa.bias_field_correction(fspath(fimin), executable="sitk",
+                                               outpath=fspath(outpath))
         fin = biascorr["fim"]
     else:
         fin = fimin

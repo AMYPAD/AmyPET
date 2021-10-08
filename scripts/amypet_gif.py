@@ -41,11 +41,8 @@ def main(argv=None):
                 fnii = filter_nii(tpth.glob("*MPRAGE*"))
                 if not len(fnii):
                     # convert DICOMs to NIfTI
-                    subprocess.run(
-                        [nimpa.resources.DCM2NIIX]
-                        + "-i y -v n -f %f_%s".split()
-                        + ["-o", tpth, fldr]
-                    )
+                    subprocess.run([nimpa.resources.DCM2NIIX] + "-i y -v n -f %f_%s".split() +
+                                   ["-o", tpth, fldr])
 
             fn4b = list((tpth / "N4bias").glob("*N4bias*.nii*"))
             fgif = list((tpth / "GIF").glob("*Parcellation*.nii*"))
@@ -53,20 +50,15 @@ def main(argv=None):
             if len(fn4b) < 1:
                 fnii = filter_nii(tpth.glob("*MPRAGE*"))
                 log.info("N4bias input:%s", fnii)
-                biascorr = nimpa.bias_field_correction(
-                    fnii[0], executable="sitk", outpath=tpth
-                )
+                biascorr = nimpa.bias_field_correction(fnii[0], executable="sitk", outpath=tpth)
                 try:
                     fingif = biascorr["fim"]
                 except TypeError:
                     raise ImportError(
-                        dedent(
-                            """\
+                        dedent("""\
                             please install SimpleITK:
                             `conda install -c simpleitk simpleitk` or
-                            `pip install SimpleITK`"""
-                        )
-                    )
+                            `pip install SimpleITK`"""))
             else:
                 if len(fn4b) > 1:
                     log.warning("%d inputs found, selecting latest")
