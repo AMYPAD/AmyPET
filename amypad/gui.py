@@ -270,26 +270,8 @@ def main(args=None, gui_mode=True):
             gui_mode=gui_mode,
         )
 
-    Func(
-        centiloid.run, """\
-        Centiloid pipeline
-
-        Usage:
-          centiloid [options] <dir_MRI> <dir_PET> <dir_RR>
-
-        Arguments:
-          <dir_MRI>  : MRI directory [default: DirChooser]
-          <dir_PET>  : PET directory [default: DirChooser]
-          <dir_RR>  : Reference regions ROIs directory
-            (standard Centiloid RR from GAAIN Centioid website: 2mm, nifti)
-            [default: DirChooser]
-
-        Options:
-          --glob-PET GLOB  : pattern for matching files in dir_PET [default: *_PET.nii.gz]
-          --glob-MRI GLOB  : pattern for matching files in dir_MRI [default: *_MRI.nii.gz]
-          --outfile FILE  : Output CSV quantification file
-        """, version=niftypad.__version__,
-        python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
+    Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
+         python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
 
     kinetic_model = Func(
         niftypad.api.kinetic_model, """\
