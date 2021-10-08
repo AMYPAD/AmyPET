@@ -257,10 +257,10 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
     Func(imtrimup.run, imtrimup.__doc__, version=niftypad.__version__, python_deps=["nimpa"],
          argparser=argparser)
 
+    Func(gif.run, gif.__doc__, version=niftypad.__version__, python_deps=[], argparser=argparser)
+
     Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
          python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
-
-    Func(gif.run, gif.__doc__, version=niftypad.__version__, python_deps=[], argparser=argparser)
 
     kinetic_model = Func(
         niftypad.api.kinetic_model, """\
