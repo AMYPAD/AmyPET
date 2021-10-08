@@ -290,11 +290,11 @@ def main(args=None, gui_mode=True):
           <src>  : Input file/folder [default: FileChooser]
 
         Options:
-          -d PATH, --dst PATH      : Output file/folder (default: input folder)
-                                     [default: FileChooser]
-          -m MODEL, --model MODEL  : model [default: srtmb_basis]
-          -p FILE, --params FILE   : config file hint (relative to `--input`)
-                                     [default: FileChooser]
+          --dst PATH           : Output file/folder (default: input folder)
+            [default: FileChooser]
+          --model MODEL        : model [default: srtmb_basis]
+          --params FILE        : config file hint (relative to `src` input).
+            Default: search for {config,params}.{yaml,json}.
           --w W                : (default: None)
           --r1 R1              : [default: 0.905:float]
           --k2p K2P            : [default: 0.000250:float]
