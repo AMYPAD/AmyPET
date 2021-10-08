@@ -20,6 +20,3 @@ except (DistributionNotFound, FileNotFoundError):
         __licence__ = (Path(__file__).parent.parent / "LICENCE.md").read_text()
     except FileNotFoundError:
         __licence__ = "MPL-2.0"
-__all__ = ["run_imtrimup"]
-
-from .imtrimup import run as run_imtrimup
