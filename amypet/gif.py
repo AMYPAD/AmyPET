@@ -9,7 +9,7 @@ Arguments:
 Options:
   --outpath DIR  : where to write outputs of GIF
   --gif DIR  : GIF directory (containing `bin/` & `db/`)
-               (default: ${PATHTOOLS}/GIF2BBRC) [default: DirChooser]
+               (default: ${PATHTOOLS}/GIF_AMYPET) [default: DirChooser]
 """
 import errno
 import subprocess
@@ -21,7 +21,7 @@ from .utils import cpu_count
 
 def run(fimin, outpath=None, gif=None):
     if not gif and getenv("PATHTOOLS"):
-        gif = Path(getenv("PATHTOOLS")) / "GIF2BBRC"
+        gif = Path(getenv("PATHTOOLS")) / "GIF_AMYPET"
     gif = Path(gif)
     if not all(i.is_dir() for i in [gif, gif / "bin", gif / "db"]):
         raise FileNotFoundError("GIF required")
