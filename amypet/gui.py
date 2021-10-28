@@ -232,15 +232,15 @@ def print_not_none(value, **kwargs):
 # progress_expr="float(percent or 0)",
 # hide_progress_msg=True,
 # richtext_controls=True,
-@Gooey(default_size=(768, 768), program_name="amypad", sidebar_title="pipeline",
+@Gooey(default_size=(768, 768), program_name="amypet", sidebar_title="pipeline",
        image_dir=resource_filename(__name__, ""), show_restart_button=False,
        header_bg_color="#ffffff", sidebar_bg_color="#a3b5cd", body_bg_color="#a3b5cd",
        footer_bg_color="#2a569f", terminal_font_family="monospace", menu=[{
            "name": "Help", "items": [{
                "type": "Link", "menuTitle": "🌐 View source (online)",
-               "url": "https://github.com/AMYPAD/amypad"}, {
-                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AMYPAD Pipeline",
-                   "description": "GUI to run AMYPAD tools", "version": __version__,
+               "url": "https://github.com/AMYPAD/amypet"}, {
+                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AMYPET Pipeline",
+                   "description": "GUI to run AMYPET tools", "version": __version__,
                    "copyright": "2021", "website": "https://amypad.eu",
                    "developer": "https://github.com/AMYPAD", "license": __licence__}]}])
 def main(args=None, gui_mode=True):
@@ -249,9 +249,9 @@ def main(args=None, gui_mode=True):
     import niftypad.api
     import niftypad.models
 
-    from amypad import centiloid, imscroll, imtrimup
+    from amypet import centiloid, imscroll, imtrimup
 
-    parser = fix_subparser(MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode)
+    parser = fix_subparser(MyParser(prog=None if gui_mode else "amypet"), gui_mode=gui_mode)
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
         sub_kwargs["required"] = True
@@ -333,7 +333,7 @@ def main(args=None, gui_mode=True):
     args = [i for i in args if i not in ("--dry-run",)] # strip args
 
     if gui_mode:
-        print(" ".join([Path(sys.executable).name, "-m amypad"] + args))
+        print(" ".join([Path(sys.executable).name, "-m amypet"] + args))
     if opts.dry_run:
         pass
     elif hasattr(opts, "main__"):                                                    # Cmd

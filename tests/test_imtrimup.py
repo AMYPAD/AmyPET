@@ -57,5 +57,5 @@ def dyndir(datain, mMRpars):
 
 @pytest.mark.timeout(2 * 60 * 60) # 2h
 def test_imtrimup(dyndir):
-    imtrimup = pytest.importorskip("amypad.imtrimup")
+    imtrimup = pytest.importorskip("amypet.imtrimup")
     imtrimup.run(dyndir)

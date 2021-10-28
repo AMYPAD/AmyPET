@@ -1,6 +1,6 @@
 |Logo|
 
-AMYPAD
+AMYPET
 ======
 
 Amyloid imaging to prevent Alzheimer's Disease.
@@ -13,8 +13,8 @@ Choose one of the following:
 
 .. code:: sh
 
-    pip install amypad  # command line interface (CLI) version
-    pip install amypad[gui]  # CLI and graphical user interface (GUI) version
+    pip install amypet  # command line interface (CLI) version
+    pip install amypet[gui]  # CLI and graphical user interface (GUI) version
 
 
 Usage
@@ -22,8 +22,8 @@ Usage
 
 .. code:: sh
 
-    amypad --help  # CLI version
-    amypad.gui     # GUI version
+    amypet --help  # CLI version
+    amypet.gui     # GUI version
 
 
 .. |Logo| image:: https://amypad.eu/wp-content/themes/AMYPAD/images/AMYPAD_Logo.jpg
