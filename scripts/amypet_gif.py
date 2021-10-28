@@ -17,7 +17,7 @@ from argopt import argopt
 from miutil import hasext, nsort
 from niftypet import nimpa
 
-from amypad import gif
+from amypet import gif
 
 log = logging.getLogger(__name__)
 

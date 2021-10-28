@@ -4,7 +4,7 @@ import pytest
 
 
 def test_gif(fimin):
-    gif = pytest.importorskip("amypad.gif")
+    gif = pytest.importorskip("amypet.gif")
     outpath = fimin.parent
 
     if "N4bias" not in fspath(fimin):
