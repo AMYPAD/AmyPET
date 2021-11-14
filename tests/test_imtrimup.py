@@ -1,4 +1,3 @@
-from os import fspath
 from pathlib import Path
 
 import pytest
@@ -9,9 +8,9 @@ def dyndir(datain, mMRpars):
     # definition of dynamic frames for kinetic analysis
     frmdef = ["def", [4, 15], [8, 30], [9, 60], [2, 180], [8, 300]]
     # output path
-    opth = fspath(Path(datain["corepath"]) / "output_dyn")
+    opth = str(Path(datain["corepath"]).parent / "amypad" / "dyndir")
 
-    res = Path(opth) / "PET" / "multiple-frames" # datain / "amydyn"
+    res = Path(opth) / "PET" / "multiple-frames"
     if res.is_dir():
         return res
 

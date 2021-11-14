@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-HOME = Path(getenv("DATA_ROOT", "~")).expanduser() / "amypad"
+HOME = Path(getenv("DATA_ROOT", "~")).expanduser()
 
 
 @pytest.fixture(scope="session")
@@ -30,9 +30,9 @@ def mMRpars():
 @pytest.fixture(scope="session")
 def datain(mMRpars):
     nipet = pytest.importorskip("niftypet.nipet")
-    folder_in = HOME / "1946" / "S00151_18715520" / "TP0"
+    folder_in = HOME / "Ab_PET_mMR_test"
     if not folder_in.is_dir():
-        pytest.skip(f"""Cannot find 1946/S00151_18715520/TP0 in
+        pytest.skip(f"""Cannot find Ab_PET_mMR_test in
 ${{DATA_ROOT:-~}} ({HOME}).
 """)
     return nipet.classify_input(folder_in, mMRpars)
