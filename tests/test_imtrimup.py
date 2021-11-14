@@ -55,7 +55,7 @@ def dyndir(datain, mMRpars):
     return Path(opth) / "PET" / "multiple-frames"
 
 
-@pytest.mark.timeout(60 * 60)
+@pytest.mark.timeout(2 * 60 * 60) # 2h
 def test_rectrim(dyndir):
     rectrim = pytest.importorskip("amypad.rectrim")
     rectrim.run(dyndir)
