@@ -51,6 +51,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.repository_owner != 'AMYPAD'
     name: CUDA py${{ matrix.python }}
     runs-on: [self-hosted, python, matlab, cuda]
+    timeout-minutes: 4320
     strategy:
       matrix:
         python: [3.9]
@@ -60,8 +61,14 @@ jobs:
         fetch-depth: 0
     - name: Run setup-python
       run: setup-python -p${{ matrix.python }} miutil scikit-build cmake ninja
+    - name: SimpleITK
+      run: pip install -U 'SimpleITK>=1.2.0,<2'
+      env:
+        CXX: g++-8
+        CC: gcc-8
     - name: Install
-      run: pip install -U --no-binary nimpa,nipet -e .[dev,niftypet,gif]
+      run: |
+        pip install -U --no-binary nimpa,nipet -e .[dev,niftypet,gif]
     - run: pytest
     - uses: codecov/codecov-action@v1
     - name: Post Run setup-python
