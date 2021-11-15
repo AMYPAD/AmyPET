@@ -249,7 +249,7 @@ def main(args=None, gui_mode=True):
     import niftypad.api
     import niftypad.models
 
-    from amypad import centiloid, imscroll
+    from amypad import centiloid, imscroll, imtrimup
 
     parser = fix_subparser(MyParser(prog=None if gui_mode else "amypad"), gui_mode=gui_mode)
     sub_kwargs = {}
@@ -272,6 +272,9 @@ def main(args=None, gui_mode=True):
 
     Func(imscroll.run, imscroll.__doc__, version=niftypad.__version__,
          python_deps=["miutil[nii,plot]", "tqdm"], argparser=argparser)
+
+    Func(imtrimup.run, imtrimup.__doc__, version=niftypad.__version__, python_deps=["nimpa"],
+         argparser=argparser)
 
     Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
          python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
