@@ -15,7 +15,7 @@ def test_gif(fimin):
         )
         biascorr = nimpa.bias_field_correction(fspath(fimin), executable="sitk",
                                                outpath=fspath(outpath))
-        fin = biascorr["fim"]
+        fin = biascorr["fim"][0]
     else:
         fin = fimin
 
