@@ -1,4 +1,4 @@
-*.py[co]
+*.py[cod]
 __pycache__/
 
 # build
@@ -9,3 +9,4 @@ __pycache__/
 
 /.coverage*
 /coverage.xml
+/.pytest_cache/
