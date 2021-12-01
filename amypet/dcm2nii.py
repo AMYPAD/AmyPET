@@ -18,10 +18,10 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
-def run(dcmpth, fcomment="", timestamp=True):
+def run(dcmpth, fcomment="converted-from-DICOM_", timestamp=True):
     dcmpth = Path(dcmpth)
     assert dcmpth.is_dir()
     log.info("convert")
-    res = nimpa.dcm2nii(dcmpth, fcomment=fcomment, timestamp=timestamp)
+    res = nimpa.dcm2nii(dcmpth, fprefix=fcomment, timestamp=timestamp)
     log.debug("output file:%s", res)
     return res
