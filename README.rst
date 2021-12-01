@@ -9,12 +9,14 @@ Amyloid imaging to prevent Alzheimer's Disease.
 Install
 -------
 
-Choose one of the following:
+Requires Python 3.6 or greater. Choose one of the following:
 
 .. code:: sh
 
-    pip install amypet  # command line interface (CLI) version
+    pip install amypet       # command line interface (CLI) version
     pip install amypet[gui]  # CLI and graphical user interface (GUI) version
+
+For certain functionality (image trimming & resampling, DICOM to NIfTI converters) it may be required to also `pip install nimpa`.
 
 
 Usage
