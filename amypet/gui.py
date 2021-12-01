@@ -239,8 +239,8 @@ def print_not_none(value, **kwargs):
            "name": "Help", "items": [{
                "type": "Link", "menuTitle": "🌐 View source (online)",
                "url": "https://github.com/AMYPAD/amypet"}, {
-                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AMYPET Pipeline",
-                   "description": "GUI to run AMYPET tools", "version": __version__,
+                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AmyPET Pipeline",
+                   "description": "GUI to run AmyPET tools", "version": __version__,
                    "copyright": "2021", "website": "https://amypad.eu",
                    "developer": "https://github.com/AMYPAD", "license": __licence__}]}])
 def main(args=None, gui_mode=True):

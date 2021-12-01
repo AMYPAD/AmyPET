@@ -1,6 +1,6 @@
 |Logo|
 
-AMYPET
+AmyPET
 ======
 
 Amyloid imaging to prevent Alzheimer's Disease.
