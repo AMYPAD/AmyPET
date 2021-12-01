@@ -1,11 +1,12 @@
-*.py[co]
+*.py[cod]
 __pycache__/
 
 # build
-/amypad/_dist_ver.py
+/amypet/_dist_ver.py
 /build/
 /dist/
 /*.egg*/
 
 /.coverage*
 /coverage.xml
+/.pytest_cache/

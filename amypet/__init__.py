@@ -14,7 +14,7 @@ except ImportError:
         __version__ = "UNKNOWN"
 
 try:
-    __licence__ = get_distribution("amypad").get_metadata("LICENCE.md")
+    __licence__ = get_distribution("amypet").get_metadata("LICENCE.md")
 except (DistributionNotFound, FileNotFoundError):
     try:
         __licence__ = (Path(__file__).parent.parent / "LICENCE.md").read_text()

@@ -2,5 +2,5 @@
 requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
 
 [tool.setuptools_scm]
-write_to = "amypad/_dist_ver.py"
+write_to = "amypet/_dist_ver.py"
 write_to_template = "__version__ = '{version}'\n"

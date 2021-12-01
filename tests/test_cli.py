@@ -1,4 +1,4 @@
-from amypad.cli import main
+from amypet.cli import main
 
 
 def test_run():
