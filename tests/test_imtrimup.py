@@ -5,13 +5,11 @@ import pytest
 
 @pytest.fixture
 def dyndir(datain, mMRpars):
-    # definition of dynamic frames for kinetic analysis
-    frmdef = ["def", [4, 15], [8, 30], [9, 60], [2, 180], [8, 300]]
     # output path
     opth = str(Path(datain["corepath"]).parent / "amypad" / "dyndir")
 
     res = Path(opth) / "PET" / "multiple-frames"
-    if res.is_dir():
+    if res.is_dir() and len(list(res.glob('*.nii*'))) > 1:
         return res
 
     nipet = pytest.importorskip("niftypet.nipet")
@@ -19,8 +17,10 @@ def dyndir(datain, mMRpars):
     # offset for the time from which meaningful events are detected
     toff = nipet.lm.get_time_offset(hst)
     # dynamic frame timings
+    # frmdef = ["def", [4, 15], [8, 30], [9, 60], [2, 180], [8, 300]]
+    frmdef = ["def", [4, (hst['t1'] - hst['t0'] - toff) / 4]]
     frm_timings = nipet.lm.dynamic_timings(frmdef, offset=toff)
-    nipet.lm.draw_frames(hst, frm_timings["timings"])
+    # nipet.lm.draw_frames(hst, frm_timings["timings"]) # plot frames
     # hardware mu-map
     muhdct = nipet.hdw_mumap(datain, [1, 2, 4], mMRpars, outpath=opth, use_stored=True)
 
@@ -30,6 +30,7 @@ def dyndir(datain, mMRpars):
         mMRpars,
         outpath=opth,
         store=True,
+        use_stored=True,
         hst=hst,
         itr=2,
         petopt="ac",
@@ -44,7 +45,7 @@ def dyndir(datain, mMRpars):
         mMRpars,
         frames=frm_timings["timings"],
         mu_h=muhdct,
-        mu_o=mupdct,                   # muodct,
+        mu_o=mupdct,
         itr=5,
         fwhm=0.0,
         outpath=opth,
@@ -55,7 +56,7 @@ def dyndir(datain, mMRpars):
     return Path(opth) / "PET" / "multiple-frames"
 
 
-@pytest.mark.timeout(2 * 60 * 60) # 2h
+@pytest.mark.timeout(30 * 60) # 30m
 def test_imtrimup(dyndir):
     imtrimup = pytest.importorskip("amypet.imtrimup")
-    imtrimup.run(dyndir)
+    imtrimup.run(dyndir, glob='*_frm?_t*.nii*')
