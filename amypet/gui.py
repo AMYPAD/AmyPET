@@ -37,10 +37,10 @@ def patch_argument_kwargs(kwargs, gooey=True):
     if 'help' in kwargs:
         kwargs['help'] = RE_PRECOLON.sub("", RE_DEFAULT.sub("", kwargs['help']))
 
-    default = kwargs.get('default', None)
-    if default in WIDGETS:
+    dflt = kwargs.get('default', None)
+    if dflt in WIDGETS:
         if gooey:
-            kwargs['widget'] = default
+            kwargs['widget'] = dflt
         kwargs['default'] = None
     elif gooey:
         typ = kwargs.get("type", None)
@@ -214,7 +214,7 @@ class Func(Base):
                           super(Func, self).__str__())
 
 
-def get_main_parser(gui_mode=True):
+def get_main_parser(gui_mode=True, argparser=MyParser):
     import miutil.cuinfo
     import niftypad.api
     import niftypad.models
@@ -229,7 +229,7 @@ def get_main_parser(gui_mode=True):
         )
         return subparser
 
-    parser = fix_subparser(MyParser(prog=None if gui_mode else "amypet"), gui_mode=gui_mode)
+    parser = fix_subparser(argparser(prog=None if gui_mode else "amypet"), gui_mode=gui_mode)
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
         sub_kwargs["required"] = True
