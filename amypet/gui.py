@@ -307,7 +307,7 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
        footer_bg_color="#2a569f", terminal_font_family="monospace", menu=[{
            "name": "Help", "items": [{
                "type": "Link", "menuTitle": "🌐 View source (online)",
-               "url": "https://github.com/AMYPAD/amypet"}, {
+               "url": "https://github.com/AMYPAD/AmyPET"}, {
                    "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AmyPET Pipeline",
                    "description": "GUI to run AmyPET tools", "version": __version__,
                    "copyright": "2021", "website": "https://amypad.eu",

@@ -121,8 +121,11 @@ def main():
     st.sidebar.image(str(THIS / "config_icon.png"))
 
     parser = opts.pop(PARSER)
-    st.write("**Command**")
-    prefix = st.checkbox("Prefix")
+    left, right = st.columns([1, 2])
+    with left:
+        st.write("**Command**")
+    with right:
+        prefix = st.checkbox("Prefix")
     cmd = [Path(sys.executable).resolve().name, "-m", parser.prog] + [
         (f"--{k.replace('_', '-')}"
          if v is True else f"--{k.replace('_', '-')}={shlex.quote(str(v))}")
