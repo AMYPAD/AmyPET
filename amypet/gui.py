@@ -316,19 +316,6 @@ def main(args=None, gui_mode=True):
     Cmd([sys.executable, "-m", "miutil.cuinfo"], miutil.cuinfo.__doc__, version=miutil.__version__,
         python_deps=["miutil[cuda]>=0.8.0"], argparser=argparser)
 
-    # example of how to wrap any callable using an `argopt`-style docstring
-    Func(
-        miutil.hasext, """\
-        Check if a given filename has a given extension
-
-        Usage:
-          hasext <fname> <ext>
-
-        Arguments:
-          <fname>  : path to file [default: FileChooser]
-          <ext>    : extension (with or without `.` prefix)
-        """, version=miutil.__version__, python_deps=["miutil>=0.8.0"], argparser=argparser)
-
     if args is None:
         args = sys.argv[1:]
     args = [i for i in args if i not in ("--ignore-gooey",)]
