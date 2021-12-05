@@ -81,10 +81,18 @@ def main():
                         val = st.text_input(opt.dest, value=dflt, **kwargs)
                     elif opt.widget == "IntegerField":
                         dflt = opt.default or 0
-                        val = int(st.text_input(opt.dest, value=dflt, **kwargs))
+                        val = st.number_input(opt.dest,
+                                              min_value=int(parser.options[opt.dest]['min']),
+                                              max_value=int(parser.options[opt.dest]['max']),
+                                              value=dflt, **kwargs)
                     elif opt.widget == "DecimalField":
                         dflt = opt.default or 0.0
-                        val = float(st.text_input(opt.dest, value=dflt, **kwargs))
+                        val = st.number_input(opt.dest,
+                                              min_value=float(parser.options[opt.dest]['min']),
+                                              max_value=float(parser.options[opt.dest]['max']),
+                                              format="%g",
+                                              step=float(parser.options[opt.dest]['increment']),
+                                              value=dflt, **kwargs)
                     else:
                         st.error(f"Unknown: {opt.widget}")
                         val = dflt
