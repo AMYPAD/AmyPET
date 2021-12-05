@@ -14,6 +14,7 @@ Requires Python 3.6 or greater. Choose one of the following:
 .. code:: sh
 
     pip install amypet       # command line interface (CLI) version
+    pip install amypet[web]  # CLI and web user interface (Web UI) version
     pip install amypet[gui]  # CLI and graphical user interface (GUI) version
 
 For certain functionality (image trimming & resampling, DICOM to NIfTI converters) it may be required to also `pip install nimpa`.
@@ -25,6 +26,7 @@ Usage
 .. code:: sh
 
     amypet --help  # CLI version
+    amypet.web     # Web UI version
     amypet.gui     # GUI version
 
 
