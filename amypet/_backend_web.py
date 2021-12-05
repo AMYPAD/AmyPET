@@ -16,7 +16,7 @@ import streamlit as st
 from packaging.version import Version
 from streamlit.version import _get_installed_streamlit_version
 
-from amypet.gui import BaseParser, get_main_parser, patch_argument_kwargs
+from amypet.gui import BaseParser, __licence__, __version__, get_main_parser, patch_argument_kwargs
 
 NONE = ''
 PARSER = '==PARSER=='
@@ -27,8 +27,16 @@ CONFIG = {
     'initial_sidebar_state': 'expanded'}
 if _get_installed_streamlit_version() >= Version("0.88.1"):
     CONFIG['menu_items'] = {
-        "Get help": None, "Report a Bug": "https://github.com/AMYPAD/amypet/issues",
-        "About": "https://github.com/AMYPAD/amypet"}
+        "Get help": "https://github.com/AMYPAD/AmyPET/issues", "Report a Bug": None, "About": f"""
+AmyPET Pipeline
+
+***version**: {__version__}
+
+*GUI to run AmyPET tools* ([Source Code](https://github.com/AMYPAD/amypet)).
+
+An https://amypad.eu Project.
+
+{__licence__}"""}
 
 root = tk.Tk()
 root.withdraw()
