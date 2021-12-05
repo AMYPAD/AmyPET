@@ -86,7 +86,18 @@ def main():
                             'name', NONE)
                     elif opt.widget == "DirChooser":
                         # https://github.com/streamlit/streamlit/issues/1019
-                        val = st.text_input(opt.dest, value=dflt, **kwargs)
+                        left, right = st.columns(2)
+                        with left:
+                            st.caption(opt.dest)
+                        with right:
+                            clicked = st.button("Browse directories", **kwargs)
+                        key = f'{key_prefix}{opt.dest}_val'
+                        if clicked:
+                            st.session_state[key] = tk.filedialog.askdirectory(
+                                master=root, initialdir=dflt) or dflt
+                        val = st.session_state.get(key, dflt)
+                        with left:
+                            st.write(f"`{val or '(blank)'}`")
                     elif opt.widget == "IntegerField":
                         dflt = opt.default or 0
                         val = st.number_input(opt.dest,
