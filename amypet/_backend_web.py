@@ -19,6 +19,10 @@ from amypet.gui import BaseParser, get_main_parser, patch_argument_kwargs
 NONE = ''
 PARSER = '==PARSER=='
 log = logging.getLogger(__name__)
+THIS = Path(__file__).parent
+CONFIG = {
+    'page_title': "AmyPET", 'page_icon': str(THIS / "program_icon.png"), 'layout': 'wide',
+    'initial_sidebar_state': 'expanded'}
 
 root = tk.Tk()
 root.withdraw()
@@ -38,6 +42,7 @@ class MyParser(BaseParser):
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
+    st.set_page_config(**CONFIG)
     parser = get_main_parser(gui_mode=False, argparser=MyParser)
     opts = {}
 
@@ -87,16 +92,20 @@ def main():
                     opts[opt.dest] = val
             elif isinstance(opt, _SubParsersAction):
                 if opt.dest == SUPPRESS:
-                    k = st.radio(opt.help, options=list(set(opt.choices) - {'completion'}),
-                                 key=f"{key_prefix}{opt.dest}")
+                    k = st.sidebar.radio(opt.help,
+                                         options=sorted(set(opt.choices) - {'completion'}),
+                                         key=f"{key_prefix}{opt.dest}")
                 else:
-                    k = st.radio(opt.dest, options=list(set(opt.choices) - {'completion'}),
-                                 **kwargs)
+                    k = st.sidebar.radio(opt.dest,
+                                         options=sorted(set(opt.choices) - {'completion'}),
+                                         **kwargs)
                 recurse(opt.choices[k], f"{key_prefix}{k.replace('_', ' ')}_")
             else:
                 st.write(opt)
 
     recurse(parser)
+    st.sidebar.image(str(THIS / "config_icon.png"))
+
     parser = opts.pop(PARSER)
     st.write("**Command**")
     cmd = [Path(sys.executable).name, f"-m {parser.prog}"] + [
