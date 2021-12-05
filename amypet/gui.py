@@ -193,7 +193,7 @@ class Func(Base):
     ):
         """
         Args:
-          func (callable):  e.g. `miutil.hasext`
+          func (callable):  e.g. `os.path.isdir`
           doc (str): an `argopt`-compatible docstring for `func`
           version (str): optional
         """
