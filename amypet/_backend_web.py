@@ -13,6 +13,8 @@ from argparse import (
 from pathlib import Path
 
 import streamlit as st
+from packaging.version import Version
+from streamlit.version import _get_installed_streamlit_version
 
 from amypet.gui import BaseParser, get_main_parser, patch_argument_kwargs
 
@@ -23,6 +25,10 @@ THIS = Path(__file__).parent
 CONFIG = {
     'page_title': "AmyPET", 'page_icon': str(THIS / "program_icon.png"), 'layout': 'wide',
     'initial_sidebar_state': 'expanded'}
+if _get_installed_streamlit_version() >= Version("0.88.1"):
+    CONFIG['menu_items'] = {
+        "Get help": None, "Report a Bug": "https://github.com/AMYPAD/amypet/issues",
+        "About": "https://github.com/AMYPAD/amypet"}
 
 root = tk.Tk()
 root.withdraw()
