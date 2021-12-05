@@ -115,25 +115,28 @@ def main():
                                          **kwargs)
                 recurse(opt.choices[k], f"{key_prefix}{k.replace('_', ' ')}_")
             else:
-                st.write(opt)
+                st.warning(f"Unknown option type:{opt}")
 
     recurse(parser)
     st.sidebar.image(str(THIS / "config_icon.png"))
 
     parser = opts.pop(PARSER)
     st.write("**Command**")
-    cmd = [Path(sys.executable).name, f"-m {parser.prog}"] + [
+    prefix = st.checkbox("Prefix")
+    cmd = [Path(sys.executable).resolve().name, "-m", parser.prog] + [
         (f"--{k.replace('_', '-')}"
          if v is True else f"--{k.replace('_', '-')}={shlex.quote(str(v))}")
         for k, v in opts.items()]
-    st.write(" ".join(cmd))
+    st.code(" ".join(cmd if prefix else cmd[2:]), "shell")
     dry_run = not st.button("Run")
     if dry_run:
         log.debug(opts)
     elif 'main__' in parser._defaults: # Cmd
-        st.write(parser._defaults['main__'](cmd[2:], verify_args=False))
+        with st.spinner("Running"):
+            st.write(parser._defaults['main__'](cmd[3:], verify_args=False))
     elif 'run__' in parser._defaults:  # Func
-        st.write(parser._defaults['run__'](**opts))
+        with st.spinner("Running"):
+            st.write(parser._defaults['run__'](**opts))
     else:
         st.error("Unknown action")
 
