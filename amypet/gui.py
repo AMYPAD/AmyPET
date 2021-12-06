@@ -37,10 +37,10 @@ def patch_argument_kwargs(kwargs, gooey=True):
     if 'help' in kwargs:
         kwargs['help'] = RE_PRECOLON.sub("", RE_DEFAULT.sub("", kwargs['help']))
 
-    default = kwargs.get('default', None)
-    if default in WIDGETS:
+    dflt = kwargs.get('default', None)
+    if dflt in WIDGETS:
         if gooey:
-            kwargs['widget'] = default
+            kwargs['widget'] = dflt
         kwargs['default'] = None
     elif gooey:
         typ = kwargs.get("type", None)
@@ -214,44 +214,22 @@ class Func(Base):
                           super(Func, self).__str__())
 
 
-def fix_subparser(subparser, gui_mode=True):
-    subparser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="don't run command (implies print_command)" if gui_mode else SUPPRESS,
-    )
-    return subparser
-
-
-def print_not_none(value, **kwargs):
-    if value is not None:
-        print(value, **kwargs)
-
-
-# progress_regex="^\s*(?P<percent>\d[.\d]*)%|",
-# progress_expr="float(percent or 0)",
-# hide_progress_msg=True,
-# richtext_controls=True,
-@Gooey(default_size=(768, 768), program_name="amypet", sidebar_title="pipeline",
-       image_dir=resource_filename(__name__, ""), show_restart_button=False,
-       header_bg_color="#ffffff", sidebar_bg_color="#a3b5cd", body_bg_color="#a3b5cd",
-       footer_bg_color="#2a569f", terminal_font_family="monospace", menu=[{
-           "name": "Help", "items": [{
-               "type": "Link", "menuTitle": "🌐 View source (online)",
-               "url": "https://github.com/AMYPAD/amypet"}, {
-                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AmyPET Pipeline",
-                   "description": "GUI to run AmyPET tools", "version": __version__,
-                   "copyright": "2021", "website": "https://amypad.eu",
-                   "developer": "https://github.com/AMYPAD", "license": __licence__}]}])
-def main(args=None, gui_mode=True):
-    logging.basicConfig(level=logging.INFO)
+def get_main_parser(gui_mode=True, argparser=MyParser):
     import miutil.cuinfo
     import niftypad.api
     import niftypad.models
 
     from amypet import centiloid, dcm2nii, imscroll, imtrimup
 
-    parser = fix_subparser(MyParser(prog=None if gui_mode else "amypet"), gui_mode=gui_mode)
+    def fix_subparser(subparser, gui_mode=gui_mode):
+        subparser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="don't run command (implies print_command)" if gui_mode else SUPPRESS,
+        )
+        return subparser
+
+    parser = fix_subparser(argparser(prog=None if gui_mode else "amypet"), gui_mode=gui_mode)
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
         sub_kwargs["required"] = True
@@ -316,11 +294,37 @@ def main(args=None, gui_mode=True):
     Cmd([sys.executable, "-m", "miutil.cuinfo"], miutil.cuinfo.__doc__, version=miutil.__version__,
         python_deps=["miutil[cuda]>=0.8.0"], argparser=argparser)
 
+    return parser
+
+
+# progress_regex="^\s*(?P<percent>\d[.\d]*)%|",
+# progress_expr="float(percent or 0)",
+# hide_progress_msg=True,
+# richtext_controls=True,
+@Gooey(default_size=(768, 768), program_name="amypet", sidebar_title="pipeline",
+       image_dir=resource_filename(__name__, ""), show_restart_button=False,
+       header_bg_color="#ffffff", sidebar_bg_color="#a3b5cd", body_bg_color="#a3b5cd",
+       footer_bg_color="#2a569f", terminal_font_family="monospace", menu=[{
+           "name": "Help", "items": [{
+               "type": "Link", "menuTitle": "🌐 View source (online)",
+               "url": "https://github.com/AMYPAD/AmyPET"}, {
+                   "type": "AboutDialog", "menuTitle": "🔍 About", "name": "AmyPET Pipeline",
+                   "description": "GUI to run AmyPET tools", "version": __version__,
+                   "copyright": "2021", "website": "https://amypad.eu",
+                   "developer": "https://github.com/AMYPAD", "license": __licence__}]}])
+def main(args=None, gui_mode=True):
+    logging.basicConfig(level=logging.INFO)
+    parser = get_main_parser(gui_mode=gui_mode)
+
     if args is None:
         args = sys.argv[1:]
     args = [i for i in args if i not in ("--ignore-gooey",)]
     opts = parser.parse_args(args=args)
     args = [i for i in args if i not in ("--dry-run",)] # strip args
+
+    def print_not_none(value, **kwargs):
+        if value is not None:
+            print(value, **kwargs)
 
     if gui_mode:
         print(" ".join([Path(sys.executable).name, "-m amypet"] + args))
