@@ -47,10 +47,12 @@ class MyParser(BaseParser):
     def add_argument(self, *args, **kwargs):
         kwargs = patch_argument_kwargs(kwargs, gooey=True)
         widget = kwargs.pop('widget', None)
+        widget_options = kwargs.pop('gooey_options', None)
         log.debug("%r, %r", args, kwargs)
         res = super(MyParser, self).add_argument(*args, **kwargs)
         if widget is not None:
             res.widget = widget
+            res.widget_options = widget_options or {}
         return res
 
 
@@ -100,17 +102,15 @@ def main():
                             st.write(f"`{val or '(blank)'}`")
                     elif opt.widget == "IntegerField":
                         dflt = opt.default or 0
-                        val = st.number_input(opt.dest,
-                                              min_value=int(parser.options[opt.dest]['min']),
-                                              max_value=int(parser.options[opt.dest]['max']),
-                                              value=dflt, **kwargs)
+                        val = st.number_input(opt.dest, min_value=int(opt.widget_options['min']),
+                                              max_value=int(opt.widget_options['max']), value=dflt,
+                                              **kwargs)
                     elif opt.widget == "DecimalField":
                         dflt = opt.default or 0.0
-                        val = st.number_input(opt.dest,
-                                              min_value=float(parser.options[opt.dest]['min']),
-                                              max_value=float(parser.options[opt.dest]['max']),
+                        val = st.number_input(opt.dest, min_value=float(opt.widget_options['min']),
+                                              max_value=float(opt.widget_options['max']),
                                               format="%g",
-                                              step=float(parser.options[opt.dest]['increment']),
+                                              step=float(opt.widget_options['increment']),
                                               value=dflt, **kwargs)
                     else:
                         st.error(f"Unknown: {opt.widget}")
