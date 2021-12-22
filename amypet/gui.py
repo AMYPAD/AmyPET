@@ -249,7 +249,7 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
         )
 
     Func(imscroll.run, imscroll.__doc__, version=niftypad.__version__,
-         python_deps=["miutil[nii,plot]", "tqdm"], argparser=argparser)
+         python_deps=["miutil[nii,plot]>=0.9.0", "tqdm"], argparser=argparser)
 
     Func(dcm2nii.run, dcm2nii.__doc__, version=niftypad.__version__, python_deps=["nimpa"],
          argparser=argparser)
