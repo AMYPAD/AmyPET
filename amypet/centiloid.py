@@ -1,4 +1,19 @@
-"""Run centiloid pipeline"""
+"""Centiloid pipeline
+
+Usage:
+  centiloid [options] <fpets> <fmri> <atlases>
+
+Arguments:
+  <fpets>  : PET NIfTI directory [default: DirChooser]
+  <fmri>  : MRI NIfTI directory [default: DirChooser]
+  <atlases>  : Reference regions ROIs directory
+    (standard Centiloid RR from GAAIN Centioid website: 2mm, NIfTI)
+    [default: DirChooser]
+
+Options:
+  --outpath FILE  : Output directory
+  --visual  : whether to plot
+"""
 import logging
 import os
 from pathlib import Path
@@ -6,7 +21,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import spm12
-from miutil.fdio import hasext
+from miutil.fdio import hasext, nsort
 from niftypet import nimpa
 
 log = logging.getLogger(__name__)
@@ -33,9 +48,9 @@ def run(fpets, fmris, atlases, outpath=None, visual=False):
         # the content is sorted for both PET and MRI and then matched
         # according to the order
         elif os.path.isdir(fpets) and os.path.isdir(fmris):
-            fp = sorted(
+            fp = nsort(
                 os.path.join(fpets, f) for f in os.listdir(fpets) if hasext(f, ('nii', 'nii.gz')))
-            fm = sorted(
+            fm = nsort(
                 os.path.join(fmris, f) for f in os.listdir(fmris) if hasext(f, ('nii', 'nii.gz')))
             pet_mr_list = [fp, fm]
         else:

@@ -258,7 +258,7 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
          argparser=argparser)
 
     Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
-         python_deps=["miutil[nii]", "setuptools", "spm12", "tqdm"], argparser=argparser)
+         python_deps=["miutil[nii]", "nimpa", "setuptools", "spm12", "tqdm"], argparser=argparser)
 
     kinetic_model = Func(
         niftypad.api.kinetic_model, """\
