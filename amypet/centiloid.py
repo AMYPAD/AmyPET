@@ -1,11 +1,11 @@
 """Centiloid pipeline
 
 Usage:
-  centiloid [options] <fpets> <fmri> <atlases>
+  centiloid [options] <fpets> <fmris> <atlases>
 
 Arguments:
   <fpets>  : PET NIfTI directory [default: DirChooser]
-  <fmri>  : MRI NIfTI directory [default: DirChooser]
+  <fmris>  : MRI NIfTI directory [default: DirChooser]
   <atlases>  : Reference regions ROIs directory
     (standard Centiloid RR from GAAIN Centioid website: 2mm, NIfTI)
     [default: DirChooser]
@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 def run(fpets, fmris, atlases, outpath=None, visual=False):
     """
     Process centiloid (CL) using input file lists for PET and MRI
-    images, <fpets> and <fmri>.  The images must be in NIfTI format.
+    images, `fpets` and `fmris` (must be in NIfTI format).
     Args:
       atlases: the path to the CL 2mm resolution atlases
       outpath: path to the output folder
