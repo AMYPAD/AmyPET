@@ -237,7 +237,7 @@ def run(fpets, fmris, atlases, outpath=None, visual=False):
 
         suvrstr = ",   ".join([
             f"$SUVR_{{WC}}=${suvr['crbl']:.3f}", f"$SUVR_{{GMC}}=${suvr['crbl_gm']:.3f}",
-            f"$SUVR_{{CBS}}=${suvr['crbl_bs']:.3f}", f"$SUVR_{{PNS}}=${suvr['pons']:.3f)}"])
+            f"$SUVR_{{CBS}}=${suvr['crbl_bs']:.3f}", f"$SUVR_{{PNS}}=${suvr['pons']:.3f}"])
 
         ax[1].text(0, 200, suvrstr, fontsize=12)
         plt.tight_layout()
