@@ -27,13 +27,16 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
-def run(fpets, fmris, atlases, outpath=None, visual=False):
+def run(fpets, fmris, atlases, flip_pet=None, outpath=None, visual=False):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
     Args:
       atlases: the path to the CL 2mm resolution atlases
       outpath: path to the output folder
+      flip_pet: a list of flips (3D tuples) which flip any dimension
+               of the 3D PET image; the list has to have the same
+               length as the lists of `fpets` and `fmris`  
     """
     spm_path = Path(spm12.utils.spm_dir())
     atlases = Path(atlases)
@@ -66,15 +69,31 @@ def run(fpets, fmris, atlases, outpath=None, visual=False):
     else:
         raise ValueError('unrecognised input image data')
 
+
+    #-------------------------------------------------------------
+    if flip_pet is not None:
+        if isinstance(flip_pet, tuple) and len(pet_mr_list[0])==1:
+            flips = [flip_pet]
+        elif isinstance(flip_pet, list) and len(flip_pet)==len(pet_mr_list[0]):
+            flips = flip_pet
+        else:
+            log.warning('the flip definition is not compatible with the list of PET images')
+    #-------------------------------------------------------------
+
+
     log.info('loading CL masks...')
     fmasks = {
-        'crbl_gm': atlases / 'voi_CerebGry_2mm.nii', 'crbl': atlases / 'voi_WhlCbl_2mm.nii',
-        'crbl_bs': atlases / 'voi_WhlCblBrnStm_2mm.nii', 'pons': atlases / 'voi_Pons_2mm.nii',
-        'crtx': atlases / 'voi_ctx_2mm.nii'}
+        'cg': atlases / 'voi_CerebGry_2mm.nii', 'wc': atlases / 'voi_WhlCbl_2mm.nii',
+        'wcb': atlases / 'voi_WhlCblBrnStm_2mm.nii', 'pns': atlases / 'voi_Pons_2mm.nii',
+        'ctx': atlases / 'voi_ctx_2mm.nii'}
     masks = {fmsk: nimpa.getnii(fmasks[fmsk]) for fmsk in fmasks}
 
     log.info('iterate through all the input data...')
+    
+    fi = -1
     for fpet, fmri in zip(*pet_mr_list):
+
+        fi+=1
         # make the files Path objects
         fpet, fmri = Path(fpet), Path(fmri)
         opth = Path(fpet.parent if outpath is None else outpath)
@@ -93,8 +112,13 @@ def run(fpets, fmris, atlases, outpath=None, visual=False):
         opths = spth / 'suvr'
 
         log.info(f'subject {onm}: centre of mass correction')
+        # check if flipping the PET is requested
+        if any(flip_pet[fi]):
+            flip=flip_pet[fi]
+        else:
+            flip=None
         # modify for the centre of mass being at O(0,0,0)
-        out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, outpath=opthc)
+        out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
         out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
         log.info(f'subject {onm}: MR registration to MNI space')
@@ -160,14 +184,14 @@ def run(fpets, fmris, atlases, outpath=None, visual=False):
         # extract mean values and SUVr
         out[onm]['avgvoi'] = avgvoi = {fmsk: np.mean(npet[masks[fmsk] > 0]) for fmsk in fmasks}
         out[onm]['suvr'] = suvr = {
-            fmsk: avgvoi['crtx'] / avgvoi[fmsk]
-            for fmsk in fmasks if fmsk != 'crtx'}
+            fmsk: avgvoi['ctx'] / avgvoi[fmsk]
+            for fmsk in fmasks if fmsk != 'ctx'}
 
         # --------------------------------------------------------------
         # VISUALISATION
         # pick masks for visualisation
-        msk = 'crtx'
-        mskr = 'crbl' # 'pons'#
+        msk = 'ctx'
+        mskr = 'wc' # 'pons'#
 
         nimpa.create_dir(opths)
 
@@ -236,8 +260,8 @@ def run(fpets, fmris, atlases, outpath=None, visual=False):
         ax[1].set_title(f'{onm} sagittal centiloid sampling')
 
         suvrstr = ",   ".join([
-            f"$SUVR_{{WC}}=${suvr['crbl']:.3f}", f"$SUVR_{{GMC}}=${suvr['crbl_gm']:.3f}",
-            f"$SUVR_{{CBS}}=${suvr['crbl_bs']:.3f}", f"$SUVR_{{PNS}}=${suvr['pons']:.3f}"])
+            f"$SUVR_{{WC}}=${suvr['wc']:.3f}", f"$SUVR_{{GMC}}=${suvr['cg']:.3f}",
+            f"$SUVR_{{CBS}}=${suvr['wcb']:.3f}", f"$SUVR_{{PNS}}=${suvr['pns']:.3f}"])
 
         ax[1].text(0, 200, suvrstr, fontsize=12)
         plt.tight_layout()
