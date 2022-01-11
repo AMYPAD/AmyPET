@@ -27,13 +27,20 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
-def run(fpets, fmris, atlases, flip_pet=None, outpath=None, visual=False):
+def run(fpets,
+        fmris,
+        atlases,
+        flip_pet=None,
+        bias_corr=True,
+        outpath=None,
+        visual=False):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
     Args:
       atlases: the path to the CL 2mm resolution atlases
       outpath: path to the output folder
+      bias_corr: bias filed correction for the MR image (True/False)
       flip_pet: a list of flips (3D tuples) which flip any dimension
                of the 3D PET image; the list has to have the same
                length as the lists of `fpets` and `fmris`  
@@ -111,6 +118,17 @@ def run(fpets, fmris, atlases, flip_pet=None, outpath=None, visual=False):
         optho = spth / 'normalised'
         opths = spth / 'suvr'
 
+
+        # run bias field correction unless cancelled
+        if bias_corr:
+            log.info(f'subject {onm}: running MR bias field correction')
+            out[onm]['n4'] = nimpa.bias_field_correction(
+                fmri,
+                executable = 'sitk',
+                outpath = spth)
+            fmri = out[onm]['n4']['fim']
+
+
         log.info(f'subject {onm}: centre of mass correction')
         # check if flipping the PET is requested
         if any(flip_pet[fi]):
@@ -159,7 +177,7 @@ def run(fpets, fmris, atlases, flip_pet=None, outpath=None, visual=False):
             modify_nii=True,
         )
 
-        log.info(f'subject {onm}:MR normalisation/segmentation...')
+        log.info(f'subject {onm}: MR normalisation/segmentation...')
         out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
                                                 store_nat_gm=False, store_nat_wm=False,
                                                 store_nat_csf=True, store_fwd=True, store_inv=True,
