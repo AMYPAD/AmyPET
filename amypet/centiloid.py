@@ -42,8 +42,8 @@ def run(fpets,
       outpath: path to the output folder
       bias_corr: bias filed correction for the MR image (True/False)
       flip_pet: a list of flips (3D tuples) which flip any dimension
-               of the 3D PET image; the list has to have the same
-               length as the lists of `fpets` and `fmris`  
+               of the 3D PET image (z,y,x); the list has to have the 
+               same length as the lists of `fpets` and `fmris`  
     """
     spm_path = Path(spm12.utils.spm_dir())
     atlases = Path(atlases)
@@ -131,10 +131,9 @@ def run(fpets,
 
         log.info(f'subject {onm}: centre of mass correction')
         # check if flipping the PET is requested
-        if any(flip_pet[fi]):
+        if flip is not None and any(flip_pet[fi]):
             flip=flip_pet[fi]
-        else:
-            flip=None
+
         # modify for the centre of mass being at O(0,0,0)
         out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
         out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
