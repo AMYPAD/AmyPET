@@ -133,6 +133,8 @@ def run(fpets,
         # check if flipping the PET is requested
         if flip_pet is not None and any(flip_pet[fi]):
             flip=flip_pet[fi]
+        else:
+            flip = None
 
         # modify for the centre of mass being at O(0,0,0)
         out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
