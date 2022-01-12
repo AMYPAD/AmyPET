@@ -242,7 +242,7 @@ def run(fpets,
         msk = 'ctx'
         mskr = 'wc' # 'pons'#
 
-        showpet = nimpa.imsmooth(npet_dct, fwhm=3, dev_id=False)
+        showpet = nimpa.imsmooth(npet.astype(np.float32), voxsize=npet_dct['voxsize'], fwhm=3.)
 
         nimpa.create_dir(opths)
 
@@ -317,7 +317,7 @@ def run(fpets,
         ax[1].text(0, 200, suvrstr, fontsize=12)
         plt.tight_layout()
 
-        fqcpng = opths / 'CL_mask_PET_sampling.png'
+        fqcpng = opths / (onm+'_CL_mask_PET_sampling.png')
         plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
 
         plt.close('all')
