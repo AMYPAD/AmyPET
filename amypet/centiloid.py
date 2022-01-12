@@ -131,7 +131,7 @@ def run(fpets,
 
         log.info(f'subject {onm}: centre of mass correction')
         # check if flipping the PET is requested
-        if flip is not None and any(flip_pet[fi]):
+        if flip_pet is not None and any(flip_pet[fi]):
             flip=flip_pet[fi]
 
         # modify for the centre of mass being at O(0,0,0)
