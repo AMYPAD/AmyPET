@@ -20,3 +20,6 @@ except (DistributionNotFound, FileNotFoundError):
         __licence__ = (Path(__file__).parent.parent / "LICENCE.md").read_text()
     except FileNotFoundError:
         __licence__ = "MPL-2.0"
+
+
+from .aux import *

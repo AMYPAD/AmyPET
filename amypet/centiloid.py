@@ -27,33 +27,6 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
-#----------------------------------------------------------------------
-def im_check_pairs(fpets, fmris):
-    '''
-    checks visually image by image if the PET and MR have
-    the same orientation.
-    '''
-    fig,ax = plt.subplots(2,2,figsize=(10,10))
-    for fp, fm in zip(fpets, fmris):
-        print(f'{fp} : {fm}')
-        p = nimpa.getnii(fp)
-        m = nimpa.getnii(fm)
-
-        ps = p.shape
-        ms = m.shape
-
-        ax[0,0].imshow(p[ps[0]//2, ...])
-        ax[1,0].imshow(m[ms[0]//2, ...])
-
-        ax[0,1].imshow(p[..., ps[2]//2])
-        ax[1,1].imshow(m[..., ms[2]//2])
-
-        plt.draw()
-        plt.waitforbuttonpress(0)
-#----------------------------------------------------------------------
-
-
-
 def run(fpets,
         fmris,
         atlases,
