@@ -27,6 +27,33 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
+#----------------------------------------------------------------------
+def im_check_pairs(fpets, fmris):
+    '''
+    checks visually image by image if the PET and MR have
+    the same orientation.
+    '''
+    fig,ax = plt.subplots(2,2,figsize=(10,10))
+    for fp, fm in zip(fpets, fmris):
+        print(f'{fp} : {fm}')
+        p = nimpa.getnii(fp)
+        m = nimpa.getnii(fm)
+
+        ps = p.shape
+        ms = m.shape
+
+        ax[0,0].imshow(p[ps[0]//2, ...])
+        ax[1,0].imshow(m[ms[0]//2, ...])
+
+        ax[0,1].imshow(p[..., ps[2]//2])
+        ax[1,1].imshow(m[..., ms[2]//2])
+
+        plt.draw()
+        plt.waitforbuttonpress(0)
+#----------------------------------------------------------------------
+
+
+
 def run(fpets,
         fmris,
         atlases,
@@ -85,6 +112,8 @@ def run(fpets,
             flips = flip_pet
         else:
             log.warning('the flip definition is not compatible with the list of PET images')
+    else:
+        flips = [None]*len(pet_mr_list[0])
     #-------------------------------------------------------------
 
 
@@ -131,8 +160,8 @@ def run(fpets,
 
         log.info(f'subject {onm}: centre of mass correction')
         # check if flipping the PET is requested
-        if flip_pet is not None and any(flip_pet[fi]):
-            flip=flip_pet[fi]
+        if flips[fi] is not None and any(flips[fi]):
+            flip=flips[fi]
         else:
             flip = None
 
@@ -195,7 +224,8 @@ def run(fpets,
         elif len(fnpets) > 1:
             raise ValueError('too many potential normalised PET image files found')
 
-        npet = nimpa.getnii(fnpets[0])
+        npet_dct = nimpa.getnii(fnpets[0], output='all')
+        npet = npet_dct['im']
         npet[np.isnan(npet)] = 0 # get rid of NaNs
 
         # npet[npet<0] = 0
@@ -212,6 +242,8 @@ def run(fpets,
         msk = 'ctx'
         mskr = 'wc' # 'pons'#
 
+        showpet = nimpa.imsmooth(npet_dct, fwhm=3, dev_id=False)
+
         nimpa.create_dir(opths)
 
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -223,20 +255,20 @@ def run(fpets,
         shp = izs.shape
 
         # initialise mosaic for PET and masks
-        mscp_t = np.zeros((shp[0], shp[1]) + npet[0, ...].shape, dtype=np.float32)
+        mscp_t = np.zeros((shp[0], shp[1]) + showpet[0, ...].shape, dtype=np.float32)
         mscm_t = mscp_t.copy()
 
         # fill in the images
         for i in range(shp[0]):
             for j in range(shp[1]):
-                mscp_t[i, j, ...] = npet[izs[i, j], ...]
+                mscp_t[i, j, ...] = showpet[izs[i, j], ...]
                 mscm_t[i, j, ...] = masks[msk][izs[i, j], ...] + masks[mskr][izs[i, j], ...]
 
         # reshape for the final touch
         mscp_t = mscp_t.swapaxes(1, 2)
         mscm_t = mscm_t.swapaxes(1, 2)
-        mscp_t = mscp_t.reshape(shp[0] * npet.shape[1], shp[1] * npet.shape[2])
-        mscm_t = mscm_t.reshape(shp[0] * npet.shape[1], shp[1] * npet.shape[2])
+        mscp_t = mscp_t.reshape(shp[0] * showpet.shape[1], shp[1] * showpet.shape[2])
+        mscm_t = mscm_t.reshape(shp[0] * showpet.shape[1], shp[1] * showpet.shape[2])
 
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # Sagittal tiling for QC
@@ -248,25 +280,25 @@ def run(fpets,
         shp = ixs.shape
 
         # initialise mosaic for PET and masks
-        mscp_s = np.zeros((shp[0], shp[1]) + npet[..., 0].shape, dtype=np.float32)
+        mscp_s = np.zeros((shp[0], shp[1]) + showpet[..., 0].shape, dtype=np.float32)
         mscm_s = mscp_s.copy()
 
         # fill in the images
         for i in range(shp[0]):
             for j in range(shp[1]):
-                mscp_s[i, j, ...] = npet[..., ixs[i, j]]
+                mscp_s[i, j, ...] = showpet[..., ixs[i, j]]
                 mscm_s[i, j, ...] = masks[msk][..., ixs[i, j]] + masks[mskr][..., ixs[i, j]]
 
         # reshape for the final touch
         mscp_s = mscp_s.swapaxes(1, 2)
         mscm_s = mscm_s.swapaxes(1, 2)
-        mscp_s = mscp_s.reshape(shp[0] * npet.shape[0], shp[1] * npet.shape[1])
-        mscm_s = mscm_s.reshape(shp[0] * npet.shape[0], shp[1] * npet.shape[1])
+        mscp_s = mscp_s.reshape(shp[0] * showpet.shape[0], shp[1] * showpet.shape[1])
+        mscm_s = mscm_s.reshape(shp[0] * showpet.shape[0], shp[1] * showpet.shape[1])
 
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         fig, ax = plt.subplots(2, 1, figsize=(9, 12))
 
-        thrsh = 0.6 * npet.max()
+        thrsh = 0.9*showpet.max()
 
         ax[0].imshow(mscp_t, cmap='magma', vmax=thrsh)
         ax[0].imshow(mscm_t, cmap='gray_r', alpha=0.25)
