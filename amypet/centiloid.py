@@ -126,7 +126,7 @@ def run(fpets,
         # find if the normalised PET is already there
         fnpets = [f for f in optho.iterdir() if fpet.name.split('.nii')[0] in f.name]
         
-        if used_saved and len(fnpets==1):
+        if used_saved and len(fnpets)==1:
             log.info(f'subject {onm}: loading already normalised PET image...')
 
         else:
