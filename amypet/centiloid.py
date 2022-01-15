@@ -105,32 +105,31 @@ def run(fpets,
     fi = -1
     for fpet, fmri in zip(*pet_mr_list):
 
+        fi+=1
+        # make the files Path objects
+        fpet, fmri = Path(fpet), Path(fmri)
+        opth = Path(fpet.parent if outpath is None else outpath)
 
-        # first find if the normalised PET is already there
+        # create output dictionary and folder specific to the PET
+        # file which will be CL quantified; name of the folder
+        # and dictionary output is based on PET name
+        onm = fpet.name.rsplit('.nii', 1)[0]
+        spth = opth / onm
+        out[onm] = {'opth': spth, 'fpet': fpet, 'fmri': fmri}
+        # output path for centre of mass alignment and registration
+        opthc = spth / 'centre-of-mass'
+        opthr = spth / 'registration'
+        opthn = spth / 'normalisation'
+        optho = spth / 'normalised'
+        opths = spth / 'suvr'
+ 
+        # find if the normalised PET is already there
         fnpets = [f for f in optho.iterdir() if fpet.name.split('.nii')[0] in f.name]
         
         if used_saved and len(fnpets==1):
             log.info(f'subject {onm}: loading already normalised PET image...')
 
         else:
-            fi+=1
-            # make the files Path objects
-            fpet, fmri = Path(fpet), Path(fmri)
-            opth = Path(fpet.parent if outpath is None else outpath)
-
-            # create output dictionary and folder specific to the PET
-            # file which will be CL quantified; name of the folder
-            # and dictionary output is based on PET name
-            onm = fpet.name.rsplit('.nii', 1)[0]
-            spth = opth / onm
-            out[onm] = {'opth': spth, 'fpet': fpet, 'fmri': fmri}
-            # output path for centre of mass alignment and registration
-            opthc = spth / 'centre-of-mass'
-            opthr = spth / 'registration'
-            opthn = spth / 'normalisation'
-            optho = spth / 'normalised'
-            opths = spth / 'suvr'
-
 
             # run bias field correction unless cancelled
             if bias_corr:
