@@ -187,11 +187,11 @@ def check_suvrs(suvr_yc, suvr_ad, refs):
     print('========================================================')
     print('YOUNG CONTROLS (YC)')
     print('========================================================')
-    run_checks(out_yc, 'yc')
+    run_checks(suvr_yc, 'yc')
 
     print('========================================================')
     print('AD PATIENTS (AD)')
     print('========================================================')
-    run_checks(out_ad, 'ad')
+    run_checks(suvr_ad, 'ad')
 
     return diff
