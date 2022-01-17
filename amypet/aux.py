@@ -216,7 +216,7 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
         grp = 'yc'
         suvr_dct = suvr_yc
 
-        for k in suvr_yc:
+        for k in suvr_dct:
 
             idx = int(k[2:5])
             i = np.where(refs[grp]['id']==idx)[0][0]
@@ -229,9 +229,9 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
             print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, ref={cl_ref:.3f}')
 
         grp = 'ad'
-        suvr_dct = suvr_dc
+        suvr_dct = suvr_ad
 
-        for k in suvr_yc:
+        for k in suvr_dct:
 
             idx = int(k[2:4])
             i = np.where(refs[grp]['id']==idx)[0][0]
