@@ -195,3 +195,92 @@ def check_suvrs(suvr_yc, suvr_ad, refs):
     run_checks(suvr_ad, 'ad')
 
     return diff
+#----------------------------------------------------------------------
+
+
+
+
+#----------------------------------------------------------------------
+def check_cls(suvr_yc, suvr_ad, diff, refs):
+    ''' check centiloid values relative to the reference in `refs` 
+        dictionary, using SUVr dictionaries for YC and AD groups
+        `suvr_yc` and `suvr_ad`.  Also, update the `diff` dictionary
+        with the centiloid results and output it. 
+    '''
+
+    for rvoi in rvois:
+        print('=====================================================')
+        suvr_0 = diff['yc'][rvoi]['mean']
+        suvr_100 = diff['ad'][rvoi]['mean']
+
+        grp = 'yc'
+        suvr_dct = suvr_yc
+
+        for k in suvr_yc:
+
+            idx = int(k[2:5])
+            i = np.where(refs[grp]['id']==idx)[0][0]
+
+            cl = 100*(suvr_dct[k]['suvr'][rvoi] - suvr_0)/(suvr_100-suvr_0)
+            cl_ref = refs[grp]['cl'][rvoi][i]
+
+            diff[grp][rvoi][k].update(dict(cl=cl, cl_ref=cl_ref))
+
+            print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, ref={cl_ref:.3f}')
+
+        grp = 'ad'
+        suvr_dct = suvr_dc
+
+        for k in suvr_yc:
+
+            idx = int(k[2:4])
+            i = np.where(refs[grp]['id']==idx)[0][0]
+
+            cl = 100*(suvr_dct[k]['suvr'][rvoi] - suvr_0)/(suvr_100-suvr_0)
+            cl_ref = refs[grp]['cl'][rvoi][i]
+
+            diff[grp][rvoi][k].update(dict(cl=cl, cl_ref=cl_ref))
+
+            print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, ref={cl_ref:.3f}')
+
+
+
+    def get_cls(diff, grp, rvoi, cl='cl'):
+        ''' Get centiloid values in a list for any group and reference VOI.
+        '''
+        return [diff[grp][rvoi][k][cl] for k in diff[grp][rvoi] if grp in k.lower()]
+
+    #------------------------------------------------------------------
+    fig, ax = plt.subplots(2,2, figsize=(10,10))
+
+    for a, rvoi in enumerate(rvois):
+        i = a//2
+        j = a%2
+
+        # > combine CLs for both groups
+        cl = get_cls(diff, 'yc', rvoi, cl='cl')
+        cl += get_cls(diff, 'ad', rvoi, cl='cl')
+
+        # > combine reference CLs into one list
+        clref = get_cls(diff, 'yc', rvoi, cl='cl_ref')
+        clref += get_cls(diff, 'ad', rvoi, cl='cl_ref')
+
+        # > find the linear regression between the CL and reference CL
+        m, a, r, p, stderr = linregress(clref, cl)
+        r2 = r**2
+        
+        # > plot the scatter plots for all 4 reference VOIs
+        ax[i,j].scatter(clref, cl, c='black')
+        amypet.identity_line(ax=ax[i,j], ls='--', c='b')
+        ax[i,j].text(60, 20, f'$y = {m:.4f}x + {a:.4f}$', fontsize=12)
+        ax[i,j].text(60, 10, f'$R^2={r2:.4f}$', fontsize=12)
+        ax[i,j].set_title(rvoi_str[rvoi])
+        ax[i,j].set_xlabel('CL ref')
+        ax[i,j].set_ylabel('CL AmyPET')
+        ax[i,j].grid('on')
+
+    fig.tight_layout()
+    #------------------------------------------------------------------
+
+    return diff
+#----------------------------------------------------------------------
