@@ -1,7 +1,8 @@
 '''
 Auxiliary functions for the centiloid project
 '''
-
+import os
+import pickle
 import numpy as np
 import openpyxl
 import matplotlib.pyplot as plt
@@ -286,3 +287,27 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
 
     return diff
 #----------------------------------------------------------------------
+
+
+def save_cl_anchors(diff):
+    ''' save the CL anchor points for each reference VOI.
+    '''
+
+    CLA = {}
+    txt = '# centiloid anchor points for different reference VOIs\n'
+    for rvoi in rvois:
+        suvr_0 = diff['yc'][rvoi]['mean']
+        suvr_100 = diff['ad'][rvoi]['mean']
+        CLA[rvoi] = (suvr_0, suvr_100)
+        txt += f'cla_{rvoi} = ({suvr_0}, {suvr_100})\n'
+    print(txt)
+    
+    cpth = os.path.realpath(__file__)
+    pth = os.path.join(os.path.dirname(os.path.dirname(cpth)), 'CL_PiB_anchors.pkl')
+
+    with open(pth, 'wb') as f:
+        pickle.dump(CLA, f)
+
+    CLA['path'] = pth
+    
+    return CLA
