@@ -273,7 +273,7 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
         
         # > plot the scatter plots for all 4 reference VOIs
         ax[i,j].scatter(clref, cl, c='black')
-        amypet.identity_line(ax=ax[i,j], ls='--', c='b')
+        identity_line(ax=ax[i,j], ls='--', c='b')
         ax[i,j].text(60, 20, f'$y = {m:.4f}x + {a:.4f}$', fontsize=12)
         ax[i,j].text(60, 10, f'$R^2={r2:.4f}$', fontsize=12)
         ax[i,j].set_title(rvoi_str[rvoi])
