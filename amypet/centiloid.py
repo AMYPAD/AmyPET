@@ -219,6 +219,19 @@ def run(fpets,
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
+        #-------------------------
+        # centiloid transformation
+        cpth = os.path.realpath(__file__)
+        pth = os.path.join(os.path.dirname(os.path.dirname(cpth)), 'CL_PiB_anchors.pkl')
+
+        with open(pth, 'wb') as f:
+            CLA = pickle.load(f)
+
+        out[onm]['cl'] = cl = {
+            fmsk: 100*(suvr[fmsk]-CLA[fmsk][0])/(CLA[fmsk][1]-CLA[fmsk][0])
+            for fmsk in fmasks if fmsk != 'ctx'}
+        #-------------------------
+
         # --------------------------------------------------------------
         # VISUALISATION
         # pick masks for visualisation
@@ -297,7 +310,13 @@ def run(fpets,
             f"$SUVR_{{WC}}=${suvr['wc']:.3f}", f"$SUVR_{{GMC}}=${suvr['cg']:.3f}",
             f"$SUVR_{{CBS}}=${suvr['wcb']:.3f}", f"$SUVR_{{PNS}}=${suvr['pns']:.3f}"])
 
-        ax[1].text(0, 200, suvrstr, fontsize=12)
+        clstr = ",   ".join([
+            f"$CL_{{WC}}=${clstr['wc']:.1f}", f"$CL_{{GMC}}=${cl['cg']:.1f}",
+            f"$CL_{{CBS}}=${cl['wcb']:.1f}", f"$CL_{{PNS}}=${cl['pns']:.1f}"])
+
+
+        ax[1].text(0, 190, suvrstr, fontsize=12)
+        ax[1].text(0, 205, clstr, fontsize=12)
         plt.tight_layout()
 
         fqcpng = opths / (onm+'_CL_mask_PET_sampling.png')
@@ -306,4 +325,8 @@ def run(fpets,
         plt.close('all')
 
         out[onm]['fqc'] = fqcpng
+
+
+
+
     return out
