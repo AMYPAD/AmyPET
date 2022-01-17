@@ -7,6 +7,16 @@ import openpyxl
 import matplotlib.pyplot as plt
 from niftypet import nimpa
 
+# > regions used in CL project
+rvois = ['wc', 'cg', 'wcb', 'pns']
+
+# > region full name strings for plots
+rvoi_str = dict(
+    wc='whole cerebellum',
+    cg='cerebellum GM',
+    wcb='whole cerebellum + brain stem',
+    pns='pons')
+
 #----------------------------------------------------------------------
 def im_check_pairs(fpets, fmris):
     '''
@@ -115,3 +125,53 @@ def get_clref(fxls):
 
     return pib_tbl
     #----------------------------------------------------------------------
+
+
+
+
+def get_suvrs(suvr_dct, grp):
+
+    # > prepare diff dictionary for the differences observed
+    # > in young controls (yc) and AD patients (ad)
+    diff = dict(yc={}, ad={})
+
+    # > initialise the means for each reference VOI
+    for rvoi in rvois:
+        diff['yc'][rvoi] = dict(mean_ref=0, mean=0, N=0)
+        diff['ad'][rvoi] = dict(mean_ref=0, mean=0, N=0)
+
+
+    for rvoi in rvois:
+    print('========================================================')
+    for k in suvr_dct:
+
+        if grp=='yc':
+            idx = int(k[2:5])
+        elif grp=='ad':
+            idx = int(k[2:4])
+        else:
+            raise ValueError('e> unknown group - only <yc>  or <ad> are accepted')
+        
+        i = np.where(refs[grp]['id']==idx)[0][0]
+
+        suvr = suvr_dct[k]['suvr'][rvoi]
+        suvr_ref = refs[grp]['suvr'][rvoi][i]
+        err = 100*(suvr-suvr_ref)/suvr_ref
+
+        diff[grp][rvoi]['N'] += 1
+        diff[grp][rvoi]['mean_ref'] += suvr_ref
+        diff[grp][rvoi]['mean'] += suvr
+        diff[grp][rvoi][k] = dict(suvr=suvr, ref=suvr_ref, err=err)
+        
+        print(f'refvoi={rvoi}, indx> {idx}, suvr={suvr:.3f}, ref={suvr_ref:.3f}, error={err:.3f}%')
+
+    diff[grp][rvoi]['mean'] /= diff[grp][rvoi]['N']
+    diff[grp][rvoi]['mean_ref'] /= diff[grp][rvoi]['N']
+
+    # relative % mean difference
+    emean = diff[grp][rvoi]['mean']
+    rmean = diff[grp][rvoi]['mean_ref']
+    rmd = (emean-rmean)/rmean
+    diff[grp][rvoi]['mean_diff'] = rmd
+    print('--------------------------------------------------------')
+    print(f'> group % mean difference: {rmd:.3f}% (suvr={emean:.3f}, ref={rmean:.3f})')
