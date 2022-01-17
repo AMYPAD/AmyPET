@@ -129,7 +129,7 @@ def get_clref(fxls):
 
 
 
-def get_suvrs(suvr_dct, grp):
+def check_suvrs(suvr_dct, grp):
 
     # > prepare diff dictionary for the differences observed
     # > in young controls (yc) and AD patients (ad)
@@ -175,3 +175,5 @@ def get_suvrs(suvr_dct, grp):
         diff[grp][rvoi]['mean_diff'] = rmd
         print('--------------------------------------------------------')
         print(f'> group % mean difference: {rmd:.3f}% (suvr={emean:.3f}, ref={rmean:.3f})')
+
+    return diff
