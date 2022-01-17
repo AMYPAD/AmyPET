@@ -129,7 +129,13 @@ def get_clref(fxls):
 
 
 
-def check_suvrs(suvr_dct, grp):
+def check_suvrs(suvr_dct, refs, grp):
+    ''' Check/QC the obtained SUVRs in `suvr_dct` dictionary in relation
+        to the reference in `refs` dictionary for group `grp` ('ad' or 
+        'yc').
+
+        Returns dictionary with the mean SUVrs and differences.
+    '''
 
     # > prepare diff dictionary for the differences observed
     # > in young controls (yc) and AD patients (ad)
