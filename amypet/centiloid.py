@@ -124,7 +124,10 @@ def run(fpets,
         opths = spth / 'suvr'
  
         # find if the normalised PET is already there
-        fnpets = [f for f in optho.iterdir() if fpet.name.split('.nii')[0] in f.name]
+        if optho.is_dir():
+            fnpets = [f for f in optho.iterdir() if fpet.name.split('.nii')[0] in f.name]
+        else:
+            fnpets = []
         
         if used_saved and len(fnpets)==1:
             log.info(f'subject {onm}: loading already normalised PET image...')
