@@ -227,7 +227,7 @@ def run(fpets,
         cpth = os.path.realpath(__file__)
         pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
 
-        with open(pth, 'wb') as f:
+        with open(pth, 'rb') as f:
             CLA = pickle.load(f)
 
         out[onm]['cl'] = cl = {
