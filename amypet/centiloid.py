@@ -225,7 +225,7 @@ def run(fpets,
         #-------------------------
         # centiloid transformation
         cpth = os.path.realpath(__file__)
-        pth = os.path.join(os.path.dirname(os.path.dirname(cpth)), 'CL_PiB_anchors.pkl')
+        pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
 
         with open(pth, 'wb') as f:
             CLA = pickle.load(f)

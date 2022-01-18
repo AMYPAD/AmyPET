@@ -303,7 +303,7 @@ def save_cl_anchors(diff):
     print(txt)
     
     cpth = os.path.realpath(__file__)
-    pth = os.path.join(os.path.dirname(os.path.dirname(cpth)), 'CL_PiB_anchors.pkl')
+    pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
 
     with open(pth, 'wb') as f:
         pickle.dump(CLA, f)
