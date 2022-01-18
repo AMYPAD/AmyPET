@@ -314,7 +314,7 @@ def run(fpets,
             f"$SUVR_{{CBS}}=${suvr['wcb']:.3f}", f"$SUVR_{{PNS}}=${suvr['pns']:.3f}"])
 
         clstr = ",   ".join([
-            f"$CL_{{WC}}=${clstr['wc']:.1f}", f"$CL_{{GMC}}=${cl['cg']:.1f}",
+            f"$CL_{{WC}}=${cl['wc']:.1f}", f"$CL_{{GMC}}=${cl['cg']:.1f}",
             f"$CL_{{CBS}}=${cl['wcb']:.1f}", f"$CL_{{PNS}}=${cl['pns']:.1f}"])
 
 
