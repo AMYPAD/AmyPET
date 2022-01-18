@@ -325,3 +325,142 @@ def get_cl_anchors():
         CLA = pickle.load(f)
 
     return CLA
+
+
+
+#======================================================================
+# CL CALIBRATION FOR A NEW TRACER
+#======================================================================
+
+def calib_tracer(
+    outpib,
+    outnew,
+    xystr=None,
+    figsize=(10,10),
+    fontsize=12):
+    '''calibrate CL scale for a new amyloid PET tracer,
+       given the dictionaries from processing the PiB 
+       and a new tracer scans, i.e., `outpib` and `outnew`.
+
+       Other arguments:
+       xystr - dictionary of plot string XY locations.
+       figsize - tuple for controlling the figure size
+    '''
+
+    # > get PiB centiloid anchor points
+    clap = get_cl_anchors()
+
+    if xystr is None:
+        xystr = dict(wc=[1.5, 1.1], cg=[2.0, 1.2], wcb=[1.5, 1.0], pns=[1.0, 0.75])
+
+    # > calibration dictionary with SUVr and CL values
+    cal = {}
+    for rvoi in rvois:
+
+        print('------------------------------------------------------------')
+        print(rvoi_str[rvoi])
+
+        # > PiB and F18 SUVrs and PiB CL in one list/array
+        cl_suvr = []
+
+        # > initialise dictionary
+        cal[rvoi] = dict(sbj={}, calib={})
+
+        for k in outpib:
+
+            # > get the index right for young and elderly
+            if k[0]=='Y':
+                idx = k[:5]
+            else:
+                idx = k[:4]
+
+            # > get the index in the NEW tracer dataset
+            kf = [ky for ky in outnew if idx+'_P' in ky]
+            if len(kf)==1:
+                kf = kf[0]
+            else:
+                raise ValueError('e> problem with F18 index...')
+            
+            # > get the SUVr for PiB and FBB
+            suvrp = outpib[k]['suvr'][rvoi]
+            suvrf = outnew[kf]['suvr'][rvoi]
+
+            # > calculate the CL for the calibrating PiB scans
+            cl = 100*(suvrp - clap[rvoi][0])/(clap[rvoi][1]-clap[rvoi][0])
+
+            # > put the SUVrs for PiB and FBB into dictionary
+            cal[rvoi]['sbj'][idx] = dict(
+                cl=cl,
+                suvrp=suvrp,
+                suvrf=suvrf)
+
+            # > ... and a list for a future array
+            cl_suvr.append([cl, cal[rvoi]['sbj'][idx]['suvrp'], cal[rvoi]['sbj'][idx]['suvrf']])
+
+            print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, suvr_pib={suvrp:.3f}, suvr_fbb={suvrf:.3f}')
+
+        
+        #------------------------------------------------------------------
+        # > find the linear relationship for FBB_SUVr = m*PiB_SUVr + b
+        # > calculate the tracer `m_std` and `b_std` 
+        # > (Eq. 2.2.3.1a in Klunk et al. 2015)
+
+        cl_suvr = np.array(cl_suvr)
+        m_std, b_std, r, p, stderr = linregress(cl_suvr[:,1], cl_suvr[:,2])
+        r2 = r**2
+
+        suvr_pib_calc =  (cl_suvr[:,2]-b_std) / m_std
+
+        cl_std_fbb = 100*(suvr_pib_calc - clap[rvoi][0])/(clap[rvoi][1]-clap[rvoi][0])
+
+        cal[rvoi]['calib'] = dict(
+            m_std=m_std,
+            b_std=b_std,
+            r2=r2,
+            p=p,
+            stderr=stderr,
+            cl_suvr=cl_suvr,
+            suvr_pib_calc=suvr_pib_calc,
+            cl_std_fbb=cl_std_fbb)
+        #------------------------------------------------------------------
+
+        
+    #----------------------------------------------------------------------
+    # VISUALISATION
+
+    fig,  ax  = plt.subplots(2,2, figsize=figsize)
+    fig2, ax2 = plt.subplots(2,2, figsize=figsize)
+
+    for a, rvoi in enumerate(rvois):
+        i = a//2
+        j = a%2
+
+        ax[i,j].scatter(cal[rvoi]['calib']['cl_suvr'][:,1], cal[rvoi]['calib']['cl_suvr'][:,2], c='black')
+        identity_line(ax=ax[i,j], ls='--', c='b')
+        m_std = cal[rvoi]['calib']['m_std']
+        b_std = cal[rvoi]['calib']['b_std']
+        ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1], f'$y = {m_std:.4f}x + {b_std:.4f}$', fontsize=fontsize)
+        ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1]-0.1, f'$R^2={r2:.4f}$', fontsize=fontsize)
+        ax[i,j].set_title(rvoi_str[rvoi])
+        ax[i,j].set_xlabel('$^\mathrm{PiB}$SUVr$_\mathrm{IND}$', fontsize=fontsize)
+        ax[i,j].set_ylabel('$^\mathrm{NEW}$SUVr$_\mathrm{IND}$', fontsize=fontsize)
+        ax[i,j].grid('on')
+
+        low_x, high_x = ax[i,j].get_xlim()
+        x = np.linspace(low_x, high_x)
+        y = m_std*x+b_std
+        ax[i,j].plot(x,y,'g')
+
+
+        ax2[i,j].scatter(cal[rvoi]['calib']['cl_suvr'][:,0], cal[rvoi]['calib']['cl_std_fbb'], c='black')
+        identity_line(ax=ax2[i,j], ls='--', c='b')
+        ax2[i,j].set_xlabel('CL$^{**}$', fontsize=fontsize)
+        ax2[i,j].set_ylabel('$^\mathrm{NEW}$CL$_\mathrm{Std}$', fontsize=fontsize)
+        ax2[i,j].grid('on')
+        ax2[i,j].set_title(rvoi_str[rvoi])
+
+    fig.tight_layout()
+    fig2.tight_layout()
+    #----------------------------------------------------------------------
+
+    return cal
