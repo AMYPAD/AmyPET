@@ -311,3 +311,17 @@ def save_cl_anchors(diff):
     CLA['path'] = pth
     
     return CLA
+
+
+def get_cl_anchors():
+    ''' load the centiloid anchor points
+    '''
+
+    cpth = os.path.realpath(__file__)
+    pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
+
+
+    with open(pth, 'rb') as f:
+        CLA = pickle.load(f)
+
+    return CLA
