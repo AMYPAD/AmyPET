@@ -3,6 +3,7 @@ Auxiliary functions for the centiloid project
 '''
 import os
 import pickle
+import re
 import numpy as np
 import openpyxl
 import matplotlib.pyplot as plt
@@ -353,6 +354,9 @@ def calib_tracer(
     if xystr is None:
         xystr = dict(wc=[1.5, 1.1], cg=[2.0, 1.2], wcb=[1.5, 1.0], pns=[1.0, 0.75])
 
+    # > extracting the index from names
+    p = re.compile('(GE_\w*_\w*_(\d*)_NIFTI)|(Y*(\d*)\w*)')
+
     # > calibration dictionary with SUVr and CL values
     cal = {}
     for rvoi in rvois:
@@ -368,14 +372,17 @@ def calib_tracer(
 
         for k in outpib:
 
-            # > get the index right for young and elderly
-            if k[0]=='Y':
-                idx = k[:5]
-            else:
-                idx = k[:4]
+
+            idx = p.match(k)[2] or p.match(k)[4]
+
+            # # > get the index right for young and elderly
+            # if k[0]=='Y':
+            #     idx = k[:5]
+            # else:
+            #     idx = k[:4]
 
             # > get the index in the NEW tracer dataset
-            kf = [ky for ky in outnew if idx+'_P' in ky]
+            kf = [ky for ky in outnew if idx+'_' in ky]
             if len(kf)==1:
                 kf = kf[0]
             else:
