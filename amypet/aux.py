@@ -355,7 +355,7 @@ def calib_tracer(
         xystr = dict(wc=[1.5, 1.1], cg=[2.0, 1.2], wcb=[1.5, 1.0], pns=[1.0, 0.75])
 
     # > extracting the index from names
-    p = re.compile('(GE_\w*_\w*_(\d*)_NIFTI)|(Y*(\d*)\w*)')
+    pp = re.compile('(GE_\w*_\w*_(\d*)_NIFTI)|(Y*(\d*)\w*)')
 
     # > calibration dictionary with SUVr and CL values
     cal = {}
@@ -373,13 +373,7 @@ def calib_tracer(
         for k in outpib:
 
 
-            idx = p.match(k)[2] or p.match(k)[4]
-
-            # # > get the index right for young and elderly
-            # if k[0]=='Y':
-            #     idx = k[:5]
-            # else:
-            #     idx = k[:4]
+            idx = pp.match(k)[2] or pp.match(k)[4]
 
             # > get the index in the NEW tracer dataset
             kf = [ky for ky in outnew if idx+'_' in ky]
