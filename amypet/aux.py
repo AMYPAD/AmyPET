@@ -440,6 +440,7 @@ def calib_tracer(
         identity_line(ax=ax[i,j], ls='--', c='b')
         m_std = cal[rvoi]['calib']['m_std']
         b_std = cal[rvoi]['calib']['b_std']
+        r2 = cal[rvoi]['calib']['r2']
         ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1], f'$y = {m_std:.4f}x + {b_std:.4f}$', fontsize=fontsize)
         ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1]-0.1, f'$R^2={r2:.4f}$', fontsize=fontsize)
         ax[i,j].set_title(rvoi_str[rvoi])
