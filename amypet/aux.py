@@ -461,7 +461,7 @@ def calib_tracer(
         ax2[i,j].grid('on')
         ax2[i,j].set_title(rvoi_str[rvoi])
         # > add the same text about the equation used for converting to PiB SUVrs
-        ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1], f'$^{{NEW}}y_{\mathrm{SUVr}} = {m_std:.4f}^{{PiB}}x_{{\mathrm{{SUVr}}}} + {b_std:.4f}$', fontsize=fontsize)
+        ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1], f'$^{{NEW}}y_{{\mathrm{{SUVr}}}} = {m_std:.4f}^{{PiB}}x_{{\mathrm{{SUVr}}}} + {b_std:.4f}$', fontsize=fontsize)
         ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1]-0.1, f'$R^2={r2:.4f}$', fontsize=fontsize)
 
         
