@@ -401,7 +401,7 @@ def calib_tracer(
             print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, suvr_pib={suvrp:.3f}, suvr_fbb={suvrf:.3f}')
 
         
-        #------------------------------------------------------------------
+        #--------------------------------------------------------------
         # > find the linear relationship for FBB_SUVr = m*PiB_SUVr + b
         # > calculate the tracer `m_std` and `b_std` 
         # > (Eq. 2.2.3.1a in Klunk et al. 2015)
@@ -423,10 +423,10 @@ def calib_tracer(
             cl_suvr=cl_suvr,
             suvr_pib_calc=suvr_pib_calc,
             cl_std_fbb=cl_std_fbb)
-        #------------------------------------------------------------------
+        #--------------------------------------------------------------
 
         
-    #----------------------------------------------------------------------
+    #------------------------------------------------------------------
     # VISUALISATION
 
     fig,  ax  = plt.subplots(2,2, figsize=figsize)
@@ -468,6 +468,62 @@ def calib_tracer(
 
     fig.tight_layout()
     fig2.tight_layout()
-    #----------------------------------------------------------------------
+    #------------------------------------------------------------------
 
     return cal
+
+
+#----------------------------------------------------------------------
+def save_suvr2pib(cal, tracer):
+    ''' save the linear transformation parameters, `m_Std` and `b_Std`;
+        the parameters are taken from the bigger calibration dictionary `cal`
+        used here as input.
+
+        The compact dictionary consists the two parameters for all reference regions
+        and for the specific F-18 tracer being used.
+
+        `tracer` can be 'fbb' for [18F]florbetaben or 'flute' for [18F]flutemetamol.
+    '''
+
+    if not tracer in ['fbb', 'flute']:
+        raise ValueError('e> tracer is unrecognised or not given!')
+
+    # conversion dictionary
+    CNV = {}
+    txt = '# Tracer SUVr conversion to PiB SUVr\n'
+    for rvoi in rvois:
+        mstd = cal[rvoi]['calib']['m_std']
+        bstd = cal[rvoi]['calib']['b_std']
+        CNV[rvoi] = dict(m_std=mstd, b_std=bstd)
+        txt += f'{rvoi}: m_std, b_std = ({mstd}, {bstd})\n'
+    print(txt)
+
+    
+    cpth = os.path.realpath(__file__)
+    pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+
+    with open(pth, 'wb') as f:
+        pickle.dump(CNV, f)
+
+    CNV['path'] = pth
+    
+    return CNV
+
+def get_suvr2pib(tracer):
+    ''' load the linear transformation parameters from a tracer SUVr
+        to PiB SUVr; it's used for converting to CL scale any F-18
+        tracers.
+    '''
+
+    if not tracer in ['fbb', 'flute']:
+        raise ValueError('e> tracer is unrecognised or not given!')
+
+    cpth = os.path.realpath(__file__)
+    pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+
+
+    with open(pth, 'rb') as f:
+        CNV = pickle.load(f)
+
+    return CNV
+#----------------------------------------------------------------------

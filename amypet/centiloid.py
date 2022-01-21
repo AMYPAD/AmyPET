@@ -14,6 +14,10 @@ Options:
   --outpath FILE  : Output directory
   --visual  : whether to plot
 """
+
+__author__ = "Pawel J Markiewicz, Casper Da Costa-Luis"
+__copyright__ = "Copyright 2022"
+
 import logging
 import os
 from pathlib import Path
@@ -27,9 +31,11 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
+
 def run(fpets,
         fmris,
         atlases,
+        tracer='pib',
         flip_pet=None,
         bias_corr=True,
         outpath=None,
@@ -42,12 +48,24 @@ def run(fpets,
       atlases: the path to the CL 2mm resolution atlases
       outpath: path to the output folder
       bias_corr: bias filed correction for the MR image (True/False)
+      tracer: specifies what tracer is being used and so the right
+              transformation is used; by default it is PiB.  Currently
+              [18F]flutemetamol, 'flute', and [18F]florebetaben, 'fbb'
+              are supported. 
+              IMPORTANT: when calibrating a new tracer, ensure that
+              `tracer`='new'.
       flip_pet: a list of flips (3D tuples) which flip any dimension
                of the 3D PET image (z,y,x); the list has to have the 
                same length as the lists of `fpets` and `fmris` 
       used_saved: if True, looks for already saved normalised PET
                 images and loads them to avoid processing time.
     """
+
+
+    # supported F-18 tracers
+    f18_tracers =  ['fbb', 'flute']
+
+
     spm_path = Path(spm12.utils.spm_dir())
     atlases = Path(atlases)
     out = {}                                           # output dictionary
@@ -222,18 +240,53 @@ def run(fpets,
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
-        #-------------------------
-        # centiloid transformation
+        #**************************************************************
+        # C E N T I L O I D   S C A L I N G
+        #**************************************************************
+        #---------------------------------
+        # centiloid transformation for PiB
         cpth = os.path.realpath(__file__)
         pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
 
+        if not os.path.isfile(pth):
+            tracer = 'new'
+            log.warning('Could not find the PiB CL anchor point definitions/tables')
+
         with open(pth, 'rb') as f:
             CLA = pickle.load(f)
+        #---------------------------------
 
-        out[onm]['cl'] = cl = {
-            fmsk: 100*(suvr[fmsk]-CLA[fmsk][0])/(CLA[fmsk][1]-CLA[fmsk][0])
-            for fmsk in fmasks if fmsk != 'ctx'}
-        #-------------------------
+        # check if SUVr transformation is needed for F-18 tracers
+        if tracer in f18_tracers:
+            pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+
+            if not os.path.isfile(pth):
+                log.warning('The conversion dictionary/table for the specified tracer is not found')
+            else:
+                with open(pth, 'rb') as f:
+                    CNV = pickle.load(f)
+                print('loaded SUVr transformations for tracer:', tracer)
+
+                # > save the PiB converted SUVrs
+                out[onm]['suvr_pib_calc'] = suvr_pib_calc = {
+                    fmsk: (suvr[fmsk] - CNV[fmsk]['b_std']) / CNV[fmsk]['m_std']
+                    for fmsk in fmasks if fmsk != 'ctx'}
+
+                # > save the linear transformation parameters 
+                out[onm]['suvr_pib_calc_transf'] = {
+                    fmsk: (CNV[fmsk]['m_std'], CNV[fmsk]['b_std'])
+                    for fmsk in fmasks if fmsk != 'ctx'}
+                    
+            # > used now the new PiB converted SUVrs
+            suvr = suvr_pib_calc
+
+                    
+        if tracer!='new':
+            out[onm]['cl'] = cl = {
+                fmsk: 100*(suvr[fmsk]-CLA[fmsk][0])/(CLA[fmsk][1]-CLA[fmsk][0])
+                for fmsk in fmasks if fmsk != 'ctx'}
+        
+        #**************************************************************
 
         # --------------------------------------------------------------
         # VISUALISATION
@@ -312,17 +365,17 @@ def run(fpets,
         suvrstr = ",   ".join([
             f"$SUVR_{{WC}}=${suvr['wc']:.3f}", f"$SUVR_{{GMC}}=${suvr['cg']:.3f}",
             f"$SUVR_{{CBS}}=${suvr['wcb']:.3f}", f"$SUVR_{{PNS}}=${suvr['pns']:.3f}"])
-
-        clstr = ",   ".join([
-            f"$CL_{{WC}}=${cl['wc']:.1f}", f"$CL_{{GMC}}=${cl['cg']:.1f}",
-            f"$CL_{{CBS}}=${cl['wcb']:.1f}", f"$CL_{{PNS}}=${cl['pns']:.1f}"])
-
-
         ax[1].text(0, 190, suvrstr, fontsize=12)
-        ax[1].text(0, 205, clstr, fontsize=12)
+
+        if tracer!='new':
+            clstr = ",   ".join([
+                f"$CL_{{WC}}=${cl['wc']:.1f}", f"$CL_{{GMC}}=${cl['cg']:.1f}",
+                f"$CL_{{CBS}}=${cl['wcb']:.1f}", f"$CL_{{PNS}}=${cl['pns']:.1f}"])
+            ax[1].text(0, 205, clstr, fontsize=12)
+
         plt.tight_layout()
 
-        fqcpng = opths / (onm+'_CL_mask_PET_sampling.png')
+        fqcpng = opths / (onm+'_CL-SUVr_mask_PET_sampling.png')
         plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
 
         plt.close('all')
