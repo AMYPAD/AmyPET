@@ -223,7 +223,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
 
 
 
-    return dict(fpet_nii=fpet_nii, fsuvr=fsuvr)
+    return dict(fpet_nii=fpet_nii, fpre_suvr=fsuvr)
 # ========================================================================================
 
 
