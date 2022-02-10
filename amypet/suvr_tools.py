@@ -115,7 +115,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
         emsum += np.sum(im[rmsk].astype(np.float64))
 
 
-        out[voi] = {'vox_no':vxsum, 'sum':emsum, 'avg':emsum/vxsum, 'froi':froi, 'roimsk':rmsk}
+        out[voi] = {'vox_no':vxsum, 'sum':emsum, 'avg':emsum/vxsum, 'fvoi':fvoi, 'roimsk':rmsk}
     #----------------------------------------------
 
     return out
