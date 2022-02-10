@@ -86,7 +86,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
     logging.debug('Extracting volumes of interest (VOIs):')
     for k, voi in enumerate(voi_dct):
 
-        logging.info(f'  VOI: {v}')
+        logging.info(f'  VOI: {voi}')
 
         # > ROI mask
         rmsk = np.zeros(lbls.shape, dtype=bool)
@@ -95,11 +95,11 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
         # > voxel emission sum
         emsum = 0
 
-        for ri in voi_dct[v]:
+        for ri in voi_dct[voi]:
             logging.debug(f'   label{ri}')
             rmsk += np.equal(lbls, ri)
 
-        if outpath is not None:
+        if outpath is not None and not isinstance(impet, np.ndarray):
             nimpa.create_dir(outpath)
             fvoi = Path(outpath) / (voi+'_mask.nii.gz')
             nimpa.array2nii(
