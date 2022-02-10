@@ -38,23 +38,23 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
     # > used only for saving ROI mask to file if requested
     affine, flip, trnsp = None, None, None
 
-    if isinstance(pet, dict):
-        im = pet['im']
-        if 'affine' in pet:
-            affine = pet['affine']
-        if 'flip' in pet:
-            flip =  pet['flip']
-        if 'transpose' in pet:
-            trnsp = pet['transpose']
+    if isinstance(impet, dict):
+        im = impet['im']
+        if 'affine' in impet:
+            affine = impet['affine']
+        if 'flip' in impet:
+            flip =  impet['flip']
+        if 'transpose' in impet:
+            trnsp = impet['transpose']
 
-    elif isinstance (pet, (str, PurePath)) and os.path.isfile(pet):
-        imd = nimpa.getnii(pet, output='all')
+    elif isinstance (impet, (str, PurePath)) and os.path.isfile(impet):
+        imd = nimpa.getnii(impet, output='all')
         im = imd['im']
         flip = imd['flip']
         trnsp = imd['transpose']
 
-    elif isinstance(pet, np.ndarray):
-        im = pet
+    elif isinstance(impet, np.ndarray):
+        im = impet
 
 
     if isinstance(imlabel, dict):
@@ -100,6 +100,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
             rmsk += np.equal(lbls, ri)
 
         if outpath is not None:
+            nimpa.create_dir(outpath)
             fvoi = Path(outpath) / (voi+'_mask.nii.gz')
             nimpa.array2nii(
                 rmsk.astype(np.int8),
