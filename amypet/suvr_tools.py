@@ -99,7 +99,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
             logging.debug(f'   label{ri}')
             rmsk += np.equal(lbls, ri)
 
-        if outpath is not None and not isinstance(impet, np.ndarray):
+        if outpath is not None and not isinstance(imlabel, np.ndarray):
             nimpa.create_dir(outpath)
             fvoi = Path(outpath) / (voi+'_mask.nii.gz')
             nimpa.array2nii(
