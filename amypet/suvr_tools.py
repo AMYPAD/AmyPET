@@ -3,6 +3,7 @@ import sys
 import re
 
 from pathlib import Path, PurePath
+from matplotlib import pyplot as plt
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +39,8 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
     # > used only for saving ROI mask to file if requested
     affine, flip, trnsp = None, None, None
 
+    #----------------------------------------------
+    #PET
     if isinstance(impet, dict):
         im = impet['im']
         if 'affine' in impet:
@@ -55,8 +58,12 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
 
     elif isinstance(impet, np.ndarray):
         im = impet
+    #----------------------------------------------
 
 
+
+    #----------------------------------------------
+    #LABELS
     if isinstance(imlabel, dict):
         lbls = imlabel['im']
         if 'affine' in imlabel and affine is None:
@@ -78,6 +85,12 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
 
     elif isinstance(imlabel, np.ndarray):
         lbls = imlabel
+
+    # > get rid of NaNs if any in the parcellation/label image
+    lbls[np.isnan(lbls)] = 0
+    #----------------------------------------------
+
+
 
     #----------------------------------------------
     # > output dictionary
@@ -129,6 +142,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
         - pet_path: path to the folder of DICOM images, or to the NIfTI file
         - outpath:  output folder path; if not given will assume the parent
                     folder of the input image
+        - fname:    core name of the static (SUVr) NIfTI file
         - frames:   list of frames to be used for SUVr processing
     '''
 
@@ -195,43 +209,217 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     nfrm = imdct['hdr']['dim'][4]
 
     # > ensure that the frames exist in part of full dynamic image data
-    if nfrm<max(frames):
+    if frames is not None and nfrm<max(frames):
         raise ValueError('The selected frames do not exist')
+    elif frames is None:
+        nfrm = np.arange(nfrm)
 
     logging.info(f'{nfrm} frames have been found in the dynamic image.')
 
 
     #------------------------------------------
-    # > SUVr file path
-    fsuvr = petout / fname
+    # > static image file path
+    fstat = petout / fname
 
-    #> check if the SUVr file already exists
-    if not fsuvr.is_file():
+    #> check if the static (for SUVr) file already exists
+    if not fstat.is_file():
 
-        suvr_frm = np.sum(imdct['im'][frames, ...], axis=0)
+        if nfrm>1:
+            imstat = np.sum(imdct['im'][frames, ...], axis=0)
+        else:
+            imstat = np.squeeze(imdct['im'])
 
         nimpa.array2nii(
-                suvr_frm,
-                imdct['affine'],
-                fsuvr,
-                trnsp = (imdct['transpose'].index(0),
-                         imdct['transpose'].index(1),
-                         imdct['transpose'].index(2)),
-                flip = imdct['flip'])
+            suvr_frm,
+            imdct['affine'],
+            fstat,
+            trnsp = (imdct['transpose'].index(0),
+                     imdct['transpose'].index(1),
+                     imdct['transpose'].index(2)),
+            flip = imdct['flip'])
 
-        logging.info(f'Saved SUVr file image to: {fsuvr}')
+        logging.info(f'Saved SUVr file image to: {fstat}')
     #------------------------------------------
 
 
 
-    return dict(fpet_nii=fpet_nii, fpre_suvr=fsuvr)
+    return dict(fpet_nii=fpet_nii, fpre_suvr=fstat)
 # ========================================================================================
 
 
 
 
 
+# ========================================================================================
+# Extract VOI values for SUVr analysis (main function)
+# ========================================================================================
+
+def voi_process(
+    petpth,
+    lblpth,
+    t1wpth,
+    frames=None,
+    fname=None,
+    outpath=None):
+    ''' Process PET image for VOI extraction using MR-based parcellations.
+        The T1w image and the labels which are based on the image must be
+        in the same image space.
+
+        Arguments:
+        - petpth:   path to the PET NIfTI image
+        - lblpth:   path to the label NIfTI image (parcellations)
+        - t1wpth:   path to the T1w MRI NIfTI image for registration 
+        - frames:   select the frames if multi-frame image given;
+                    by default selects all frames
+        - fname:    the core file name for resulting images
+        - outpath:  folder path to the output images, including intermediate
+                    images
+    '''
+
+    # > output dictionary
+    out = {}
+
+    # > make sure the paths are Path objects
+    petpth = Path(petpth)
+    t1wpth = Path(t1wpth)
+    lblpth = Path(lblpth)
+
+    out['input'] = dict(fpet=petpth, ft1w=t1wpth, flbl=lblpth)
+
+    if not (petpth.is_file() and t1wpth.is_file() and lblpth.is_file()):
+        raise ValueError('One of the three paths to PET, T1w or label image is incorrect.')
 
 
+    # > static (SUVr) image preprocessing
+    suvr_preproc = amypet.preproc_suvr(
+        petpth,
+        frames=frmaes,
+        outpath=outpath,
+        fname=fname)
+
+    out.update(suvr_preproc)
 
 
+    #--------------------------------------------------
+    # TRIMMING / UPSCALING
+    # > derive the scale of upscaling/trimming using the current
+    # > image/voxel sizes
+    pet_szyx = np.diag(nimpa.getnii(suvr_preproc['fpre_suvr'], output='affine'))[::-1]
+    mri_szyx = np.diag(nimpa.getnii(lblpth, output='affine'))[::-1]
+    scale = np.abs(np.round(pet_szyx[1:]/mri_szyx[1:])).astype(np.int32)
+
+    # > trim the PET image for more accurate regional sampling
+    ftrm = nimpa.imtrimup(suvr_preproc['fpre_suvr'], scale=scale, store_img_intrmd=True)
+
+    # > trimmed folder
+    trmdir = Path(ftrm['fimi'][0]).parent
+
+    # > trimmed and upsampled PET file
+    out['ftrm'] = ftrm['fimi'][0]
+    out['trim_scale'] = scale
+    #--------------------------------------------------
+
+
+    # > - - - - - - - - - - - - - - - - - - - - - - - -
+    # > parcellations in PET space
+    fplbl =  trmdir /  '{}_GIF-Parcellation_in-upsampled-PET.nii.gz'.format(suvr_preproc['fpre_suvr'].name.split('.nii')[0])
+    
+    if not fplbl.is_file() or run_fresh_reg:
+
+        logging.info(f'i> registration with ref and flo smoothing {fwhm_smo_pt}, {fwhm_smo_mr}')
+    
+        spm_res = nimpa.coreg_spm(
+            ftrm['fimi'][0],
+            t1wpth,
+            fwhm_ref = fwhm_smo_pt,
+            fwhm_flo = fwhm_smo_mr,
+            fwhm = [7,7],
+            costfun=costfun_reg,
+            fcomment = '',
+            outpath = trmdir,
+            visual = 0,
+            save_arr = False,
+            del_uncmpr=True)
+
+        flbl_pet = nimpa.resample_spm(
+            ftrm['fimi'][0],
+            lblpth,
+            spm_res['faff'],
+            outpath=trmdir,
+            intrp = 0.,
+            fimout = fplbl,
+            del_ref_uncmpr = True,
+            del_flo_uncmpr = True,
+            del_out_uncmpr = True,
+        )
+
+    out['flbl'] = fplbl
+    # > - - - - - - - - - - - - - - - - - - - - - - - -
+
+    # > get the label image in PET space
+    plbl_dct = nimpa.getnii(fplbl, output='all')
+
+    # > get the sampling output
+    voival = amypet.extract_vois(ftrm['im'], plbl_dct, amyvoi.vois, outpath=trmdir/'masks')
+
+    out['vois'] = voival
+
+
+    #-----------------------------------------
+    # > QC plot
+
+    showpet = nimpa.imsmooth(ftrm['im'].astype(np.float32), voxsize=pgif_dct['voxsize'], fwhm=3.)
+    
+    def axrange(prf, thrshld, parts):
+        zs = next(x for x, val in enumerate(prf) if val > thrshld)
+        ze = len(prf) -  next(x for x, val in enumerate(prf[::-1]) if val > thrshld)
+        # divide the range in parts
+        p = int((ze-zs)/parts)
+        zn = []
+        for k in range(1,parts):
+            zn.append(zs+k*p)
+        return zn
+
+    # z-profile
+    zn = []
+    thrshld = 100
+    zprf = np.sum(voival['neocx']['roimsk'], axis=(1,2))
+    zn += axrange(zprf, thrshld, 3)
+
+    zprf = np.sum(voival['cblgm']['roimsk'], axis=(1,2))
+    zn += axrange(zprf, thrshld, 2)
+
+    mskshow = voival['neocx']['roimsk'] + voival['cblgm']['roimsk']
+
+    xn = []
+    xprf = np.sum(mskshow, axis=(0,1))
+    xn += axrange(xprf, thrshld, 4)
+    
+
+    fig, ax = plt.subplots(2,3,figsize=(16,16))
+    
+    for ai,zidx in enumerate(zn):
+        msk = mskshow[zidx,...]
+        impet = showpet[zidx,...]
+        ax[0][ai].imshow(impet, cmap='magma', vmax=0.9*impet.max())
+        ax[0][ai].imshow(msk, cmap='gray_r', alpha=0.25)
+        ax[0][ai].xaxis.set_visible(False)
+        ax[0][ai].yaxis.set_visible(False)
+
+    for ai,xidx in enumerate(xn):
+        msk = mskshow[...,xidx]
+        impet = showpet[...,xidx]
+        ax[1][ai].imshow(impet, cmap='magma', vmax=0.9*impet.max())
+        ax[1][ai].imshow(msk, cmap='gray_r', alpha=0.25)
+        ax[1][ai].xaxis.set_visible(False)
+        ax[1][ai].yaxis.set_visible(False)
+
+    plt.tight_layout()
+
+    fqc = trmdir / f'QC_{petpth.name}_Parcellation-over-upsampled-PET.png'
+    plt.savefig(fqc, dpi=300)
+    plt.close('all')
+    out['fqc'] = fqc
+    #-----------------------------------------
+
+    return out
