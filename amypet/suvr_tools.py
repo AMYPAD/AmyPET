@@ -418,7 +418,8 @@ def voi_process(
             suvr[rvoi]['fsuvr'] = fsuvr
 
             if 'suvr' in voi_dct:
-                suvrtxt += f'$SUVR_{rvoi}=${suvr[rvoi]['suvr']:.3f}; '
+                suvrval = suvr[rvoi]['suvr']
+                suvrtxt += f'$SUVR_{rvoi}=${suvrval:.3f}; '
 
         out['suvr'] = suvr
 
