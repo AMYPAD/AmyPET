@@ -476,7 +476,7 @@ def voi_process(
         ax[1][ai].xaxis.set_visible(False)
         ax[1][ai].yaxis.set_visible(False)
 
-    ax[1,1].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
+    ax[0,1].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
 
     plt.tight_layout()
 
