@@ -336,7 +336,7 @@ def voi_process(
     
     if not fplbl.is_file() or reg_fresh:
 
-        logging.info(f'i> registration with ref and flo smoothing {fwhm_smo_pt}, {fwhm_smo_mr}')
+        logging.info(f'i> registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm for reference and floating images respectively')
     
         spm_res = nimpa.coreg_spm(
             ftrm['fimi'][0],
