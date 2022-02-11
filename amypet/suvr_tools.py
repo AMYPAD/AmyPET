@@ -307,8 +307,6 @@ def voi_process(
         lbl = nimpa.getnii(lblpth)
         voi_dct = {int(l):[int(l)] for l in np.unique(lbl)}
 
-
-
     # > static (SUVr) image preprocessing
     suvr_preproc = preproc_suvr(
         petpth,
@@ -379,7 +377,7 @@ def voi_process(
     plbl_dct = nimpa.getnii(fplbl, output='all')
 
     # > get the sampling output
-    voival = extract_vois(ftrm['im'], plbl_dct, amyvoi.vois, outpath=trmdir/'masks')
+    voival = extract_vois(ftrm['im'], plbl_dct, voi_dct, outpath=trmdir/'masks')
 
     out['vois'] = voival
 
@@ -387,7 +385,7 @@ def voi_process(
     #-----------------------------------------
     # > QC plot
 
-    showpet = nimpa.imsmooth(ftrm['im'].astype(np.float32), voxsize=pgif_dct['voxsize'], fwhm=3.)
+    showpet = nimpa.imsmooth(ftrm['im'].astype(np.float32), voxsize=plbl_dct['voxsize'], fwhm=3.)
     
     def axrange(prf, thrshld, parts):
         zs = next(x for x, val in enumerate(prf) if val > thrshld)
