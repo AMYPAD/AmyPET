@@ -301,6 +301,13 @@ def voi_process(
     if not (petpth.exists() and t1wpth.is_file() and lblpth.is_file()):
         raise ValueError('One of the three paths to PET, T1w or label image is incorrect.')
 
+    # > if dictionary is not given, the VOI values will be calculated for each unique
+    # > VOI in the label/parcellation image
+    if voi_dct is None:
+        lbl = nimpa.getnii(lblpth)
+        voi_dct = {int(l):[int(l)] for l in np.unique(lbl)}
+
+
 
     # > static (SUVr) image preprocessing
     suvr_preproc = preproc_suvr(
