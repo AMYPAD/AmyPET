@@ -419,7 +419,7 @@ def voi_process(
 
             if 'suvr' in voi_dct:
                 suvrval = suvr[rvoi]['suvr']
-                suvrtxt += f'$SUVR_{rvoi}=${suvrval:.3f}; '
+                suvrtxt += f'$SUVR_\mathrm{{{rvoi}}}=${suvrval:.3f}; '
 
         out['suvr'] = suvr
 
@@ -476,8 +476,8 @@ def voi_process(
         ax[1][ai].xaxis.set_visible(False)
         ax[1][ai].yaxis.set_visible(False)
 
-    ax[0,0].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
-    ax[1,1].set_xlabel(suvr_preproc['fstat'].name)
+    ax[1,1].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
+    ax[0,1].text(0, ftrm['im'].shape[1]+10, suvr_preproc['fstat'].name, fontsize=12)
 
     plt.tight_layout()
 
