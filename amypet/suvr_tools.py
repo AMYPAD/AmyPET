@@ -260,7 +260,11 @@ def voi_process(
     t1wpth,
     frames=None,
     fname=None,
-    outpath=None):
+    outpath=None,
+    reg_fwhm_pet=0,
+    reg_fwhm_mri=0,
+    reg_costfun='nmi',
+    reg_fresh=True):
     ''' Process PET image for VOI extraction using MR-based parcellations.
         The T1w image and the labels which are based on the image must be
         in the same image space.
@@ -274,6 +278,12 @@ def voi_process(
         - fname:    the core file name for resulting images
         - outpath:  folder path to the output images, including intermediate
                     images
+
+        - reg_fwhm: FWHMs of the Gaussian filter applied to PET or MRI images
+                    by default 0 mm;
+        - reg_costfun: cost function used in image registration
+        - reg_fresh:runs fresh registration if True, otherwise uses an existing
+                    one if found.
     '''
 
     # > output dictionary
@@ -324,17 +334,17 @@ def voi_process(
     # > parcellations in PET space
     fplbl =  trmdir /  '{}_GIF-Parcellation_in-upsampled-PET.nii.gz'.format(suvr_preproc['fpre_suvr'].name.split('.nii')[0])
     
-    if not fplbl.is_file() or run_fresh_reg:
+    if not fplbl.is_file() or reg_fresh:
 
         logging.info(f'i> registration with ref and flo smoothing {fwhm_smo_pt}, {fwhm_smo_mr}')
     
         spm_res = nimpa.coreg_spm(
             ftrm['fimi'][0],
             t1wpth,
-            fwhm_ref = fwhm_smo_pt,
-            fwhm_flo = fwhm_smo_mr,
+            fwhm_ref = reg_fwhm_pet,
+            fwhm_flo = reg_fwhm_mri,
             fwhm = [7,7],
-            costfun=costfun_reg,
+            costfun=reg_costfun,
             fcomment = '',
             outpath = trmdir,
             visual = 0,
