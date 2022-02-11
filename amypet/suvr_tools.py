@@ -230,7 +230,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
             imstat = np.squeeze(imdct['im'])
 
         nimpa.array2nii(
-            suvr_frm,
+            imstat,
             imdct['affine'],
             fstat,
             trnsp = (imdct['transpose'].index(0),
@@ -286,14 +286,14 @@ def voi_process(
 
     out['input'] = dict(fpet=petpth, ft1w=t1wpth, flbl=lblpth)
 
-    if not (petpth.is_file() and t1wpth.is_file() and lblpth.is_file()):
+    if not (petpth.exists() and t1wpth.is_file() and lblpth.is_file()):
         raise ValueError('One of the three paths to PET, T1w or label image is incorrect.')
 
 
     # > static (SUVr) image preprocessing
-    suvr_preproc = amypet.preproc_suvr(
+    suvr_preproc = preproc_suvr(
         petpth,
-        frames=frmaes,
+        frames=frames,
         outpath=outpath,
         fname=fname)
 
