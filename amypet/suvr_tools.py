@@ -243,7 +243,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
 
 
 
-    return dict(fpet_nii=fpet_nii, fpre_suvr=fstat)
+    return dict(fpet_nii=fpet_nii, fstat=fstat)
 # ========================================================================================
 
 
@@ -259,6 +259,7 @@ def voi_process(
     lblpth,
     t1wpth,
     voi_dct=None,
+    ref_voi=None,
     frames=None,
     fname=None,
     outpath=None,
@@ -275,6 +276,8 @@ def voi_process(
         - lblpth:   path to the label NIfTI image (parcellations)
         - t1wpth:   path to the T1w MRI NIfTI image for registration
         - voi_dct:  dictionary of VOI definitions
+        - ref_voi:  if given and in `voi_dct` it is used as reference region
+                    for calculating SUVr
         - frames:   select the frames if multi-frame image given;
                     by default selects all frames
         - fname:    the core file name for resulting images
@@ -286,6 +289,7 @@ def voi_process(
         - reg_costfun: cost function used in image registration
         - reg_fresh:runs fresh registration if True, otherwise uses an existing
                     one if found.
+
     '''
 
     # > output dictionary
@@ -307,6 +311,10 @@ def voi_process(
         lbl = nimpa.getnii(lblpth)
         voi_dct = {int(l):[int(l)] for l in np.unique(lbl)}
 
+    if ref_voi is not None and not all([r in voi_dct for r in ref_voi]):
+        raise ValueError('Not all VOIs listed as reference are in the VOI definition dictionary.')
+
+
     # > static (SUVr) image preprocessing
     suvr_preproc = preproc_suvr(
         petpth,
@@ -321,12 +329,12 @@ def voi_process(
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
-    pet_szyx = np.diag(nimpa.getnii(suvr_preproc['fpre_suvr'], output='affine'))[::-1]
+    pet_szyx = np.diag(nimpa.getnii(suvr_preproc['fstat'], output='affine'))[::-1]
     mri_szyx = np.diag(nimpa.getnii(lblpth, output='affine'))[::-1]
     scale = np.abs(np.round(pet_szyx[1:]/mri_szyx[1:])).astype(np.int32)
 
     # > trim the PET image for more accurate regional sampling
-    ftrm = nimpa.imtrimup(suvr_preproc['fpre_suvr'], scale=scale, store_img_intrmd=True)
+    ftrm = nimpa.imtrimup(suvr_preproc['fstat'], scale=scale, store_img_intrmd=True)
 
     # > trimmed folder
     trmdir = Path(ftrm['fimi'][0]).parent
@@ -339,7 +347,7 @@ def voi_process(
 
     # > - - - - - - - - - - - - - - - - - - - - - - - -
     # > parcellations in PET space
-    fplbl =  trmdir /  '{}_GIF-Parcellation_in-upsampled-PET.nii.gz'.format(suvr_preproc['fpre_suvr'].name.split('.nii')[0])
+    fplbl =  trmdir /  '{}_GIF-Parcellation_in-upsampled-PET.nii.gz'.format(suvr_preproc['fstat'].name.split('.nii')[0])
     
     if not fplbl.is_file() or reg_fresh:
 
@@ -379,7 +387,43 @@ def voi_process(
     # > get the sampling output
     voival = extract_vois(ftrm['im'], plbl_dct, voi_dct, outpath=trmdir/'masks')
 
+    
+    # > calculate SUVr if reference regions is given
+    suvrtxt = None
+    if ref_voi is not None:
+
+        suvr = {}
+
+        suvrtxt = ' '
+        for rvoi in ref_voi:
+            ref = voival[rvoi]['avg']
+            suvr[rvoi] = {}
+            for voi in voi_dct:
+                suvr[rvoi][voi] = voival[voi]['avg'] / ref
+
+            # > get the static trimmed image:
+            imsuvr = nimpa.getnii(out['ftrm'], output='all')
+
+            fsuvr = trmdir /  'SUVr_ref-{}_{}'.format(rvoi, suvr_preproc['fstat'].name)
+            # > save SUVr image
+            nimpa.array2nii(
+                imsuvr['im']/ref,
+                imsuvr['affine'],
+                fsuvr,
+                trnsp = (imsuvr['transpose'].index(0),
+                         imsuvr['transpose'].index(1),
+                         imsuvr['transpose'].index(2)),
+                flip = imsuvr['flip'])
+
+            suvr[rvoi]['fsuvr'] = fsuvr
+
+            if 'suvr' in voi_dct:
+                suvrtxt += f'$SUVR_{rvoi}=${suvr[rvoi]['suvr']:.3f}; '
+
+        out['suvr'] = suvr
+
     out['vois'] = voival
+    
 
 
     #-----------------------------------------
@@ -430,6 +474,9 @@ def voi_process(
         ax[1][ai].imshow(msk, cmap='gray_r', alpha=0.25)
         ax[1][ai].xaxis.set_visible(False)
         ax[1][ai].yaxis.set_visible(False)
+
+    ax[0,0].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
+    ax[1,1].set_xlabel(suvr_preproc['fstat'].name)
 
     plt.tight_layout()
 
