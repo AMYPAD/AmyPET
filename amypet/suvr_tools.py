@@ -258,6 +258,7 @@ def voi_process(
     petpth,
     lblpth,
     t1wpth,
+    voi_dct=None,
     frames=None,
     fname=None,
     outpath=None,
@@ -272,7 +273,8 @@ def voi_process(
         Arguments:
         - petpth:   path to the PET NIfTI image
         - lblpth:   path to the label NIfTI image (parcellations)
-        - t1wpth:   path to the T1w MRI NIfTI image for registration 
+        - t1wpth:   path to the T1w MRI NIfTI image for registration
+        - voi_dct:  dictionary of VOI definitions
         - frames:   select the frames if multi-frame image given;
                     by default selects all frames
         - fname:    the core file name for resulting images
@@ -370,7 +372,7 @@ def voi_process(
     plbl_dct = nimpa.getnii(fplbl, output='all')
 
     # > get the sampling output
-    voival = amypet.extract_vois(ftrm['im'], plbl_dct, amyvoi.vois, outpath=trmdir/'masks')
+    voival = extract_vois(ftrm['im'], plbl_dct, amyvoi.vois, outpath=trmdir/'masks')
 
     out['vois'] = voival
 
