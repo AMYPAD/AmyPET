@@ -16,7 +16,7 @@ import dcm2niix
 from niftypet import nimpa
 
 nifti_ext = ('.nii', '.nii.gz')
-dicom_ext = ('.DCM', '.dcm', '.img', '.IMG')
+dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
 # ========================================================================================
 def extract_vois(impet, imlabel, voi_dct, outpath=None):
