@@ -193,6 +193,10 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
                  pet_path])
 
         fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
+
+        # > if cannot find a file it might be due to spaces in folder/file names
+        if not fpet_nii:
+            fpet_nii = list(petout.glob(pet_path.name.replace(' ', '_') + '*.nii*'))
         
 
         if not fpet_nii:

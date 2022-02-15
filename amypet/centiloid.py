@@ -50,7 +50,7 @@ def run(fpets,
       bias_corr: bias filed correction for the MR image (True/False)
       tracer: specifies what tracer is being used and so the right
               transformation is used; by default it is PiB.  Currently
-              [18F]flutemetamol, 'flute', and [18F]florebetaben, 'fbb'
+              [18F]flutemetamol, 'flute', and [18F]florbetaben, 'fbb'
               are supported. 
               IMPORTANT: when calibrating a new tracer, ensure that
               `tracer`='new'.
