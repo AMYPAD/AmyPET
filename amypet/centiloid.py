@@ -59,6 +59,7 @@ def run(fpets,
         bias_corr=True,
         outpath=None,
         visual=False,
+        climage=True,
         used_saved=False):
     """
     Process centiloid (CL) using input file lists for PET and MRI
@@ -78,6 +79,9 @@ def run(fpets,
                same length as the lists of `fpets` and `fmris` 
       used_saved: if True, looks for already saved normalised PET
                 images and loads them to avoid processing time.
+      visual: SPM-based progress visualisations of image registration or
+              or image normalisation.
+      climage: outputs the CL-converted PET image in the MNI space
     """
 
 
@@ -155,6 +159,7 @@ def run(fpets,
         opthn = spth / 'normalisation'
         optho = spth / 'normalised'
         opths = spth / 'suvr'
+        opthi = spth / 'cl-image'
  
         # find if the normalised PET is already there
         if optho.is_dir():
@@ -303,7 +308,46 @@ def run(fpets,
         
         #**************************************************************
 
-        # --------------------------------------------------------------
+        #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        # > output the CL-converted PET image in the MNI space
+        if climage:
+
+            for refvoi in fmasks:
+                if refvoi=='ctx': continue
+
+                refavg = out[onm]['avgvoi'][refvoi]
+
+                # > obtain the SUVr image for the given reference VOI
+                npet_suvr = npet/refavg
+            
+                # > convert to PiB scale if it is an F18 tracer
+                if tracer in f18_tracers:
+                    npet_suvr = (npet_suvr - CNV[refvoi]['b_std']) / CNV[refvoi]['m_std']
+
+                # > convert the (PiB) SUVr image to CL scale
+                npet_cl = 100*(npet_suvr-CLA[refvoi][0])/(CLA[refvoi][1]-CLA[refvoi][0])
+
+                # > get the CL global value by applying the CTX mask
+                cl_ = np.mean(petc[masks['ctx'].astype(bool)])
+
+                if tracer!='new' and abs(cl_-cl[refvoi])>0.25:
+                    log.warning('The CL of CL-converted image is different to the calculated CL - please check it')
+
+                    # > save the CL-converted file
+                    nimpa.create_dir(opthi)
+                    fout = opthi / ('CL_image_ref-'+refvoi+fnpets[0].split('.nii')[0]+'.nii.gz')
+                    nimpa.array2nii(
+                        npet_cl,
+                        npet_dct['affine'],
+                        fout,
+                        trnsp = (npet_dct['transpose'].index(0),
+                                 npet_dct['transpose'].index(1),
+                                 npet_dct['transpose'].index(2)),
+                        flip = npet_dct['flip'])
+        #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+
+        # -------------------------------------------------------------
         # VISUALISATION
         # pick masks for visualisation
         msk = 'ctx'
@@ -378,7 +422,7 @@ def run(fpets,
         ax[1].set_title(f'{onm} sagittal centiloid sampling')
 
         suvrstr = ",   ".join([
-            f"$SUVR_{{WC}}=${suvr['wc']:.3f}", f"$SUVR_{{GMC}}=${suvr['cg']:.3f}",
+            f"PiB transformed: $SUVR_{{WC}}=${suvr['wc']:.3f}", f"$SUVR_{{GMC}}=${suvr['cg']:.3f}",
             f"$SUVR_{{CBS}}=${suvr['wcb']:.3f}", f"$SUVR_{{PNS}}=${suvr['pns']:.3f}"])
         ax[1].text(0, 190, suvrstr, fontsize=12)
 
