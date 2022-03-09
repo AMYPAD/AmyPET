@@ -335,7 +335,7 @@ def run(fpets,
 
                     # > save the CL-converted file
                     nimpa.create_dir(opthi)
-                    fout = opthi / ('CL_image_ref-'+refvoi+fnpets[0]name.split('.nii')[0]+'.nii.gz')
+                    fout = opthi / ('CL_image_ref-'+refvoi+fnpets[0].name.split('.nii')[0]+'.nii.gz')
                     nimpa.array2nii(
                         npet_cl,
                         npet_dct['affine'],
