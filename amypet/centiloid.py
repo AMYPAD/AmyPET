@@ -31,6 +31,25 @@ from niftypet import nimpa
 log = logging.getLogger(__name__)
 
 
+#----------------------------------------------------------------------
+def load_masks(atlases):
+    ''' Load the Centiloid PET masks for calculating 
+        the SUVr to then convert it to Centiloid.
+
+        Return the paths to the masks and the masks themselves
+    '''
+
+    log.info('loading CL masks...')
+    fmasks = {
+        'cg': atlases / 'voi_CerebGry_2mm.nii', 'wc': atlases / 'voi_WhlCbl_2mm.nii',
+        'wcb': atlases / 'voi_WhlCblBrnStm_2mm.nii', 'pns': atlases / 'voi_Pons_2mm.nii',
+        'ctx': atlases / 'voi_ctx_2mm.nii'}
+    masks = {fmsk: nimpa.getnii(fmasks[fmsk]) for fmsk in fmasks}
+
+    return fmasks, masks
+#----------------------------------------------------------------------
+
+
 
 def run(fpets,
         fmris,
@@ -111,12 +130,8 @@ def run(fpets,
     #-------------------------------------------------------------
 
 
-    log.info('loading CL masks...')
-    fmasks = {
-        'cg': atlases / 'voi_CerebGry_2mm.nii', 'wc': atlases / 'voi_WhlCbl_2mm.nii',
-        'wcb': atlases / 'voi_WhlCblBrnStm_2mm.nii', 'pns': atlases / 'voi_Pons_2mm.nii',
-        'ctx': atlases / 'voi_ctx_2mm.nii'}
-    masks = {fmsk: nimpa.getnii(fmasks[fmsk]) for fmsk in fmasks}
+    fmasks, masks = load_masks(atlases)
+
 
     log.info('iterate through all the input data...')
     
