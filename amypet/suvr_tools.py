@@ -19,7 +19,7 @@ nifti_ext = ('.nii', '.nii.gz')
 dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
 # ========================================================================================
-def extract_vois(impet, imlabel, voi_dct, outpath=None):
+def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
     '''
     Extract VOI mean values from PET image `impet` using image labels `imlabel`.
     Both can be dictionaries, file paths or Numpy arrays.
@@ -31,7 +31,9 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
                     from T1w-based parcellation or an atlas.
         - voi_dct:  dictionary of VOIs, with entries of labels creating
                     composite volumes
-        - output:   
+        - output_masks: if `True`, output Numpy VOI masks in the output
+                    dictionary
+        - outpath:  if given as a folder path, the VOI masks will be saved
     '''
 
 
@@ -114,7 +116,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
 
         if outpath is not None and not isinstance(imlabel, np.ndarray):
             nimpa.create_dir(outpath)
-            fvoi = Path(outpath) / (voi+'_mask.nii.gz')
+            fvoi = Path(outpath) / (str(voi)+'_mask.nii.gz')
             nimpa.array2nii(
                 rmsk.astype(np.int8),
                 affine,
@@ -127,8 +129,11 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None):
         vxsum += np.sum(rmsk)
         emsum += np.sum(im[rmsk].astype(np.float64))
 
+        out[voi] = {'vox_no':vxsum, 'sum':emsum, 'avg':emsum/vxsum, 'fvoi':fvoi}
 
-        out[voi] = {'vox_no':vxsum, 'sum':emsum, 'avg':emsum/vxsum, 'fvoi':fvoi, 'roimsk':rmsk}
+        if output_masks:
+            out[voi]['roimsk'] = rmsk
+        
     #----------------------------------------------
 
     return out
@@ -267,6 +272,9 @@ def voi_process(
     frames=None,
     fname=None,
     outpath=None,
+    output_masks=True,
+    save_voi_masks=False,
+    qc_plot=True,
     reg_fwhm_pet=0,
     reg_fwhm_mri=0,
     reg_costfun='nmi',
@@ -287,7 +295,11 @@ def voi_process(
         - fname:    the core file name for resulting images
         - outpath:  folder path to the output images, including intermediate
                     images
-
+        - output_masks: if True, output VOI sampling masks in the output
+                    dictionary
+        - save_voi_masks: if True, saves all the VOI masks to the `masks` folder
+        - qc_plot:  plots the PET images and overlay sampling, and saves it to 
+                    a PNG file; requires `output_masks` to be True.
         - reg_fwhm: FWHMs of the Gaussian filter applied to PET or MRI images
                     by default 0 mm;
         - reg_costfun: cost function used in image registration
@@ -333,9 +345,11 @@ def voi_process(
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
-    pet_szyx = np.diag(nimpa.getnii(suvr_preproc['fstat'], output='affine'))[::-1]
-    mri_szyx = np.diag(nimpa.getnii(lblpth, output='affine'))[::-1]
-    scale = np.abs(np.round(pet_szyx[1:]/mri_szyx[1:])).astype(np.int32)
+    petdct = nimpa.getnii(suvr_preproc['fstat'], output='all')
+    lbldct = nimpa.getnii(lblpth, output='all')
+    pet_szyx = petdct['hdr']['pixdim'][1:4]
+    mri_szyx = lbldct['hdr']['pixdim'][1:4]
+    scale = np.abs(np.round(pet_szyx[::-1]/mri_szyx[::-1])).astype(np.int32)
 
     # > trim the PET image for more accurate regional sampling
     ftrm = nimpa.imtrimup(suvr_preproc['fstat'], scale=scale, store_img_intrmd=True)
@@ -389,7 +403,11 @@ def voi_process(
     plbl_dct = nimpa.getnii(fplbl, output='all')
 
     # > get the sampling output
-    voival = extract_vois(ftrm['im'], plbl_dct, voi_dct, outpath=trmdir/'masks')
+    if save_voi_masks:
+        mask_dir = trmdir/'masks'
+    else:
+        mask_dir = None
+    voival = extract_vois(ftrm['im'], plbl_dct, voi_dct, outpath=mask_dir, output_masks=output_masks)
 
     
     # > calculate SUVr if reference regions is given
@@ -433,61 +451,61 @@ def voi_process(
 
     #-----------------------------------------
     # > QC plot
+    if qc_plot and output_masks:
+        showpet = nimpa.imsmooth(ftrm['im'].astype(np.float32), voxsize=plbl_dct['voxsize'], fwhm=3.)
+        
+        def axrange(prf, thrshld, parts):
+            zs = next(x for x, val in enumerate(prf) if val > thrshld)
+            ze = len(prf) -  next(x for x, val in enumerate(prf[::-1]) if val > thrshld)
+            # divide the range in parts
+            p = int((ze-zs)/parts)
+            zn = []
+            for k in range(1,parts):
+                zn.append(zs+k*p)
+            return zn
 
-    showpet = nimpa.imsmooth(ftrm['im'].astype(np.float32), voxsize=plbl_dct['voxsize'], fwhm=3.)
-    
-    def axrange(prf, thrshld, parts):
-        zs = next(x for x, val in enumerate(prf) if val > thrshld)
-        ze = len(prf) -  next(x for x, val in enumerate(prf[::-1]) if val > thrshld)
-        # divide the range in parts
-        p = int((ze-zs)/parts)
+        # z-profile
         zn = []
-        for k in range(1,parts):
-            zn.append(zs+k*p)
-        return zn
+        thrshld = 100
+        zprf = np.sum(voival['neocx']['roimsk'], axis=(1,2))
+        zn += axrange(zprf, thrshld, 3)
 
-    # z-profile
-    zn = []
-    thrshld = 100
-    zprf = np.sum(voival['neocx']['roimsk'], axis=(1,2))
-    zn += axrange(zprf, thrshld, 3)
+        zprf = np.sum(voival['cblgm']['roimsk'], axis=(1,2))
+        zn += axrange(zprf, thrshld, 2)
 
-    zprf = np.sum(voival['cblgm']['roimsk'], axis=(1,2))
-    zn += axrange(zprf, thrshld, 2)
+        mskshow = voival['neocx']['roimsk'] + voival['cblgm']['roimsk']
 
-    mskshow = voival['neocx']['roimsk'] + voival['cblgm']['roimsk']
+        xn = []
+        xprf = np.sum(mskshow, axis=(0,1))
+        xn += axrange(xprf, thrshld, 4)
+        
 
-    xn = []
-    xprf = np.sum(mskshow, axis=(0,1))
-    xn += axrange(xprf, thrshld, 4)
-    
+        fig, ax = plt.subplots(2,3,figsize=(16,16))
+        
+        for ai,zidx in enumerate(zn):
+            msk = mskshow[zidx,...]
+            impet = showpet[zidx,...]
+            ax[0][ai].imshow(impet, cmap='magma', vmax=0.9*impet.max())
+            ax[0][ai].imshow(msk, cmap='gray_r', alpha=0.25)
+            ax[0][ai].xaxis.set_visible(False)
+            ax[0][ai].yaxis.set_visible(False)
 
-    fig, ax = plt.subplots(2,3,figsize=(16,16))
-    
-    for ai,zidx in enumerate(zn):
-        msk = mskshow[zidx,...]
-        impet = showpet[zidx,...]
-        ax[0][ai].imshow(impet, cmap='magma', vmax=0.9*impet.max())
-        ax[0][ai].imshow(msk, cmap='gray_r', alpha=0.25)
-        ax[0][ai].xaxis.set_visible(False)
-        ax[0][ai].yaxis.set_visible(False)
+        for ai,xidx in enumerate(xn):
+            msk = mskshow[...,xidx]
+            impet = showpet[...,xidx]
+            ax[1][ai].imshow(impet, cmap='magma', vmax=0.9*impet.max())
+            ax[1][ai].imshow(msk, cmap='gray_r', alpha=0.25)
+            ax[1][ai].xaxis.set_visible(False)
+            ax[1][ai].yaxis.set_visible(False)
 
-    for ai,xidx in enumerate(xn):
-        msk = mskshow[...,xidx]
-        impet = showpet[...,xidx]
-        ax[1][ai].imshow(impet, cmap='magma', vmax=0.9*impet.max())
-        ax[1][ai].imshow(msk, cmap='gray_r', alpha=0.25)
-        ax[1][ai].xaxis.set_visible(False)
-        ax[1][ai].yaxis.set_visible(False)
+        ax[0,1].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
 
-    ax[0,1].text(0, ftrm['im'].shape[1]+10, suvrtxt, fontsize=12)
+        plt.tight_layout()
 
-    plt.tight_layout()
-
-    fqc = trmdir / f'QC_{petpth.name}_Parcellation-over-upsampled-PET.png'
-    plt.savefig(fqc, dpi=300)
-    plt.close('all')
-    out['fqc'] = fqc
+        fqc = trmdir / f'QC_{petpth.name}_Parcellation-over-upsampled-PET.png'
+        plt.savefig(fqc, dpi=300)
+        plt.close('all')
+        out['fqc'] = fqc
     #-----------------------------------------
 
     return out
