@@ -362,7 +362,7 @@ def run(fpets,
 
                 elif tracer!='new' and abs(cl_-cl_refvoi)>0.25:
                     log.warning(f'The CL of CL-converted image is different to the calculated CL (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
-                    log.warning(f'The CL image has not been generated!)'
+                    log.warning(f'The CL image has not been generated!')
                 else:
                     log.warning(f'The CL image has not been generated due to new tracer being used)'
         #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
