@@ -60,7 +60,8 @@ def run(fpets,
         outpath=None,
         visual=False,
         climage=True,
-        used_saved=False):
+        used_saved=False,
+        cl_anchore_path=None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -82,6 +83,8 @@ def run(fpets,
       visual: SPM-based progress visualisations of image registration or
               or image normalisation.
       climage: outputs the CL-converted PET image in the MNI space
+      cl_anchore_path: The path where optional CL anchor dictionary is
+                saved.
     """
 
 
@@ -264,8 +267,16 @@ def run(fpets,
         # C E N T I L O I D   S C A L I N G
         #**************************************************************
         #---------------------------------
-        # centiloid transformation for PiB
-        cpth = os.path.realpath(__file__)
+        # > path to anchor point dictionary
+        if cl_anchore_path is None:
+            cpth = os.path.realpath(__file__)
+        elif os.path.exists(cl_anchore_path):
+            cpth = Path(cl_anchore_path)
+        #---------------------------------
+
+
+        #---------------------------------
+        # > centiloid transformation for PiB
         pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
 
         if not os.path.isfile(pth):
@@ -276,7 +287,10 @@ def run(fpets,
             CLA = pickle.load(f)
         #---------------------------------
 
-        # check if SUVr transformation is needed for F-18 tracers
+
+        #---------------------------------
+        # > centiloid transformation for PiB
+        # > check if SUVr transformation is needed for F-18 tracers
         if tracer in f18_tracers:
             pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
 
@@ -299,8 +313,9 @@ def run(fpets,
                     
             # > used now the new PiB converted SUVrs
             suvr = suvr_pib_calc
+        #---------------------------------
+        
 
-                    
         if tracer!='new':
             out[onm]['cl'] = cl = {
                 fmsk: 100*(suvr[fmsk]-CLA[fmsk][0])/(CLA[fmsk][1]-CLA[fmsk][0])
@@ -330,10 +345,9 @@ def run(fpets,
                 # > get the CL global value by applying the CTX mask
                 cl_ = np.mean(npet_cl[masks['ctx'].astype(bool)])
 
+
                 cl_refvoi = cl[refvoi]
                 if tracer!='new' and abs(cl_-cl_refvoi)<0.25:
-                    log.warning(f'The CL of CL-converted image is different to the calculated CL (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
-
                     # > save the CL-converted file
                     nimpa.create_dir(opthi)
                     fout = opthi / ('CL_image_ref-'+refvoi+fnpets[0].name.split('.nii')[0]+'.nii.gz')
@@ -345,6 +359,12 @@ def run(fpets,
                                  npet_dct['transpose'].index(1),
                                  npet_dct['transpose'].index(2)),
                         flip = npet_dct['flip'])
+
+                elif tracer!='new' and abs(cl_-cl_refvoi)>0.25:
+                    log.warning(f'The CL of CL-converted image is different to the calculated CL (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
+                    log.warning(f'The CL image has not been generated!)'
+                else:
+                    log.warning(f'The CL image has not been generated due to new tracer being used)'
         #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
 
