@@ -330,8 +330,9 @@ def run(fpets,
                 # > get the CL global value by applying the CTX mask
                 cl_ = np.mean(npet_cl[masks['ctx'].astype(bool)])
 
-                if tracer!='new' and abs(cl_-cl[refvoi])<0.25:
-                    log.warning('The CL of CL-converted image is different to the calculated CL - please check it')
+                cl_refvoi = cl[refvoi]
+                if tracer!='new' and abs(cl_-cl_refvoi)<0.25:
+                    log.warning(f'The CL of CL-converted image is different to the calculated CL (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
 
                     # > save the CL-converted file
                     nimpa.create_dir(opthi)
