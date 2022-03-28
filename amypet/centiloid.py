@@ -327,7 +327,7 @@ def run(fpets,
 
         #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
         # > output the CL-converted PET image in the MNI space
-        if climage:
+        if climage and tracer!='new':
 
             for refvoi in fmasks:
                 if refvoi=='ctx': continue
