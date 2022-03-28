@@ -244,7 +244,9 @@ def run(fpets,
             out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, outpath=optho)
 
             log.info(f'subject {onm}: load normalised PET image...')
-            fnpets = [f for f in optho.iterdir() if fpet.name.split('.nii')[0] in f.name]
+            fnpets = [f for f in optho.iterdir() \
+                        if fpet.name.split('.nii')[0] in f.name \
+                        and not 'n4bias' in fpet.name.lower() and not 'mr' in fpet.name.lower()]
 
             if len(fnpets) == 0:
                 raise ValueError('could not find normalised PET image files')
