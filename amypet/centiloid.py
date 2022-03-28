@@ -246,7 +246,7 @@ def run(fpets,
             log.info(f'subject {onm}: load normalised PET image...')
             fnpets = [f for f in optho.iterdir() \
                         if fpet.name.split('.nii')[0] in f.name \
-                        and not 'n4bias' in fpet.name.lower() and not 'mr' in fpet.name.lower()]
+                        and not 'n4bias' in f.name.lower() and not 'mr' in f.name.lower()]
 
             if len(fnpets) == 0:
                 raise ValueError('could not find normalised PET image files')
