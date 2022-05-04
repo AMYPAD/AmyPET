@@ -376,7 +376,7 @@ def calib_tracer(
             idx = pp.match(k)[2] or pp.match(k)[4]
 
             # > get the index in the NEW tracer dataset
-            kf = [ky for ky in outnew if idx+'_' in ky]
+            kf = [ky for ky in outnew if idx in ky] # idx+'_'
             if len(kf)==1:
                 kf = kf[0]
             else:
