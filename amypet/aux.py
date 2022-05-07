@@ -2,6 +2,7 @@
 Auxiliary functions for the centiloid project
 '''
 import os
+from pathlib import Path
 import pickle
 import re
 import numpy as np
@@ -13,6 +14,9 @@ from niftypet import nimpa
 
 # > regions used in CL project
 rvois = ['wc', 'cg', 'wcb', 'pns']
+
+# > folder name with the default conversion tables after calibration
+cl_anchor_fldr = 'cl_anchor_tables'
 
 # > region full name strings for plots
 rvoi_str = dict(
@@ -290,45 +294,6 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
 #----------------------------------------------------------------------
 
 
-def save_cl_anchors(diff):
-    ''' save the CL anchor points for each reference VOI.
-    '''
-
-    CLA = {}
-    txt = '# centiloid anchor points for different reference VOIs\n'
-    for rvoi in rvois:
-        suvr_0 = diff['yc'][rvoi]['mean']
-        suvr_100 = diff['ad'][rvoi]['mean']
-        CLA[rvoi] = (suvr_0, suvr_100)
-        txt += f'cla_{rvoi} = ({suvr_0}, {suvr_100})\n'
-    print(txt)
-    
-    cpth = os.path.realpath(__file__)
-    pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
-
-    with open(pth, 'wb') as f:
-        pickle.dump(CLA, f)
-
-    CLA['path'] = pth
-    
-    return CLA
-
-
-def get_cl_anchors():
-    ''' load the centiloid anchor points
-    '''
-
-    cpth = os.path.realpath(__file__)
-    pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
-
-
-    with open(pth, 'rb') as f:
-        CLA = pickle.load(f)
-
-    return CLA
-
-
-
 #======================================================================
 # CL CALIBRATION FOR A NEW TRACER
 #======================================================================
@@ -473,8 +438,59 @@ def calib_tracer(
     return cal
 
 
+
 #----------------------------------------------------------------------
-def save_suvr2pib(cal, tracer):
+def save_cl_anchors(diff, outpath=None):
+    ''' save the CL anchor points for each reference VOI.
+    '''
+
+    CLA = {}
+    txt = '# centiloid anchor points for different reference VOIs\n'
+    for rvoi in rvois:
+        suvr_0 = diff['yc'][rvoi]['mean']
+        suvr_100 = diff['ad'][rvoi]['mean']
+        CLA[rvoi] = (suvr_0, suvr_100)
+        txt += f'cla_{rvoi} = ({suvr_0}, {suvr_100})\n'
+    print(txt)
+    
+    if outpath is None:
+        cpth = Path(os.path.realpath(__file__))
+        cl_fldr = cpth.parent/cl_anchor_fldr
+    else:
+        cl_fldr = Path(outpath)
+    
+    nimpa.create_dir(cl_fldr)
+    pth = cl_fldr/'CL_PiB_anchors.pkl'
+
+    with open(pth, 'wb') as f:
+        pickle.dump(CLA, f)
+
+    CLA['path'] = pth
+    
+    return CLA
+
+
+def get_cl_anchors(path=None):
+    ''' load the centiloid anchor points
+    '''
+    
+    if path is None:
+        cpth = Path(os.path.realpath(__file__))
+        cl_fldr = cpth.parent/cl_anchor_fldr
+    else:
+        cl_fldr = Path(path)
+
+    pth = cl_fldr/'CL_PiB_anchors.pkl'
+
+    with open(pth, 'rb') as f:
+        CLA = pickle.load(f)
+
+    return CLA
+#----------------------------------------------------------------------
+
+
+#----------------------------------------------------------------------
+def save_suvr2pib(cal, tracer, outpath=None):
     ''' save the linear transformation parameters, `m_Std` and `b_Std`;
         the parameters are taken from the bigger calibration dictionary `cal`
         used here as input.
@@ -482,7 +498,10 @@ def save_suvr2pib(cal, tracer):
         The compact dictionary consists the two parameters for all reference regions
         and for the specific F-18 tracer being used.
 
-        `tracer` can be 'fbb' for [18F]florbetaben or 'flute' for [18F]flutemetamol.
+        `tracer` can be:
+            - 'fbb' for [18F]florbetaben
+            - 'flute' for [18F]flutemetamol
+            - 'fbp' for [18F]florbetapir
     '''
 
     if not tracer in ['fbp', 'fbb', 'flute']:
@@ -498,9 +517,18 @@ def save_suvr2pib(cal, tracer):
         txt += f'{rvoi}: m_std, b_std = ({mstd}, {bstd})\n'
     print(txt)
 
+    #---------------------------------
+    # > path to anchor point dictionary
+    if outpath is None:
+        cpth = Path(os.path.realpath(__file__))
+        cl_fldr = cpth.parent/cl_anchor_fldr
+    elif os.path.exists(outpath):
+        cpth = Path(outpath)
+        cl_fldr = cpth/cl_anchor_fldr
+    #---------------------------------
     
-    cpth = os.path.realpath(__file__)
-    pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+    nimpa.create_dir(cl_fldr)
+    pth = cl_fldr/(f'suvr_{tracer}_to_suvr_pib__transform.pkl')
 
     with open(pth, 'wb') as f:
         pickle.dump(CNV, f)
@@ -508,6 +536,7 @@ def save_suvr2pib(cal, tracer):
     CNV['path'] = pth
     
     return CNV
+
 
 def get_suvr2pib(tracer):
     ''' load the linear transformation parameters from a tracer SUVr
@@ -519,7 +548,8 @@ def get_suvr2pib(tracer):
         raise ValueError('e> tracer is unrecognised or not given!')
 
     cpth = os.path.realpath(__file__)
-    pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+    cl_fldr = os.path.join(os.path.dirname(cpth), cl_anchor_fldr)
+    pth = os.path.join(cl_fldr, f'suvr_{tracer}_to_suvr_pib__transform.pkl')
 
 
     with open(pth, 'rb') as f:

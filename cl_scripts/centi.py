@@ -1,7 +1,7 @@
 ''' Run calibration centiloid pipeline for PiB
 '''
 
-__author__ = "Pawel J Markiewicz, Casper Da Costa-Luis"
+__author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
 import os, sys
@@ -13,7 +13,7 @@ from amypet import centiloid as centi
 import amypet
 
 # > input paths
-drv = Path('/sdata/AMYPET')
+drv = Path('/data/AMYPET')
 atlases = drv/Path('Atlas/CL_2mm/')
 opth = drv/Path('CL/PiB')
 

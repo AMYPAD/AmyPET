@@ -28,6 +28,8 @@ import spm12
 from miutil.fdio import hasext, nsort
 from niftypet import nimpa
 
+from .aux import cl_anchor_fldr
+
 log = logging.getLogger(__name__)
 
 
@@ -61,7 +63,7 @@ def run(fpets,
         visual=False,
         climage=True,
         used_saved=False,
-        cl_anchore_path=None):
+        cl_anchor_path=None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -83,7 +85,7 @@ def run(fpets,
       visual: SPM-based progress visualisations of image registration or
               or image normalisation.
       climage: outputs the CL-converted PET image in the MNI space
-      cl_anchore_path: The path where optional CL anchor dictionary is
+      cl_anchor_path: The path where optional CL anchor dictionary is
                 saved.
     """
 
@@ -270,16 +272,18 @@ def run(fpets,
         #**************************************************************
         #---------------------------------
         # > path to anchor point dictionary
-        if cl_anchore_path is None:
-            cpth = os.path.realpath(__file__)
-        elif os.path.exists(cl_anchore_path):
-            cpth = Path(cl_anchore_path)
+        if cl_anchor_path is None:
+            cpth = Path(os.path.realpath(__file__))
+            cl_fldr = cpth.parent/cl_anchor_fldr
+        elif os.path.exists(cl_anchor_path):
+            cpth = Path(cl_anchor_path)
+            cl_fldr = cpth/cl_anchor_fldr
         #---------------------------------
 
 
         #---------------------------------
         # > centiloid transformation for PiB
-        pth = os.path.join(os.path.dirname(cpth), 'CL_PiB_anchors.pkl')
+        pth = cl_fldr/'CL_PiB_anchors.pkl'
 
         if not os.path.isfile(pth):
             tracer = 'new'
@@ -294,7 +298,7 @@ def run(fpets,
         # > centiloid transformation for PiB
         # > check if SUVr transformation is needed for F-18 tracers
         if tracer in f18_tracers:
-            pth = os.path.join(os.path.dirname(cpth), f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+            pth = cl_fldr/(f'suvr_{tracer}_to_suvr_pib__transform.pkl')
 
             if not os.path.isfile(pth):
                 log.warning('The conversion dictionary/table for the specified tracer is not found')

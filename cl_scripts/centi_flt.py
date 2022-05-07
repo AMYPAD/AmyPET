@@ -1,7 +1,7 @@
 ''' Run centiloid pipeline level-2 for a new tracer FLUTE.
 '''
 
-__author__ = "Pawel J Markiewicz, Casper Da Costa-Luis"
+__author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
 import os, sys
