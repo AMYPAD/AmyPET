@@ -485,7 +485,7 @@ def save_suvr2pib(cal, tracer):
         `tracer` can be 'fbb' for [18F]florbetaben or 'flute' for [18F]flutemetamol.
     '''
 
-    if not tracer in ['fbb', 'flute']:
+    if not tracer in ['fbp', 'fbb', 'flute']:
         raise ValueError('e> tracer is unrecognised or not given!')
 
     # conversion dictionary
@@ -515,7 +515,7 @@ def get_suvr2pib(tracer):
         tracers.
     '''
 
-    if not tracer in ['fbb', 'flute']:
+    if not tracer in ['fbp', 'fbb', 'flute']:
         raise ValueError('e> tracer is unrecognised or not given!')
 
     cpth = os.path.realpath(__file__)

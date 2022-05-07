@@ -89,7 +89,7 @@ def run(fpets,
 
 
     # supported F-18 tracers
-    f18_tracers =  ['fbb', 'flute']
+    f18_tracers =  ['fbp', 'fbb', 'flute']
 
 
     spm_path = Path(spm12.utils.spm_dir())

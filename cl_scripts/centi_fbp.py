@@ -26,15 +26,14 @@ from collections import Counter
 
 drv = Path('/data')
 atlases = drv/Path('AMYPET/Atlas/CL_2mm/')
-opth = drv/Path('AMYPET/CL/FBP')
+dirdata = drv/Path('AMYPET/CL/FBP')
+opth = dirdata
 
 #----------------------------------------------------------------------
 # > convert to NIfTI as needed
 if False:
     intrm_fldr = 'NIfTI_converted_intrm'
     final_fldr = 'NIfTI'
-
-    dirdata = drv/Path('AMYPET/CL/FBP')
 
     # > folder to be corrected (inconsistency detected upsetting the running of AmyPET)
     dircorr = dirdata/'Young_Control_PiB'/'411884_PiB3_AC'
@@ -131,9 +130,9 @@ if False:
 
 #----------------------------------------------------------------------
 # ELDRL
-dirfbp = drv/Path('AMYPET/CL/FBP/NIfTI_summed/Elder_subject_florbetapir')
-dirpib = drv/Path('AMYPET/CL/FBP/NIfTI_summed/Elder_subject_PiB')
-dirmri = drv/Path('AMYPET/CL/FBP/NIfTI_summed/Elder_subject_MRI')
+dirfbp = drv/Path('AMYPET/CL/FBP/NIfTI/Elder_subject_florbetapir')
+dirpib = drv/Path('AMYPET/CL/FBP/NIfTI/Elder_subject_PiB')
+dirmri = drv/Path('AMYPET/CL/FBP/NIfTI/Elder_subject_MRI')
 ffbps = [dirfbp/f for f in dirfbp.glob('*.nii*')]
 fpibs = [dirpib/f for f in dirpib.glob('*.nii*')]
 fmris = [dirmri/f for f in dirmri.glob('*.nii*')]
@@ -159,9 +158,9 @@ with open(str(opth/'output_fbp_e.pkl'), 'wb') as f:
 
 #----------------------------------------------------------------------
 # YC
-dirfbp = drv/Path('AMYPET/CL/FBP/NIfTI_summed/Young_Control_florbetapir')
-dirpib = drv/Path('AMYPET/CL/FBP/NIfTI_summed/Young_Control_PiB')
-dirmri = drv/Path('AMYPET/CL/FBP/NIfTI_summed/Young_Control_MRI')
+dirfbp = drv/Path('AMYPET/CL/FBP/NIfTI/Young_Control_florbetapir')
+dirpib = drv/Path('AMYPET/CL/FBP/NIfTI/Young_Control_PiB')
+dirmri = drv/Path('AMYPET/CL/FBP/NIfTI/Young_Control_MRI')
 ffbps = [dirfbp/f for f in dirfbp.glob('*.nii*')]
 fpibs = [dirpib/f for f in dirpib.glob('*.nii*')]
 fmris = [dirmri/f for f in dirmri.glob('*.nii*')]
@@ -174,7 +173,7 @@ amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbps, fmris)
 '''
 
-out_py = centi.run(fpibs, fmris, atlases,  tracer='pib', outpath=opth/'output_pib_y')
+out_py = centi.run(fpibs, fmris, atlases,  tracer='pib', outpath=opth/'output_pib_y', used_saved=True)
 with open(str(opth/'output_pib_y.pkl'), 'wb') as f:
     pickle.dump(out_py, f)
 
@@ -211,9 +210,35 @@ outf = out_fe
 cal = amypet.calib_tracer(outp, outf)
 
 # > save the transformations from SUVr to SUVr_PiB_Calc
-Tsuvr = amypet.save_suvr2pib(cal, 'fbb')
+Tsuvr = amypet.save_suvr2pib(cal, 'fbp')
 
 
 # TEST
 out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'output_test_pib')
 out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth/'output_test_fbb', used_saved=True)
+
+
+import openpyxl as xl
+info = xl.load_workbook(dirdata/'Avid_Centiloid_standard_method.xlsx')
+dat = info['Sheet1']
+istart = 2
+
+pid = [i.value for i in dat['A'][istart:]]
+suvr_wc_fbp = np.array([i.value for i in dat['D'][istart:]])
+suvr_wc_pib = [i.value for i in dat['E'][istart:]]
+suvr_wc_cnv = [i.value for i in dat['G'][istart:]]
+cl_wc_fbp = np.array([i.value for i in dat['I'][istart:]])
+cl_wc_pib = [i.value for i in dat['J'][istart:]]
+
+# > index conversion from the xlsx file to the AmyPET indexes (sorted)
+idxs = [pid.index(int(i)) for i in cal['wc']['sbj']]
+suvrf_avid = suvr_wc_fbp[idxs]
+suvrf_amyp = cal['wc']['calib']['cl_suvr'][:,2]
+
+clf_avid = cl_wc_fbp[idxs]
+
+plot(suvrf_avid, suvrf_amyp, '.')
+
+fig, ax  = plt.subplots()
+ax.scatter(cal[rvoi]['calib']['cl_suvr'][:,1], cal[rvoi]['calib']['cl_suvr'][:,2], c='black')
+amypet.aux.identity_line(ax=ax, ls='--', c='b')
