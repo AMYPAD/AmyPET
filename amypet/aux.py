@@ -539,7 +539,7 @@ def save_suvr2pib(cal, tracer, outpath=None):
     return CNV
 
 
-def get_suvr2pib(tracer):
+def get_suvr2pib(tracer, path=None):
     ''' load the linear transformation parameters from a tracer SUVr
         to PiB SUVr; it's used for converting to CL scale any F-18
         tracers.
@@ -548,10 +548,14 @@ def get_suvr2pib(tracer):
     if not tracer in ['fbp', 'fbb', 'flute']:
         raise ValueError('e> tracer is unrecognised or not given!')
 
-    cpth = os.path.realpath(__file__)
-    cl_fldr = os.path.join(os.path.dirname(cpth), cl_anchor_fldr)
-    pth = os.path.join(cl_fldr, f'suvr_{tracer}_to_suvr_pib__transform.pkl')
 
+    if path is None:
+        cpth = Path(os.path.realpath(__file__))
+        cl_fldr = cpth.parent/cl_anchor_fldr
+    else:
+        cl_fldr = Path(path)
+
+    pth = os.path.join(cl_fldr, f'suvr_{tracer}_to_suvr_pib__transform.pkl')
 
     with open(pth, 'rb') as f:
         CNV = pickle.load(f)

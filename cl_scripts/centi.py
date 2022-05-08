@@ -78,3 +78,13 @@ diff = amypet.check_cls(out_yc, out_ad, diff, refs)
 
 #cla = amypet.save_cl_anchors(diff, outpath=Path('/home/pawel/Dropbox'))
 cla = amypet.save_cl_anchors(diff)
+
+
+
+
+# > load/test the anchor and conversion tables
+cla = amypet.get_cl_anchors(path='/home/pawel/NiftyPET/AmyPET/amypet/cl_anchor_tables')
+
+cla = amypet.get_cl_anchors(path='/home/pawel/NiftyPET/AmyPET/amypet')
+
+clc = amypet.get_suvr2pib
