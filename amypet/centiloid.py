@@ -288,6 +288,8 @@ def run(fpets,
         if not os.path.isfile(pth):
             tracer = 'new'
             log.warning('Could not find the PiB CL anchor point definitions/tables')
+        else:
+            log.info(f'using the following CL anchor table:\n   {pth}')
 
         with open(pth, 'rb') as f:
             CLA = pickle.load(f)

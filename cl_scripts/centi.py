@@ -76,4 +76,5 @@ diff = amypet.check_suvrs(out_yc, out_ad, refs)
 
 diff = amypet.check_cls(out_yc, out_ad, diff, refs)
 
+#cla = amypet.save_cl_anchors(diff, outpath=Path('/home/pawel/Dropbox'))
 cla = amypet.save_cl_anchors(diff)
