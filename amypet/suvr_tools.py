@@ -271,6 +271,7 @@ def voi_process(
     ref_voi=None,
     frames=None,
     fname=None,
+    t1_bias_corr=True,
     outpath=None,
     output_masks=True,
     save_voi_masks=False,
@@ -293,6 +294,7 @@ def voi_process(
         - frames:   select the frames if multi-frame image given;
                     by default selects all frames
         - fname:    the core file name for resulting images
+        - t1_bias_corr: it True, performs bias field correction of the T1w image
         - outpath:  folder path to the output images, including intermediate
                     images
         - output_masks: if True, output VOI sampling masks in the output
@@ -341,6 +343,17 @@ def voi_process(
     out.update(suvr_preproc)
 
 
+
+    if t1_bias_corr:
+        out['n4'] = nimpa.bias_field_correction(
+            t1wpth,
+            executable = 'sitk',
+            outpath = suvr_preproc['fstat'].parent.parent)
+        fmri = out['n4']['fim']
+    else:
+        fmri = t1wpth
+
+
     #--------------------------------------------------
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
@@ -373,7 +386,7 @@ def voi_process(
     
         spm_res = nimpa.coreg_spm(
             ftrm['fimi'][0],
-            t1wpth,
+            fmri,
             fwhm_ref = reg_fwhm_pet,
             fwhm_flo = reg_fwhm_mri,
             fwhm = [7,7],

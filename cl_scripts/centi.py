@@ -84,7 +84,10 @@ cla = amypet.save_cl_anchors(diff)
 
 # > load/test the anchor and conversion tables
 cla = amypet.get_cl_anchors(path='/home/pawel/NiftyPET/AmyPET/amypet/cl_anchor_tables')
-
 cla = amypet.get_cl_anchors(path='/home/pawel/NiftyPET/AmyPET/amypet')
 
-clc = amypet.get_suvr2pib
+tracer = 'flute'
+tracer = 'fbb'
+tracer = 'fbp'
+clc = amypet.get_suvr2pib(tracer, path='/home/pawel/NiftyPET/AmyPET/amypet/cl_anchor_tables')
+clc = amypet.get_suvr2pib(tracer, path='/home/pawel/NiftyPET/AmyPET/amypet')
