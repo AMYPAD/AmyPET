@@ -340,8 +340,9 @@ def calib_tracer(
 
             idx = pp.match(k)[2] or pp.match(k)[4]
 
-            # > get the index in the NEW tracer dataset
-            kf = [ky for ky in outnew if idx in ky] # idx+'_'
+            # > get the key name in the NEW tracer dataset 
+            # > (matching using the first 20 characters)
+            kf = [ky for ky in outnew if idx in ky[:20]] # idx+'_'
             if len(kf)==1:
                 kf = kf[0]
             else:

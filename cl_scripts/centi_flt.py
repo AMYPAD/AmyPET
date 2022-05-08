@@ -19,7 +19,7 @@ import matplotlib
 from scipy.stats import linregress
 
 
-drv = Path('/sdata/AMYPET')
+drv = Path('/data/AMYPET')
 atlases = drv/Path('Atlas/CL_2mm/')
 opth = drv/Path('CL/FLUTE')
 

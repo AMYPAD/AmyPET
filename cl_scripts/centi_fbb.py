@@ -21,7 +21,7 @@ from scipy.stats import linregress
 from subprocess import run
 import dcm2niix
 
-drv = Path('/sdata')
+drv = Path('/data')
 atlases = drv/Path('AMYPET/Atlas/CL_2mm/')
 opth = drv/Path('AMYPET/CL/FBB')
 
