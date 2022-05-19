@@ -20,10 +20,10 @@ cl_anchor_fldr = 'cl_anchor_tables'
 
 # > region full name strings for plots
 rvoi_str = dict(
-    wc='whole cerebellum',
-    cg='cerebellum GM',
-    wcb='whole cerebellum + brain stem',
-    pns='pons')
+    wc='WHOLE CEREBELLUM',
+    cg='CEREBELLUM GM',
+    wcb='WHOLE CEREBELLUM + BRAIN STEM',
+    pns='PONS')
 
 #----------------------------------------------------------------------
 def im_check_pairs(fpets, fmris):
@@ -409,7 +409,7 @@ def calib_tracer(
         r2 = cal[rvoi]['calib']['r2']
         ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1], f'$y = {m_std:.4f}x + {b_std:.4f}$', fontsize=fontsize)
         ax[i,j].text(xystr[rvoi][0], xystr[rvoi][1]-0.1, f'$R^2={r2:.4f}$', fontsize=fontsize)
-        ax[i,j].set_title(rvoi_str[rvoi])
+        ax[i,j].set_title(rvoi_str[rvoi], fontweight='bold')
         ax[i,j].set_xlabel('$^\mathrm{PiB}$SUVr$_\mathrm{IND}$', fontsize=fontsize)
         ax[i,j].set_ylabel('$^\mathrm{NEW}$SUVr$_\mathrm{IND}$', fontsize=fontsize)
         ax[i,j].grid('on')

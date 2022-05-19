@@ -378,7 +378,7 @@ def voi_process(
 
     # > - - - - - - - - - - - - - - - - - - - - - - - -
     # > parcellations in PET space
-    fplbl =  trmdir /  '{}_GIF-Parcellation_in-upsampled-PET.nii.gz'.format(suvr_preproc['fstat'].name.split('.nii')[0])
+    fplbl =  trmdir /  '{}_Parcellation_in-upsampled-PET.nii.gz'.format(suvr_preproc['fstat'].name.split('.nii')[0])
     
     if not fplbl.is_file() or reg_fresh:
 
