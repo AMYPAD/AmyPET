@@ -237,6 +237,7 @@ suvrf_amyp = cal['wc']['calib']['cl_suvr'][:,2]
 
 clf_avid = cl_wc_fbp[idxs]
 
+figure()
 plot(suvrf_avid, suvrf_amyp, '.')
 
 fig, ax  = plt.subplots()
