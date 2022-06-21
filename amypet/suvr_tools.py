@@ -166,7 +166,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     else:
         outdir = Path(outpath)
 
-    petout = outdir / (pet_path.name+'_suvr')
+    petout = outdir / (pet_path.name.split('.')[0]+'_suvr')
     nimpa.create_dir(petout)
 
     if fname is None:
