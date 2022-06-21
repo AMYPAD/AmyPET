@@ -218,6 +218,13 @@ out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'outp
 out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth/'output_test_fbb', used_saved=True)
 
 
+with open(opth/'cal_data.pkl', 'wb') as f:
+    pickle.dump(cal, f)
+
+with open(opth/'cal_data.pkl', 'rb') as f:
+    cal_fbp = pickle.load(f)
+
+
 import openpyxl as xl
 info = xl.load_workbook(dirdata/'Avid_Centiloid_standard_method.xlsx')
 dat = info['Sheet1']

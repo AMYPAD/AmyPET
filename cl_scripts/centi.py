@@ -91,3 +91,126 @@ tracer = 'fbb'
 tracer = 'fbp'
 clc = amypet.get_suvr2pib(tracer, path='/home/pawel/NiftyPET/AmyPET/amypet/cl_anchor_tables')
 clc = amypet.get_suvr2pib(tracer, path='/home/pawel/NiftyPET/AmyPET/amypet')
+
+
+
+
+#----------------------------------------------------------------------
+def identity_line(ax=None, ls='--', *args, **kwargs):
+    '''
+    plot identity line for any correlation analysis
+    needed for the CL calibration and beyond.
+    '''
+    # see: https://stackoverflow.com/q/22104256/3986320
+    ax = ax or plt.gca()
+    identity, = ax.plot([], [], ls=ls, *args, **kwargs)
+    def callback(axes):
+        low_x, high_x = ax.get_xlim()
+        low_y, high_y = ax.get_ylim()
+        low = min(low_x, low_y)
+        high = max(high_x, high_y)
+        identity.set_data([low, high], [low, high])
+    callback(ax)
+    ax.callbacks.connect('xlim_changed', callback)
+    ax.callbacks.connect('ylim_changed', callback)
+    return ax
+#----------------------------------------------------------------------
+
+
+#===================================================
+import os, sys
+from pathlib import Path
+import pickle
+import openpyxl as xl
+from scipy.stats import linregress
+drv = Path('/Users/pawel/Dropbox/tmp/AMYPAD/AmyPET/')
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - 
+with open(drv/'cal_fbb.pkl', 'rb') as f:
+    cal = pickle.load(f)
+
+info = xl.load_workbook(drv/'FBBproject_SupplementaryTable.xlsx')
+dat = info['18F-FBB']
+cl_o = np.array([i.value for i in dat['H'][4:29]] + [i.value for i in dat['H'][30:]])
+
+pid = [i.value for i in dat['A'][4:29]] + [int(i.value[1:]) for i in dat['A'][30:]]
+idxs = [pid.index(int(i)) for i in cal['wc']['sbj']]
+cl_os = cl_o[idxs]
+
+rvoi = 'wc'
+cl_amy = cal[rvoi]['calib']['cl_std_fbb']
+
+fig, ax  = plt.subplots()
+ax.scatter(cl_os, cl_amy, c='black')
+identity_line(ax=ax, ls='--', c='b')
+ax.set_xlabel('Original F18 CLs')
+ax.set_ylabel('AmyPET F18 CLs')
+ax.grid('on')
+ax.set_title('FBB')
+
+m, a, r, p, stderr = linregress(cl_os, cl_amy)
+r2 = r**2
+ax.text(0, 125, f'$R^2={r2:.4f}$', fontsize=12)
+#- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - 
+with open(drv/'cal_flt.pkl', 'rb') as f:
+    cal = pickle.load(f)
+
+info = xl.load_workbook(drv/'flutemetamol.xlsx')
+dat = info['GE PiB & Flutemetamol']
+cl_o = np.array([i.value for i in dat['T'][3:53]] + [i.value for i in dat['T'][54:78]])
+
+pid = [int(i.value[3:]) for i in dat['C'][3:53]] + [int(i.value[4:]) for i in dat['C'][54:78]]
+
+idxs = [pid.index(int(i)) for i in cal['wc']['sbj']]
+cl_os = cl_o[idxs]
+
+rvoi = 'wc'
+cl_amy = cal[rvoi]['calib']['cl_std_fbb']
+
+fig, ax  = plt.subplots()
+ax.scatter(cl_os, cl_amy, c='black')
+identity_line(ax=ax, ls='--', c='b')
+ax.set_xlabel('Original F18 CLs')
+ax.set_ylabel('AmyPET F18 CLs')
+ax.grid('on')
+ax.set_title('FLUTE')
+
+m, a, r, p, stderr = linregress(cl_os, cl_amy)
+r2 = r**2
+ax.text(0, 125, f'$R^2={r2:.4f}$', fontsize=12)
+#- - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - 
+with open(drv/'cal_fbp.pkl', 'rb') as f:
+    cal = pickle.load(f)
+
+info = xl.load_workbook(drv/'Avid_Centiloid_standard_method.xlsx')
+dat = info['Sheet1']
+cl_o = np.array([i.value for i in dat['I'][2:]])
+
+pid = [i.value for i in dat['A'][2:]]
+
+idxs = [pid.index(int(i)) for i in cal['wc']['sbj']]
+cl_os = cl_o[idxs]
+
+rvoi = 'wc'
+cl_amy = cal[rvoi]['calib']['cl_std_fbb']
+
+fig, ax  = plt.subplots()
+ax.scatter(cl_os, cl_amy, c='black')
+identity_line(ax=ax, ls='--', c='b')
+ax.set_xlabel('Original F18 CLs')
+ax.set_ylabel('AmyPET F18 CLs')
+ax.grid('on')
+ax.set_title('FBP')
+
+m, a, r, p, stderr = linregress(cl_os, cl_amy)
+r2 = r**2
+ax.text(0, 125, f'$R^2={r2:.4f}$', fontsize=12)
+#- - - - - - - - - - - - - - - - - - - - - - - - - 
