@@ -169,7 +169,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     nimpa.create_dir(petout)
 
     if fname is None:
-        fname = nimpa.rem_chars(pet_path.name.split('.')[0])+'_suvr.nii.gz'
+        fname = nimpa.rem_chars(pet_path.name.split('.')[0])+'_static.nii.gz'
     elif not str(fname).endswith(nifti_ext[1]):
         fname += '.nii.gz'
     #--------------------------------------
