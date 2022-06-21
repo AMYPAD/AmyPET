@@ -162,11 +162,10 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     #--------------------------------------
     # > sort out the output folder
     if outpath is None:
-        outdir = pet_path.parent
+        petout = pet_path.parent
     else:
-        outdir = Path(outpath)
+        petout = Path(outpath)
 
-    petout = outdir / (pet_path.name.split('.')[0]+'_suvr')
     nimpa.create_dir(petout)
 
     if fname is None:
@@ -318,6 +317,12 @@ def voi_process(
     t1wpth = Path(t1wpth)
     lblpth = Path(lblpth)
 
+    if outpath is None:
+        outpath = petpth.parent
+    else:
+        outpath = Path(outpath)
+
+
     out['input'] = dict(fpet=petpth, ft1w=t1wpth, flbl=lblpth)
 
     if not (petpth.exists() and t1wpth.is_file() and lblpth.is_file()):
@@ -332,12 +337,11 @@ def voi_process(
     if ref_voi is not None and not all([r in voi_dct for r in ref_voi]):
         raise ValueError('Not all VOIs listed as reference are in the VOI definition dictionary.')
 
-
     # > static (SUVr) image preprocessing
     suvr_preproc = preproc_suvr(
         petpth,
         frames=frames,
-        outpath=outpath,
+        outpath=outpath/(petpth.name.split('.')[0]+'_suvr'),
         fname=fname)
 
     out.update(suvr_preproc)
