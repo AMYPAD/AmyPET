@@ -136,3 +136,11 @@ Tsuvr = amypet.save_suvr2pib(cal, 'fbb')
 # TEST
 out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'output_test_pib')
 out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth/'output_test_fbb', used_saved=True)
+
+
+
+with open(opth/'cal_data.pkl', 'wb') as f:
+    pickle.dump(cal, f)
+
+with open(opth/'cal_data.pkl', 'rb') as f:
+    cal_fbb = pickle.load(f)

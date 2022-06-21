@@ -110,3 +110,10 @@ Tsuvr = amypet.save_suvr2pib(cal, 'flute')
 # TEST
 out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'output_test_pib')
 out_tt = centi.run(fflts[0], fmris[0], atlases, tracer='flute', outpath=opth/'output_test_flt')
+
+
+with open(opth/'cal_data.pkl', 'wb') as f:
+    pickle.dump(cal, f)
+
+with open(opth/'cal_data.pkl', 'rb') as f:
+    cal_flt = pickle.load(f)
