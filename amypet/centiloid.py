@@ -59,6 +59,7 @@ def run(fpets,
         tracer='pib',
         flip_pet=None,
         bias_corr=True,
+        voxsz=2,
         outpath=None,
         visual=False,
         climage=True,
@@ -77,6 +78,8 @@ def run(fpets,
               are supported. 
               IMPORTANT: when calibrating a new tracer, ensure that
               `tracer`='new'.
+      voxsz: voxel size for SPM normalisation writing function 
+             (output MR and PET images will have this voxel size).
       flip_pet: a list of flips (3D tuples) which flip any dimension
                of the 3D PET image (z,y,x); the list has to have the 
                same length as the lists of `fpets` and `fmris` 
@@ -243,7 +246,7 @@ def run(fpets,
                                                     visual=visual)
             # normalise
             list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
-            out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, outpath=optho)
+            out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=voxsz, outpath=optho)
 
             log.info(f'subject {onm}: load normalised PET image...')
             fnpets = [f for f in optho.iterdir() \
