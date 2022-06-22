@@ -41,6 +41,8 @@ def load_masks(mskpath, voxsz=2):
                  and the atlas mask.  Default is 2 mm.
     '''
 
+    voxsz = int(voxsz)
+
     if voxsz not in [1,2]:
         raise ValueError('Incorrect voxel size - only 1 and 2 are accepted.')
 
@@ -63,7 +65,7 @@ def run(fpets,
         tracer='pib',
         flip_pet=None,
         bias_corr=True,
-        voxsz=2,
+        voxsz=2.,
         outpath=None,
         visual=False,
         climage=True,
