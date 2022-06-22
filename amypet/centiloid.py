@@ -251,7 +251,7 @@ def run(fpets,
 
             log.info(f'subject {onm}: MR normalisation/segmentation...')
             out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
-                                                    store_nat_gm=False, store_nat_wm=False,
+                                                    store_nat_gm=True, store_nat_wm=False,
                                                     store_nat_csf=True, store_fwd=True, store_inv=True,
                                                     visual=visual)
             # normalise
