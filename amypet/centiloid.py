@@ -41,7 +41,7 @@ def load_masks(mskpath, voxsz=2):
                  and the atlas mask.  Default is 2 mm.
     '''
 
-    if voxsz is not in [1,2]:
+    if voxsz not in [1,2]:
         raise ValueError('Incorrect voxel size - only 1 and 2 are accepted.')
 
     log.info('loading CL masks...')
