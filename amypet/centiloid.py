@@ -1,14 +1,11 @@
 """Centiloid pipeline
 
 Usage:
-  centiloid [options] <fpets> <fmris> <atlases>
+  centiloid [options] <fpets> <fmris>
 
 Arguments:
   <fpets>  : PET NIfTI directory [default: DirChooser]
   <fmris>  : MRI NIfTI directory [default: DirChooser]
-  <atlases>  : Reference regions ROIs directory
-    (standard Centiloid RR from GAAIN Centioid website: 2mm, NIfTI)
-    [default: DirChooser]
 
 Options:
   --outpath FILE  : Output directory
@@ -34,18 +31,26 @@ log = logging.getLogger(__name__)
 
 
 #----------------------------------------------------------------------
-def load_masks(atlases):
+def load_masks(mskpath, voxsz=2):
     ''' Load the Centiloid PET masks for calculating 
         the SUVr to then convert it to Centiloid.
 
         Return the paths to the masks and the masks themselves
+        Options:
+        - voxsz: voxel size used in the normalised PET/MR images
+                 and the atlas mask.  Default is 2 mm.
     '''
+
+    if voxsz is not in [1,2]:
+        raise ValueError('Incorrect voxel size - only 1 and 2 are accepted.')
 
     log.info('loading CL masks...')
     fmasks = {
-        'cg': atlases / 'voi_CerebGry_2mm.nii', 'wc': atlases / 'voi_WhlCbl_2mm.nii',
-        'wcb': atlases / 'voi_WhlCblBrnStm_2mm.nii', 'pns': atlases / 'voi_Pons_2mm.nii',
-        'ctx': atlases / 'voi_ctx_2mm.nii'}
+        'cg': mskpath / f'voi_CerebGry_{voxsz}mm.nii',
+        'wc': mskpath / f'voi_WhlCbl_{voxsz}mm.nii',
+        'wcb': mskpath / f'voi_WhlCblBrnStm_{voxsz}mm.nii',
+        'pns': mskpath / f'voi_Pons_{voxsz}mm.nii',
+        'ctx': mskpath / f'voi_ctx_{voxsz}mm.nii'}
     masks = {fmsk: nimpa.getnii(fmasks[fmsk]) for fmsk in fmasks}
 
     return fmasks, masks
@@ -55,7 +60,6 @@ def load_masks(atlases):
 
 def run(fpets,
         fmris,
-        atlases,
         tracer='pib',
         flip_pet=None,
         bias_corr=True,
@@ -69,7 +73,6 @@ def run(fpets,
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
     Args:
-      atlases: the path to the CL 2mm resolution atlases
       outpath: path to the output folder
       bias_corr: bias filed correction for the MR image (True/False)
       tracer: specifies what tracer is being used and so the right
@@ -98,7 +101,7 @@ def run(fpets,
 
 
     spm_path = Path(spm12.utils.spm_dir())
-    atlases = Path(atlases)
+
     out = {}                                           # output dictionary
     tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
 
@@ -142,8 +145,13 @@ def run(fpets,
     #-------------------------------------------------------------
 
 
-    fmasks, masks = load_masks(atlases)
+    #-------------------------------------------------------------
+    # > get the CL masks
+    # > AmyPET centiloid module path
+    cpth = Path(os.path.realpath(__file__))
 
+    fmasks, masks = load_masks(cpth.parent/'CL_masks', voxsz=voxsz)
+    #-------------------------------------------------------------
 
     log.info('iterate through all the input data...')
     
@@ -276,11 +284,9 @@ def run(fpets,
         #---------------------------------
         # > path to anchor point dictionary
         if cl_anchor_path is None:
-            cpth = Path(os.path.realpath(__file__))
             cl_fldr = cpth.parent/cl_anchor_fldr
         elif os.path.exists(cl_anchor_path):
-            cpth = Path(cl_anchor_path)
-            cl_fldr = cpth/cl_anchor_fldr
+            cl_fldr = Path(cl_anchor_path)
         #---------------------------------
 
 
