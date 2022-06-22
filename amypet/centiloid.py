@@ -161,17 +161,18 @@ def run(fpets,
     for fpet, fmri in zip(*pet_mr_list):
 
         fi+=1
-        # make the files Path objects
+        # > make the files Path objects
         fpet, fmri = Path(fpet), Path(fmri)
         opth = Path(fpet.parent if outpath is None else outpath)
 
-        # create output dictionary and folder specific to the PET
-        # file which will be CL quantified; name of the folder
-        # and dictionary output is based on PET name
+        # > create output dictionary and folder specific to the PET
+        # > file which will be CL quantified; name of the folder
+        # > and dictionary output is based on PET name
         onm = fpet.name.rsplit('.nii', 1)[0]
         spth = opth / onm
         out[onm] = {'opth': spth, 'fpet': fpet, 'fmri': fmri}
-        # output path for centre of mass alignment and registration
+        
+        # >output path for centre of mass alignment and registration
         opthc = spth / 'centre-of-mass'
         opthr = spth / 'registration'
         opthn = spth / 'normalisation'
@@ -179,7 +180,7 @@ def run(fpets,
         opths = spth / 'suvr'
         opthi = spth / 'cl-image'
  
-        # find if the normalised PET is already there
+        # > find if the normalised PET is already there
         if optho.is_dir():
             fnpets = [f for f in optho.iterdir() if fpet.name.split('.nii')[0] in f.name]
         else:
@@ -201,13 +202,13 @@ def run(fpets,
 
 
             log.info(f'subject {onm}: centre of mass correction')
-            # check if flipping the PET is requested
+            # > check if flipping the PET is requested
             if flips[fi] is not None and any(flips[fi]):
                 flip=flips[fi]
             else:
                 flip = None
 
-            # modify for the centre of mass being at O(0,0,0)
+            # > modify for the centre of mass being at O(0,0,0)
             out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
             out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
@@ -254,7 +255,7 @@ def run(fpets,
                                                     store_nat_gm=True, store_nat_wm=False,
                                                     store_nat_csf=True, store_fwd=True, store_inv=True,
                                                     visual=visual)
-            # normalise
+            # > normalise
             list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
             out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=voxsz, outpath=optho)
 
@@ -274,7 +275,7 @@ def run(fpets,
 
         # npet[npet<0] = 0
 
-        # extract mean values and SUVr
+        # > extract mean values and SUVr
         out[onm]['avgvoi'] = avgvoi = {fmsk: np.mean(npet[masks[fmsk] > 0]) for fmsk in fmasks}
         out[onm]['suvr'] = suvr = {
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
