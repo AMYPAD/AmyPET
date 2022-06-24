@@ -19,7 +19,7 @@ nifti_ext = ('.nii', '.nii.gz')
 dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
 # ========================================================================================
-def r_trimup(fpet, fmri):
+def r_trimup(fpet, fmri, store_img_intrmd=True):
     '''
     trim and upscale PET relative to MR T1w or its derivative;
     derives the scale of upscaling/trimming using the image/voxel sizes
@@ -47,7 +47,7 @@ def r_trimup(fpet, fmri):
     scale = np.abs(np.round(pet_szyx[::-1]/mri_szyx[::-1])).astype(np.int32)
 
     # > trim the PET image for more accurate regional sampling
-    ftrm = nimpa.imtrimup(fpet, scale=scale, store_img_intrmd=True)
+    ftrm = nimpa.imtrimup(fpet, scale=scale, store_img_intrmd=store_img_intrmd)
 
     # > trimmed folder
     trmdir = Path(ftrm['fimi'][0]).parent
@@ -400,21 +400,14 @@ def voi_process(
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
-    petdct = nimpa.getnii(suvr_preproc['fstat'], output='all')
-    lbldct = nimpa.getnii(lblpth, output='all')
-    pet_szyx = petdct['hdr']['pixdim'][1:4]
-    mri_szyx = lbldct['hdr']['pixdim'][1:4]
-    scale = np.abs(np.round(pet_szyx[::-1]/mri_szyx[::-1])).astype(np.int32)
-
-    # > trim the PET image for more accurate regional sampling
-    ftrm = nimpa.imtrimup(suvr_preproc['fstat'], scale=scale, store_img_intrmd=True)
+    trmout = r_trimup(suvr_preproc['fstat'], lblpth, store_img_intrmd=True)
 
     # > trimmed folder
-    trmdir = Path(ftrm['fimi'][0]).parent
+    trmdir = trmout['trmdir']
 
     # > trimmed and upsampled PET file
-    out['ftrm'] = ftrm['fimi'][0]
-    out['trim_scale'] = scale
+    out['ftrm'] = trmout['ftrm'] ftrm['fimi'][0]
+    out['trim_scale'] = trmout['trim_scale']
     #--------------------------------------------------
 
 
