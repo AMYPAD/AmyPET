@@ -19,6 +19,44 @@ nifti_ext = ('.nii', '.nii.gz')
 dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
 # ========================================================================================
+def r_trimup(fpet, fmri):
+    '''
+    trim and upscale PET relative to MR T1w or its derivative;
+    derives the scale of upscaling/trimming using the image/voxel sizes
+    '''
+
+    if isinstance(fpet, (str, PurePath)):
+        petdct = nimpa.getnii(fpet, output='all')
+    elif isinstance(fpet, dict) and 'hdr' in fpet:
+        petdct = fpet
+    else:
+        raise ValueError('wrong PET input - accepted are path to image file or dictionary')
+
+    if isinstance(fmri, (str, PurePath)):
+        mridct = nimpa.getnii(fmri, output='all')
+    elif isinstance(fmri, dict) and 'hdr' in fmri:\
+        mridct = fmri
+    else:
+        raise ValueError('wrong MR input - accepted are path to image file or dictionary')
+    
+    # > get the voxel sizes
+    pet_szyx = petdct['hdr']['pixdim'][1:4]
+    mri_szyx = mridct['hdr']['pixdim'][1:4]
+
+    # > estimate the scale
+    scale = np.abs(np.round(pet_szyx[::-1]/mri_szyx[::-1])).astype(np.int32)
+
+    # > trim the PET image for more accurate regional sampling
+    ftrm = nimpa.imtrimup(fpet, scale=scale, store_img_intrmd=True)
+
+    # > trimmed folder
+    trmdir = Path(ftrm['fimi'][0]).parent
+
+    return dict(trmdir=trimdir, ftrm=ftrm['fimi'][0], trim_scale=scale)
+# ========================================================================================
+
+
+# ========================================================================================
 def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
     '''
     Extract VOI mean values from PET image `impet` using image labels `imlabel`.
