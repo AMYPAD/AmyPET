@@ -406,7 +406,7 @@ def voi_process(
     trmdir = trmout['trmdir']
 
     # > trimmed and upsampled PET file
-    out['ftrm'] = trmout['ftrm'] ftrm['fimi'][0]
+    out['ftrm'] = trmout['ftrm']
     out['trim_scale'] = trmout['trim_scale']
     #--------------------------------------------------
 
