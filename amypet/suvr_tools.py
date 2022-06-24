@@ -52,7 +52,7 @@ def r_trimup(fpet, fmri, store_img_intrmd=True):
     # > trimmed folder
     trmdir = Path(ftrm['fimi'][0]).parent
 
-    return dict(trmdir=trimdir, ftrm=ftrm['fimi'][0], trim_scale=scale)
+    return dict(trmdir=trmdir, ftrm=ftrm['fimi'][0], trim_scale=scale)
 # ========================================================================================
 
 
