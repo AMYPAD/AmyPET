@@ -311,7 +311,7 @@ def align_suvr(
     faligned = niidir/faligned
 
     # > Matrices: motion metric + paths to affine 
-    R, S = None
+    R = S = None
 
     # > check if the file exists
     if reg_force or not faligned.is_file():
