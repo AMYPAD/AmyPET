@@ -1,6 +1,10 @@
 '''
 Auxiliary functions for the centiloid project
 '''
+
+__author__      = "Pawel Markiewicz"
+__copyright__   = "Copyright 2022"
+
 import os
 from pathlib import Path
 import pickle
