@@ -11,8 +11,10 @@ import pickle
 import re
 import numpy as np
 import openpyxl
+import urllib
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+
 
 from niftypet import nimpa
 
@@ -28,6 +30,40 @@ rvoi_str = dict(
     cg='CEREBELLUM GM',
     wcb='WHOLE CEREBELLUM + BRAIN STEM',
     pns='PONS')
+
+#----------------------------------------------------------------------
+def get_atlas(atlas='aal', res=1, outpath=Path.home/'.amypet'):
+    '''Get a brain atlas from `neuroparc` out of many available in MNI space.
+
+       Options:
+       - atlas:     one of many atlases, e.g., 'aal' which is the default;
+                    the number of atlases available can be extended by entering it 
+                    in the dictionary. TODO: move the dictionary to `defs.py`.
+       - res:       the resolution of the atlas in mm.
+    '''
+
+    atlases = dict(
+        ghpath='https://github.com/neurodata/neuroparc/raw/master/atlases/label/Human/',
+        aal='AAL_space-MNI152NLin6_res-',
+        aal_lbl='Anatomical-labels-csv/AAL.csv',
+        schaefer200='Schaefer200_space-MNI152NLin6_res-',
+        talairach='Talairach_space-MNI152NLin6_res-',
+        )
+
+    # > get the GitHub data object
+    ghd = urllib.request.urlopen(atlases['ghpath'] + atlases[atlas] + f'{res}x{res}x{res}.nii.gz')
+    data = ghd.read()
+
+    # > save to file
+    nimpa.create_dir(outpath)
+
+    fatl = outpath/f'atlas-{atlas}_res-{res}mm.nii.gz'
+    with open(fatl, 'wb') as f: 
+        f.write(data)
+
+    return fatl
+#----------------------------------------------------------------------
+
 
 #----------------------------------------------------------------------
 def im_check_pairs(fpets, fmris):
