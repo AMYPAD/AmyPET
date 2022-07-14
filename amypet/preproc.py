@@ -272,7 +272,7 @@ def explore_input(
 
 
 #=====================================================================
-def align_SUVr(
+def align_suvr(
         suvr_tdata,
         suvr_descr,
         outpath=None,
