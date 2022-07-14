@@ -310,6 +310,9 @@ def align_suvr(
     faligned = 'SUVr_aligned_'+nimpa.rem_chars(suvr_tdata[next(iter(suvr_tdata))]['series'])+'.nii.gz'
     faligned = niidir/faligned
 
+    # > Matrices: motion metric + paths to affine 
+    R, S = None
+
     # > check if the file exists
     if reg_force or not faligned.is_file():
 
@@ -452,7 +455,6 @@ def align_suvr(
             flip = niiref['flip'])
         #-----------------------------------------------
 
-
-    return dict(fpet=faligned, Metric=R, faff=S, outpath=niidir)
+    return dict(fpet=faligned, outpath=niidir, Metric=R, faff=S)
 
 #=====================================================================
