@@ -32,7 +32,7 @@ rvoi_str = dict(
     pns='PONS')
 
 #----------------------------------------------------------------------
-def get_atlas(atlas='aal', res=1, outpath=Path.home/'.amypet'):
+def get_atlas(atlas='aal', res=1, outpath=Path.home()/'.amypet'):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
 
        Options:
