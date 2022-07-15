@@ -486,10 +486,9 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
     
 
     # > trim and upscale the native PET relative to MR resolution
-    imkey = next(iter(cl_dct))
     trmout = amypet.r_trimup(
-        cl_dct[imkey]['petc']['fim'],
-        cl_dct[imkey]['mric']['fim'],
+        cl_dct['petc']['fim'],
+        cl_dct['mric']['fim'],
         outpath=natout,
         store_img_intrmd=True)
 
@@ -499,11 +498,11 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
     bbox = spm12.get_bbox(petdct)
 
     # > get the inverse affine transform to PET native space
-    M = np.linalg.inv(cl_dct[imkey]['reg2']['affine'])
+    M = np.linalg.inv(cl_dct['reg2']['affine'])
     Mm = ml.double(M.tolist())
 
     # > copy the inverse definitions to be modified with affine to native PET space
-    fmod = shutil.copyfile(cl_dct[imkey]['norm']['invdef'], cl_dct[imkey]['norm']['invdef'].split('.')[0]+'_2nat.nii')
+    fmod = shutil.copyfile(cl_dct['norm']['invdef'], cl_dct['norm']['invdef'].split('.')[0]+'_2nat.nii')
     eng = spm12.ensure_spm('')
     eng.amypad_coreg_modify_affine(fmod, Mm)
 
@@ -522,7 +521,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
     # > GM mask
     fgmpet = spm12.resample_spm(
         trmout['ftrm'],
-        cl_dct[imkey]['norm']['c1'],
+        cl_dct['norm']['c1'],
         M,
         intrp=1.0,
         outpath=natout,
