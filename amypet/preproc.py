@@ -16,6 +16,7 @@ from subprocess import run
 from itertools import combinations
 import urllib
 
+import matlab as ml
 from niftypet import nimpa
 import spm12
 import amypet
@@ -458,3 +459,103 @@ def align_suvr(
     return dict(fpet=faligned, outpath=niidir, Metric=R, faff=S)
 
 #=====================================================================
+
+
+
+
+#=====================================================================
+def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
+    '''
+    Preprocess SPM GM segmentation (from CL output) and AAL atlas
+    to native PET space which is trimmed and upscaled to MR resolution.
+
+    cl_dct:     CL process output dictionary as using the normalisation
+                and segmentation from SPM as used in CL.
+
+    '''
+
+    # > output path
+    if outpath is None:
+        natout = cl_dct['opth'].parent.parent
+    else:
+        natout = Path(outpath)
+
+
+    # > get the AAL atlas with the resolution of 1 mm
+    fatl = amypet.get_atlas(atlas='aal', res=1, outpath=natout)
+    
+
+    # > trim and upscale the native PET relative to MR resolution
+    imkey = next(iter(cl_dct))
+    trmout = amypet.r_trimup(
+        cl_dct[imkey]['petc']['fim'],
+        cl_dct[imkey]['mric']['fim'],
+        outpath=natout,
+        store_img_intrmd=True)
+
+    # > get the trimmed PET as dictionary
+    petdct = nimpa.getnii(trmout['ftrm'], output='all')
+    # > SPM bounding box of the PET image
+    bbox = spm12.get_bbox(petdct)
+
+    # > get the inverse affine transform to PET native space
+    M = np.linalg.inv(cl_dct[imkey]['reg2']['affine'])
+    Mm = ml.double(M.tolist())
+
+    # > copy the inverse definitions to be modified with affine to native PET space
+    fmod = shutil.copyfile(cl_dct[imkey]['norm']['invdef'], cl_dct[imkey]['norm']['invdef'].split('.')[0]+'_2nat.nii')
+    eng = spm12.ensure_spm('')
+    eng.amypad_coreg_modify_affine(fmod, Mm)
+
+
+
+    # > unzip the atlas and transform it to PET space
+    fniiatl = nimpa.nii_ugzip(fatl, outpath=natout)
+
+    # > inverse transform the atlas to PET space
+    finvatl = spm12.normw_spm(fmod, [fniiatl + ',1'], voxsz=1., intrp=0., bbox=bbox, outpath=natout)
+
+    # > remove the uncompressed input atlas after transforming it 
+    os.remove(fniiatl)
+
+
+    # > GM mask
+    fgmpet = spm12.resample_spm(
+        trmout['ftrm'],
+        cl_dct[imkey]['norm']['c1'],
+        M,
+        intrp=1.0,
+        outpath=natout,
+        pickname='flo',
+        fcomment='_inPET',
+        del_ref_uncmpr=True,
+        del_flo_uncmpr=True,
+        del_out_uncmpr=True)
+
+    gm_msk = nimpa.getnii(fgmpet)
+    atl_im = nimpa.getnii(finvatl[0])
+
+    # > get a probability mask for cerebellar GM
+    crbmsk = np.zeros(petim.shape, dtype=np.float32)
+    for mi in range(91,113):
+        print(mi)
+        msk = atl_im==mi
+        crbmsk += msk*gm_msk
+
+    #matshow(crbmsk[150,...])
+
+    # > probability mask for chosen VOI
+    fpmsk = natout/'cerebellar_probmask.nii.gz'
+
+    # > save the mask to NIfTI file
+    nimpa.array2nii(
+        crbmsk,
+        petdct['affine'],
+        fpmsk,
+        descrip='AmyPET: probability mask',
+        trnsp = (petdct['transpose'].index(0),
+                 petdct['transpose'].index(1),
+                 petdct['transpose'].index(2)),
+        flip = petdct['flip'])
+
+    return dict(fpet=trmout['ftrm'], outpath=natout, finvdef=fmod, fatl=finvatl, fgm=fgmpet, fvoi=fpmsk, atlas=atl_im, gm_msk=gm_msk, voi=crbmsk)
