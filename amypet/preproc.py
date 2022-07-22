@@ -16,7 +16,6 @@ from subprocess import run
 from itertools import combinations
 import urllib
 
-import matlab as ml
 from niftypet import nimpa
 import spm12
 import amypet
@@ -508,6 +507,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
     # > get the trimmed PET as dictionary
     petdct = nimpa.getnii(trmout['ftrm'], output='all')
     # > SPM bounding box of the PET image
+    ml = spm12.get_matlab()
     bbox = spm12.get_bbox(petdct)
 
     # > get the inverse affine transform to PET native space

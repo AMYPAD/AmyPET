@@ -22,8 +22,8 @@ from subprocess import run
 import dcm2niix
 
 drv = Path('/data')
-atlases = drv/Path('AMYPET/Atlas/CL_2mm/')
-opth = drv/Path('AMYPET/CL/FBB')
+atlases = drv / 'AMYPET' / 'Atlas' / 'CL_2mm'
+opth = drv / 'AMYPET' / 'CL' / 'FBB'
 
 #----------------------------------------------------------------------
 # > convert to NIfTI as needed

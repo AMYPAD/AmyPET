@@ -9,14 +9,16 @@ from pathlib import Path
 import pickle
 
 from niftypet import nimpa
-from amypet import centiloid as centi
+from amypet.centiloid import run as centiloid_run
 from amypet.aux import cl_anchor_fldr
 import amypet
+import matplotlib.pyplot as plt
+import numpy as np
 
 # > input paths
 drv = Path('/data/AMYPET')
-atlases = drv/Path('Atlas/CL_2mm/')
-opth = drv/Path('CL/PiB')
+atlases = drv / 'Atlas' / 'CL_2mm'
+opth = drv / 'CL' / 'PiB'
 
 #----------------------------------------------------------------------
 # AD
@@ -39,7 +41,7 @@ flip_pet[36] = (1,-1,1)
 flip_pet[40] = (1,-1,1)
 flip_pet[44] = (1,-1,1)
 
-out_ad = centi.run(fpets, fmris, atlases, flip_pet=flip_pet, outpath=opth/'output_pib_ad')
+out_ad = centiloid_run(fpets, fmris, atlases, flip_pet=flip_pet, outpath=opth/'output_pib_ad')
 with open(str(opth/'output_pib_ad.pkl'), 'wb') as f:
     pickle.dump(out_ad, f)
 #----------------------------------------------------------------------
@@ -56,7 +58,7 @@ fmris.sort()
 # > run visual check of the images before running the CL pipeline
 #amypet.im_check_pairs(fpets, fmris)
 
-out_yc = centi.run(fpets, fmris, atlases, outpath=opth/'output_pib_yc')
+out_yc = centiloid_run(fpets, fmris, atlases, outpath=opth/'output_pib_yc')
 with open(str(opth/'output_pib_yc.pkl'), 'wb') as f:
     pickle.dump(out_yc, f)
 #----------------------------------------------------------------------

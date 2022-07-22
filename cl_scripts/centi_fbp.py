@@ -25,8 +25,8 @@ from collections import Counter
 
 
 drv = Path('/data')
-atlases = drv/Path('AMYPET/Atlas/CL_2mm/')
-dirdata = drv/Path('AMYPET/CL/FBP')
+atlases = drv / 'AMYPET' / 'Atlas' / 'CL_2mm'
+dirdata = drv / 'AMYPET' / 'CL' / 'FBP'
 opth = dirdata
 
 #----------------------------------------------------------------------

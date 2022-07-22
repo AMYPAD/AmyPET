@@ -9,13 +9,10 @@ from pathlib import Path
 import pickle
 import re
 import numpy as np
-import openpyxl
 import urllib
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 from pkg_resources import resource_filename
-
-
 from niftypet import nimpa
 
 # > regions used in CL project
@@ -120,7 +117,8 @@ def get_clref(fxls):
     get the excel sheets with CL reference data from the CL project
     excel sheet.
     '''
-    
+    import openpyxl
+
     # > Define variable to load the workbook
     wb = openpyxl.load_workbook(fxls)
     ws = wb.active

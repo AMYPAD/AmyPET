@@ -20,8 +20,8 @@ from scipy.stats import linregress
 
 
 drv = Path('/data/AMYPET')
-atlases = drv/Path('Atlas/CL_2mm/')
-opth = drv/Path('CL/FLUTE')
+atlases = drv / 'Atlas' / 'CL_2mm'
+opth = drv / 'CL' / 'FLUTE'
 
 #----------------------------------------------------------------------
 # AD
