@@ -1,7 +1,6 @@
-'''
-Auxiliary functions for the centiloid project
-'''
-
+"""
+Auxiliary functions for the centiloid project.
+"""
 __author__      = "Pawel Markiewicz"
 __copyright__   = "Copyright 2022"
 
@@ -14,6 +13,7 @@ import openpyxl
 import urllib
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+from pkg_resources import resource_filename
 
 
 from niftypet import nimpa
@@ -22,7 +22,8 @@ from niftypet import nimpa
 rvois = ['wc', 'cg', 'wcb', 'pns']
 
 # > folder name with the default conversion tables after calibration
-cl_anchor_fldr = 'cl_anchor_tables'
+cl_anchor_fldr = Path(resource_filename(__name__, 'data/cl_anchor_tables'))
+cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
 
 # > region full name strings for plots
 rvoi_str = dict(
@@ -482,8 +483,7 @@ def calib_tracer(
 
 #----------------------------------------------------------------------
 def save_cl_anchors(diff, outpath=None):
-    ''' save the CL anchor points for each reference VOI.
-    '''
+    """save the CL anchor points for each reference VOI."""
 
     CLA = {}
     txt = '# centiloid anchor points for different reference VOIs\n'
@@ -495,38 +495,24 @@ def save_cl_anchors(diff, outpath=None):
     print(txt)
     
     if outpath is None:
-        cpth = Path(os.path.realpath(__file__))
-        cl_fldr = cpth.parent/cl_anchor_fldr
-    else:
-        cl_fldr = Path(outpath)
-    
-    nimpa.create_dir(cl_fldr)
-    pth = cl_fldr/'CL_PiB_anchors.pkl'
+        outpath = cl_anchor_fldr
 
-    with open(pth, 'wb') as f:
+    outpath = Path(outpath) / 'CL_PiB_anchors.pkl'
+    nimpa.create_dir(outpath.parent)
+    with open(outpath, 'wb') as f:
         pickle.dump(CLA, f)
 
-    CLA['path'] = pth
-    
+    CLA['path'] = outpath
     return CLA
 
 
 def get_cl_anchors(path=None):
-    ''' load the centiloid anchor points
-    '''
-    
+    """load the centiloid anchor points"""
     if path is None:
-        cpth = Path(os.path.realpath(__file__))
-        cl_fldr = cpth.parent/cl_anchor_fldr
-    else:
-        cl_fldr = Path(path)
-
-    pth = cl_fldr/'CL_PiB_anchors.pkl'
-
-    with open(pth, 'rb') as f:
-        CLA = pickle.load(f)
-
-    return CLA
+        path = cl_anchor_fldr
+    path = Path(path) / 'CL_PiB_anchors.pkl'
+    with open(path, 'rb') as f:
+        return pickle.load(f)
 #----------------------------------------------------------------------
 
 
@@ -558,47 +544,31 @@ def save_suvr2pib(cal, tracer, outpath=None):
         txt += f'{rvoi}: m_std, b_std = ({mstd}, {bstd})\n'
     print(txt)
 
-    #---------------------------------
-    # > path to anchor point dictionary
     if outpath is None:
-        cpth = Path(os.path.realpath(__file__))
-        cl_fldr = cpth.parent/cl_anchor_fldr
-    elif os.path.exists(outpath):
-        cpth = Path(outpath)
-        cl_fldr = cpth/cl_anchor_fldr
-    #---------------------------------
-    
-    nimpa.create_dir(cl_fldr)
-    pth = cl_fldr/(f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+        outpath = cl_anchor_fldr
+    outpath = Path(outpath)
 
+    nimpa.create_dir(outpath)
+    pth = outpath / f'suvr_{tracer}_to_suvr_pib__transform.pkl'
     with open(pth, 'wb') as f:
         pickle.dump(CNV, f)
 
     CNV['path'] = pth
-    
     return CNV
 
 
 def get_suvr2pib(tracer, path=None):
-    ''' load the linear transformation parameters from a tracer SUVr
-        to PiB SUVr; it's used for converting to CL scale any F-18
-        tracers.
-    '''
-
-    if not tracer in ['fbp', 'fbb', 'flute']:
-        raise ValueError('e> tracer is unrecognised or not given!')
-
+    """
+    load the linear transformation parameters from a tracer SUVr
+    to PiB SUVr; it's used for converting to CL scale any F-18
+    tracers.
+    """
+    if tracer not in ['fbp', 'fbb', 'flute']:
+        raise ValueError(f'tracer ({tracer}) unrecognised')
 
     if path is None:
-        cpth = Path(os.path.realpath(__file__))
-        cl_fldr = cpth.parent/cl_anchor_fldr
-    else:
-        cl_fldr = Path(path)
-
-    pth = os.path.join(cl_fldr, f'suvr_{tracer}_to_suvr_pib__transform.pkl')
+        path = cl_anchor_fldr
+    pth = Path(path) / f'suvr_{tracer}_to_suvr_pib__transform.pkl'
 
     with open(pth, 'rb') as f:
-        CNV = pickle.load(f)
-
-    return CNV
-#----------------------------------------------------------------------
+        return pickle.load(f)

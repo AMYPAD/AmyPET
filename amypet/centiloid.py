@@ -25,7 +25,7 @@ import spm12
 from miutil.fdio import hasext, nsort
 from niftypet import nimpa
 
-from .aux import cl_anchor_fldr
+from .aux import cl_anchor_fldr, cl_masks_fldr
 
 log = logging.getLogger(__name__)
 
@@ -149,10 +149,7 @@ def run(fpets,
 
     #-------------------------------------------------------------
     # > get the CL masks
-    # > AmyPET centiloid module path
-    cpth = Path(os.path.realpath(__file__))
-
-    fmasks, masks = load_masks(cpth.parent/'CL_masks', voxsz=voxsz)
+    fmasks, masks = load_masks(cl_masks_fldr, voxsz=voxsz)
     #-------------------------------------------------------------
 
     log.info('iterate through all the input data...')
@@ -287,9 +284,9 @@ def run(fpets,
         #---------------------------------
         # > path to anchor point dictionary
         if cl_anchor_path is None:
-            cl_fldr = cpth.parent/cl_anchor_fldr
-        elif os.path.exists(cl_anchor_path):
-            cl_fldr = Path(cl_anchor_path)
+            cl_fldr = cl_anchor_fldr
+        cl_fldr = Path(cl_anchor_path)
+        assert cl_fldr.is_dir()
         #---------------------------------
 
 

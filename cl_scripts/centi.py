@@ -10,6 +10,7 @@ import pickle
 
 from niftypet import nimpa
 from amypet import centiloid as centi
+from amypet.aux import cl_anchor_fldr
 import amypet
 
 # > input paths
@@ -83,14 +84,15 @@ cla = amypet.save_cl_anchors(diff)
 
 
 # > load/test the anchor and conversion tables
-cla = amypet.get_cl_anchors(path='/home/pawel/NiftyPET/AmyPET/amypet/cl_anchor_tables')
-cla = amypet.get_cl_anchors(path='/home/pawel/NiftyPET/AmyPET/amypet')
+cl_fldr = cl_anchor_fldr
+cla = amypet.get_cl_anchors(cl_fldr)
+cla = amypet.get_cl_anchors(cl_fldr.parent)
 
 tracer = 'flute'
 tracer = 'fbb'
 tracer = 'fbp'
-clc = amypet.get_suvr2pib(tracer, path='/home/pawel/NiftyPET/AmyPET/amypet/cl_anchor_tables')
-clc = amypet.get_suvr2pib(tracer, path='/home/pawel/NiftyPET/AmyPET/amypet')
+clc = amypet.get_suvr2pib(tracer, path=cl_fldr)
+clc = amypet.get_suvr2pib(tracer, path=cl_fldr.parent)
 
 
 
