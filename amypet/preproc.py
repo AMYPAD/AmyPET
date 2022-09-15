@@ -464,13 +464,17 @@ def align_suvr(
 
 
 #=====================================================================
-def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
+def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, refvoi_name=None):
     '''
     Preprocess SPM GM segmentation (from CL output) and AAL atlas
     to native PET space which is trimmed and upscaled to MR resolution.
 
     cl_dct:     CL process output dictionary as using the normalisation
                 and segmentation from SPM as used in CL.
+    refvoi_idx: indices of the reference region specific for the chosen
+                atlas.  The reference VOI will then be separately 
+                provided in the output.
+    refvoi_name: name of the reference region/VOI
 
     '''
 
@@ -526,7 +530,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
         intrp=1.0,
         outpath=natout,
         pickname='flo',
-        fcomment='_inPET',
+        fcomment='_GM_in_PET',
         del_ref_uncmpr=True,
         del_flo_uncmpr=True,
         del_out_uncmpr=True)
@@ -535,16 +539,18 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
     atl_im = nimpa.getnii(finvatl[0])
 
     # > get a probability mask for cerebellar GM
-    crbmsk = np.zeros(petdct['im'].shape, dtype=np.float32)
-    for mi in range(91,113):
-        print(mi)
-        msk = atl_im==mi
-        crbmsk += msk*gm_msk
-
-    #matshow(crbmsk[150,...])
+    if refvoi_idx is not None:
+        refmsk = np.zeros(petdct['im'].shape, dtype=np.float32)
+        for mi in refvoi_idx:
+            print(mi)
+            msk = atl_im==mi
+            refmsk += msk*gm_msk
 
     # > probability mask for chosen VOI
-    fpmsk = natout/'cerebellar_probmask.nii.gz'
+    if refvoi_name is not None:
+        fpmsk = natout/(refvoi_name+'_probmask.nii.gz')
+    else:
+        fpmsk = natout/'reference_VOI_probmask.nii.gz'
 
     # > save the mask to NIfTI file
     nimpa.array2nii(
@@ -557,4 +563,13 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
                  petdct['transpose'].index(2)),
         flip = petdct['flip'])
 
-    return dict(fpet=trmout['ftrm'], outpath=natout, finvdef=fmod, fatl=finvatl, fgm=fgmpet, fvoi=fpmsk, atlas=atl_im, gm_msk=gm_msk, voi=crbmsk)
+    return dict(
+        fpet=trmout['ftrm'],
+        outpath=natout,
+        finvdef=fmod,
+        fatl=finvatl,
+        fgm=fgmpet,
+        atlas=atl_im,
+        gm_msk=gm_msk,
+        frefvoi=fpmsk,
+        refvoi=refmsk)
