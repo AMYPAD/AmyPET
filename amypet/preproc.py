@@ -105,7 +105,7 @@ def explore_input(
 
 
     #================================================
-    # > first check if the folder is has DICOM series
+    # > first check if the folder has DICOM series
 
     # > multiple series in folders (if any)
     msrs = []
@@ -179,18 +179,20 @@ def explore_input(
                         if n in tracer_dcm:
                             tracer = t
 
-            # > probable tracers based on acquisition props
-            if tracer is not None:
-                tracer_ = [tracer]
-            else:
-                tracer_ = []
+            # > when tracer info not provided and not in DICOMs
+            if acq_type=='static' and not tracer:
 
-            if acq_type=='static':
-
+                # > assuming the first of the following tracers then
                 for t in suvr_twindow:
                     dur = suvr_twindow[t][2]
-                    if acq_dur > dur*(1-margin) and acq_dur<dur*(1+margin) and t_frms[0][0]>suvr_twindow[t][0]*(1-margin):
-                        tracer_.append(t)
+                    if acq_dur > dur*(1-margin) and t_frms[0][0]<suvr_twindow[t][0]*(1+margin):
+                        tracer = t
+                        break
+
+        else:
+            tracer_grp = [tracer in tracer_names[t] for t in tracer_names]
+            if any(tracer_grp):
+                tracer = array(list(tracer_names.keys()))[ tracer_grp ][0]
         #-----------------------------------------------
 
 
@@ -198,13 +200,20 @@ def explore_input(
         #-----------------------------------------------
         # > is the static acquisition covering the provided SUVr frame definition?
         if acq_type=='static':
-            if (t_frms[0][0]>suvr_win_def[0]*(1-margin) and t_frms[-1][-1]<suvr_win_def[1]*(1+margin)):
 
-                # > choose the best frames for the requested or default frame definitions
-                if suvr_win_def is None:
-                    suvr_win = suvr_twindow[tracer_[0]][:2]
-                else:
-                    suvr_win = suvr_win_def
+            #-----------------------------------------------
+            # > try to establish the SUVr window even if not provided
+            if suvr_win_def is None and not tracer:
+                raise ValueError('Impossible to figure out tracer and SUVr time window - please specify them!')
+            elif suvr_win_def is None and tracer:
+                suvr_win = suvr_twindow[tracer][:2]
+            else:
+                suvr_win = suvr_win_def
+            #-----------------------------------------------
+
+            # > window margin
+            mrgn_suvr = margin*suvr_twindow[tracer][2]
+            if t_frms[0][0] < suvr_win[0]+mrgn_suvr and acq_dur > suvr_twindow[tracer][2]-mrgn_suvr:
 
                 t0_suvr = min(t_starts, key=lambda x:abs(x-suvr_win[0]))
                 t1_suvr = min(t_stops, key=lambda x:abs(x-suvr_win[1]))
@@ -539,6 +548,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
     atl_im = nimpa.getnii(finvatl[0])
 
     # > get a probability mask for cerebellar GM
+
     if refvoi_idx is not None:
         refmsk = np.zeros(petdct['im'].shape, dtype=np.float32)
         for mi in refvoi_idx:
