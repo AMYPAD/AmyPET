@@ -535,7 +535,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None):
     atl_im = nimpa.getnii(finvatl[0])
 
     # > get a probability mask for cerebellar GM
-    crbmsk = np.zeros(petim.shape, dtype=np.float32)
+    crbmsk = np.zeros(petdct['im'].shape, dtype=np.float32)
     for mi in range(91,113):
         print(mi)
         msk = atl_im==mi
