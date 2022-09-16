@@ -4,120 +4,104 @@
 __author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
-import os, sys
-from pathlib import Path
+import os
 import pickle
-import openpyxl
+import sys
+from pathlib import Path
+from subprocess import run
 
-from niftypet import nimpa
-from amypet import centiloid as centi
-import amypet
-import spm12
-
-import matplotlib.pyplot as plt
+import dcm2niix
 import matplotlib
+import matplotlib.pyplot as plt
+import openpyxl
+import spm12
+from niftypet import nimpa
 from scipy.stats import linregress
 
-from subprocess import run
-import dcm2niix
+import amypet
+from amypet import centiloid as centi
 
 drv = Path('/data')
-atlases = drv/Path('AMYPET/Atlas/CL_2mm/')
-opth = drv/Path('AMYPET/CL/FBB')
+atlases = drv / 'AMYPET' / 'Atlas' / 'CL_2mm'
+opth = drv / 'AMYPET' / 'CL' / 'FBB'
 
 #----------------------------------------------------------------------
 # > convert to NIfTI as needed
 if False:
-    dirdata = drv/Path('AMYPET/CL/FBB')
-    grps = [x for x in dirdata.glob('*') if x.is_dir()  if 'E-25' in str(x) or 'YC-10' in str(x)]
+    dirdata = drv / 'AMYPET' / 'CL' / 'FBB'
+    grps = [x for x in dirdata.glob('*') if x.is_dir() if 'E-25' in str(x) or 'YC-10' in str(x)]
 
     for g in grps:
-        
+
         print(f'======================\n{g.name}\n======================')
-        
+
         nout = g / 'NIfTI'
         nimpa.create_dir(nout)
         dcmdir = [x for x in g.glob('*') if x.is_dir()]
 
         for s in dcmdir:
-            
-            run([dcm2niix.bin,
-                 '-i', 'y',
-                 '-v', 'n',
-                 '-o', nout,
-                 'f', '%f_%s',
-                 s])
+
+            run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', nout, 'f', '%f_%s', s])
 #----------------------------------------------------------------------
 
 #----------------------------------------------------------------------
 # ELDRL
-dirfbb = drv/Path('AMYPET/CL/FBB/E-25_FBB_90110/NIfTI')
-dirpib = drv/Path('AMYPET/CL/FBB/E-25_PiB_5070/NIfTI')
-dirmri = drv/Path('AMYPET/CL/FBB/E-25_MR/NIfTI')
-ffbbs = [dirfbb/f for f in dirfbb.glob('*.nii')]
-fpibs = [dirpib/f for f in dirpib.glob('*.nii')]
-fmris = [dirmri/f for f in dirmri.glob('*.nii')]
-ffbbs.sort()
-fpibs.sort()
-fmris.sort()
-
+dirfbb = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_FBB_90110' / 'NIfTI'
+dirpib = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_PiB_5070' / 'NIfTI'
+dirmri = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_MR' / 'NIfTI'
+ffbbs = sorted(dirfbb.glob('*.nii'))
+fpibs = sorted(dirpib.glob('*.nii'))
+fmris = sorted(dirmri.glob('*.nii'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbbs, fmris)
 '''
 
-out_pe = centi.run(fpibs, fmris, atlases,  tracer='pib', outpath=opth/'output_pib_e')
-with open(str(opth/'output_pib_e.pkl'), 'wb') as f:
+out_pe = centi.run(fpibs, fmris, atlases, tracer='pib', outpath=opth / 'output_pib_e')
+with open(str(opth / 'output_pib_e.pkl'), 'wb') as f:
     pickle.dump(out_pe, f)
 
-
-out_fe = centi.run(ffbbs, fmris, atlases, tracer='new', outpath=opth/'output_fbb_e', used_saved=True)
-with open(str(opth/'output_fbb_e.pkl'), 'wb') as f:
+out_fe = centi.run(ffbbs, fmris, atlases, tracer='new', outpath=opth / 'output_fbb_e',
+                   used_saved=True)
+with open(str(opth / 'output_fbb_e.pkl'), 'wb') as f:
     pickle.dump(out_fe, f)
 #----------------------------------------------------------------------
 
-
 #----------------------------------------------------------------------
 # YC
-dirfbb = drv/Path('AMYPET/CL/FBB/YC-10_FBB_90110/NIfTI')
-dirpib = drv/Path('AMYPET/CL/FBB/YC-10_PiB_5070/NIfTI')
-dirmri = drv/Path('AMYPET/CL/FBB/YC-10_MR/NIfTI')
-ffbbs = [dirfbb/f for f in dirfbb.glob('*.nii')]
-fpibs = [dirpib/f for f in dirpib.glob('*.nii')]
-fmris = [dirmri/f for f in dirmri.glob('*.nii')]
-ffbbs.sort()
-fpibs.sort()
-fmris.sort()
-
+dirfbb = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_FBB_90110' / 'NIfTI'
+dirpib = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_PiB_5070' / 'NIfTI'
+dirmri = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_MR' / 'NIfTI'
+ffbbs = sorted(dirfbb.glob('*.nii'))
+fpibs = sorted(dirpib.glob('*.nii'))
+fmris = sorted(dirmri.glob('*.nii'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbbs, fmris)
 '''
 
-out_py = centi.run(fpibs, fmris, atlases,  tracer='pib', outpath=opth/'output_pib_y')
-with open(str(opth/'output_pib_y.pkl'), 'wb') as f:
+out_py = centi.run(fpibs, fmris, atlases, tracer='pib', outpath=opth / 'output_pib_y')
+with open(str(opth / 'output_pib_y.pkl'), 'wb') as f:
     pickle.dump(out_py, f)
 
-out_fy = centi.run(ffbbs, fmris, atlases, tracer='new', outpath=opth/'output_fbb_y')
-with open(str(opth/'output_fbb_y.pkl'), 'wb') as f:
+out_fy = centi.run(ffbbs, fmris, atlases, tracer='new', outpath=opth / 'output_fbb_y')
+with open(str(opth / 'output_fbb_y.pkl'), 'wb') as f:
     pickle.dump(out_fy, f)
 
 #----------------------------------------------------------------------
 
-
-
 #======================================================================
 #----------------------------------------------------------------------
-with open(str(opth/'output_pib_e.pkl'), 'rb') as f:
+with open(str(opth / 'output_pib_e.pkl'), 'rb') as f:
     out_pe = pickle.load(f)
 
-with open(str(opth/'output_fbb_e.pkl'), 'rb') as f:
+with open(str(opth / 'output_fbb_e.pkl'), 'rb') as f:
     out_fe = pickle.load(f)
 
-with open(str(opth/'output_pib_y.pkl'), 'rb') as f:
+with open(str(opth / 'output_pib_y.pkl'), 'rb') as f:
     out_py = pickle.load(f)
 
-with open(str(opth/'output_fbb_y.pkl'), 'rb') as f:
+with open(str(opth / 'output_fbb_y.pkl'), 'rb') as f:
     out_fy = pickle.load(f)
 #----------------------------------------------------------------------
 
@@ -132,15 +116,13 @@ cal = amypet.calib_tracer(outp, outf)
 # > save the transformations from SUVr to SUVr_PiB_Calc
 Tsuvr = amypet.save_suvr2pib(cal, 'fbb')
 
-
 # TEST
-out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'output_test_pib')
-out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth/'output_test_fbb', used_saved=True)
+out_t = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth / 'output_test_pib')
+out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth / 'output_test_fbb',
+                   used_saved=True)
 
-
-
-with open(opth/'cal_data.pkl', 'wb') as f:
+with open(opth / 'cal_data.pkl', 'wb') as f:
     pickle.dump(cal, f)
 
-with open(opth/'cal_data.pkl', 'rb') as f:
+with open(opth / 'cal_data.pkl', 'rb') as f:
     cal_fbb = pickle.load(f)
