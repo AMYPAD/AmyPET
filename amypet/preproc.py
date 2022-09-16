@@ -181,7 +181,7 @@ def explore_input(
         else:
             tracer_grp = [tracer in tracer_names[t] for t in tracer_names]
             if any(tracer_grp):
-                tracer = array(list(tracer_names.keys()))[tracer_grp][0]
+                tracer = np.array(list(tracer_names.keys()))[tracer_grp][0]
         #-----------------------------------------------
 
         #-----------------------------------------------

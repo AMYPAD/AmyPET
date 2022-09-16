@@ -1,6 +1,4 @@
-''' Run calibration centiloid pipeline for PiB
-'''
-
+"""Run calibration centiloid pipeline for PiB"""
 __author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
@@ -116,7 +114,6 @@ def identity_line(ax=None, ls='--', *args, **kwargs):
 #----------------------------------------------------------------------
 
 #===================================================
-import os
 import pickle
 from pathlib import Path
 

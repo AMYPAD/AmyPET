@@ -1,6 +1,4 @@
-''' Run centiloid pipeline level-2 for a new tracer FBB.
-'''
-
+"""Run centiloid pipeline level-2 for a new tracer FBB"""
 __author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
@@ -52,10 +50,8 @@ dirmri = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_MR' / 'NIfTI'
 ffbbs = sorted(dirfbb.glob('*.nii'))
 fpibs = sorted(dirpib.glob('*.nii'))
 fmris = sorted(dirmri.glob('*.nii'))
-'''
-amypet.im_check_pairs(fpibs, fmris)
-amypet.im_check_pairs(ffbbs, fmris)
-'''
+# amypet.im_check_pairs(fpibs, fmris)
+# amypet.im_check_pairs(ffbbs, fmris)
 
 out_pe = centi.run(fpibs, fmris, atlases, tracer='pib', outpath=opth / 'output_pib_e')
 with open(str(opth / 'output_pib_e.pkl'), 'wb') as f:
@@ -75,10 +71,8 @@ dirmri = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_MR' / 'NIfTI'
 ffbbs = sorted(dirfbb.glob('*.nii'))
 fpibs = sorted(dirpib.glob('*.nii'))
 fmris = sorted(dirmri.glob('*.nii'))
-'''
-amypet.im_check_pairs(fpibs, fmris)
-amypet.im_check_pairs(ffbbs, fmris)
-'''
+# amypet.im_check_pairs(fpibs, fmris)
+# amypet.im_check_pairs(ffbbs, fmris)
 
 out_py = centi.run(fpibs, fmris, atlases, tracer='pib', outpath=opth / 'output_pib_y')
 with open(str(opth / 'output_pib_y.pkl'), 'wb') as f:
