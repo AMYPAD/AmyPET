@@ -52,7 +52,7 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
     # > trimmed folder
     trmdir = Path(ftrm['fimi'][0]).parent
 
-    return dict(trmdir=trmdir, ftrm=ftrm['fimi'][0], trim_scale=scale)
+    return dict(im=ftrm['im'], trmdir=trmdir, ftrm=ftrm['fimi'][0], trim_scale=scale)
 # ========================================================================================
 
 
@@ -420,7 +420,7 @@ def voi_process(
         logging.info(f'i> registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm for reference and floating images respectively')
     
         spm_res = nimpa.coreg_spm(
-            ftrm['fimi'][0],
+            trmout['ftrm'],
             fmri,
             fwhm_ref = reg_fwhm_pet,
             fwhm_flo = reg_fwhm_mri,
@@ -433,7 +433,7 @@ def voi_process(
             del_uncmpr=True)
 
         flbl_pet = nimpa.resample_spm(
-            ftrm['fimi'][0],
+            trmout['ftrm'],
             lblpth,
             spm_res['faff'],
             outpath=trmdir,
@@ -455,7 +455,7 @@ def voi_process(
         mask_dir = trmdir/'masks'
     else:
         mask_dir = None
-    voival = extract_vois(ftrm['im'], plbl_dct, voi_dct, outpath=mask_dir, output_masks=output_masks)
+    voival = extract_vois(trmout['im'], plbl_dct, voi_dct, outpath=mask_dir, output_masks=output_masks)
 
     
     # > calculate SUVr if reference regions is given
@@ -500,7 +500,7 @@ def voi_process(
     #-----------------------------------------
     # > QC plot
     if qc_plot and output_masks:
-        showpet = nimpa.imsmooth(ftrm['im'].astype(np.float32), voxsize=plbl_dct['voxsize'], fwhm=3.)
+        showpet = nimpa.imsmooth(trmout['im'].astype(np.float32), voxsize=plbl_dct['voxsize'], fwhm=3.)
         
         def axrange(prf, thrshld, parts):
             zs = next(x for x, val in enumerate(prf) if val > thrshld)
