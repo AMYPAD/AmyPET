@@ -26,10 +26,8 @@ opth = drv / 'CL' / 'PiB'
 # AD
 dirpet = drv / 'CL' / 'PiB' / 'AD-100_PET_5070' / 'nifti'
 dirmri = drv / 'CL' / 'PiB' / 'AD-100_MR' / 'nifti'
-fpets = [os.path.join(dirpet, f) for f in os.listdir(dirpet)]
-fmris = [os.path.join(dirmri, f) for f in os.listdir(dirmri)]
-fpets.sort()
-fmris.sort()
+fpets = sorted(dirpet.glob("*.*"))
+fmris = sorted(dirmri.glob("*.*"))
 
 # > run visual check of the images before running the CL pipeline
 #amypet.im_check_pairs(fpets, fmris)
@@ -50,12 +48,10 @@ with open(str(opth / 'output_pib_ad.pkl'), 'wb') as f:
 
 #----------------------------------------------------------------------
 # YC
-dirpet = drv / Path('CL/PiB/YC-0_PET_5070/nifti')
-dirmri = drv / Path('CL/PiB/YC-0_MR/nifti')
-fpets = [os.path.join(dirpet, f) for f in os.listdir(dirpet)]
-fmris = [os.path.join(dirmri, f) for f in os.listdir(dirmri)]
-fpets.sort()
-fmris.sort()
+dirpet = drv / 'CL' / 'PiB' / 'YC-0_PET_5070' / 'nifti'
+dirmri = drv / 'CL' / 'PiB' / 'YC-0_MR' / 'nifti'
+fpets = sorted(dirpet.glob("*.*"))
+fmris = sorted(dirmri.glob("*.*"))
 
 # > run visual check of the images before running the CL pipeline
 #amypet.im_check_pairs(fpets, fmris)

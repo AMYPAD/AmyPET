@@ -36,8 +36,8 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
 
     if isinstance(fmri, (str, PurePath)):
         mridct = nimpa.getnii(fmri, output='all')
-    elif isinstance(fmri, dict) and 'hdr' in fmri:                                        \
-                                                mridct = fmri
+    elif isinstance(fmri, dict) and 'hdr' in fmri:                                                                                \
+                                                                                        mridct = fmri
     else:
         raise ValueError('wrong MR input - accepted are path to image file or dictionary')
 

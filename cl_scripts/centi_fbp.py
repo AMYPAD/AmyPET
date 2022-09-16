@@ -128,15 +128,12 @@ if False:
 
 #----------------------------------------------------------------------
 # ELDRL
-dirfbp = drv / Path('AMYPET/CL/FBP/NIfTI/Elder_subject_florbetapir')
-dirpib = drv / Path('AMYPET/CL/FBP/NIfTI/Elder_subject_PiB')
-dirmri = drv / Path('AMYPET/CL/FBP/NIfTI/Elder_subject_MRI')
-ffbps = [dirfbp / f for f in dirfbp.glob('*.nii*')]
-fpibs = [dirpib / f for f in dirpib.glob('*.nii*')]
-fmris = [dirmri / f for f in dirmri.glob('*.nii*')]
-ffbps.sort()
-fpibs.sort()
-fmris.sort()
+dirfbp = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Elder_subject_florbetapir'
+dirpib = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Elder_subject_PiB'
+dirmri = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Elder_subject_MRI'
+ffbps = sorted(dirfbp.glob('*.nii*'))
+fpibs = sorted(dirpib.glob('*.nii*'))
+fmris = sorted(dirmri.glob('*.nii*'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbps, fmris)
@@ -154,15 +151,12 @@ with open(str(opth / 'output_fbp_e.pkl'), 'wb') as f:
 
 #----------------------------------------------------------------------
 # YC
-dirfbp = drv / Path('AMYPET/CL/FBP/NIfTI/Young_Control_florbetapir')
-dirpib = drv / Path('AMYPET/CL/FBP/NIfTI/Young_Control_PiB')
-dirmri = drv / Path('AMYPET/CL/FBP/NIfTI/Young_Control_MRI')
-ffbps = [dirfbp / f for f in dirfbp.glob('*.nii*')]
-fpibs = [dirpib / f for f in dirpib.glob('*.nii*')]
-fmris = [dirmri / f for f in dirmri.glob('*.nii*')]
-ffbps.sort()
-fpibs.sort()
-fmris.sort()
+dirfbp = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Young_Control_florbetapir'
+dirpib = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Young_Control_PiB'
+dirmri = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Young_Control_MRI'
+ffbps = sorted(dirfbp.glob('*.nii*'))
+fpibs = sorted(dirpib.glob('*.nii*'))
+fmris = sorted(dirmri.glob('*.nii*'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbps, fmris)

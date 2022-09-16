@@ -19,6 +19,7 @@ import logging
 import os
 import pickle
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,8 +33,8 @@ log = logging.getLogger(__name__)
 
 
 #----------------------------------------------------------------------
-def load_masks(mskpath, voxsz=2):
-    ''' Load the Centiloid PET masks for calculating 
+def load_masks(mskpath, voxsz: int = 2):
+    ''' Load the Centiloid PET masks for calculating
         the SUVr to then convert it to Centiloid.
 
         Return the paths to the masks and the masks themselves
@@ -60,8 +61,8 @@ def load_masks(mskpath, voxsz=2):
 #----------------------------------------------------------------------
 
 
-def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz=2, outpath=None,
-        visual=False, climage=True, used_saved=False, cl_anchor_path=None):
+def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 2, outpath=None,
+        visual=False, climage=True, used_saved=False, cl_anchor_path: Optional[Path] = None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).

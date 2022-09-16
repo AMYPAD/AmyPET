@@ -22,6 +22,7 @@ rvois = ['wc', 'cg', 'wcb', 'pns']
 # > folder name with the default conversion tables after calibration
 cl_anchor_fldr = Path(resource_filename(__name__, 'data/cl_anchor_tables'))
 cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
+amypet_dir = Path.home() / '.amypet'
 
 # > region full name strings for plots
 rvoi_str = dict(wc='WHOLE CEREBELLUM', cg='CEREBELLUM GM', wcb='WHOLE CEREBELLUM + BRAIN STEM',
@@ -29,7 +30,7 @@ rvoi_str = dict(wc='WHOLE CEREBELLUM', cg='CEREBELLUM GM', wcb='WHOLE CEREBELLUM
 
 
 #----------------------------------------------------------------------
-def get_atlas(atlas='aal', res=1, outpath=Path.home() / '.amypet'):
+def get_atlas(atlas='aal', res=1, outpath=amypet_dir):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
 
        Options:
@@ -38,7 +39,6 @@ def get_atlas(atlas='aal', res=1, outpath=Path.home() / '.amypet'):
                     in the dictionary. TODO: move the dictionary to `defs.py`.
        - res:       the resolution of the atlas in mm.
     '''
-
     atlases = dict(
         ghpath='https://github.com/neurodata/neuroparc/raw/master/atlases/label/Human/',
         aal='AAL_space-MNI152NLin6_res-',

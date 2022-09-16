@@ -25,15 +25,12 @@ opth = drv / 'CL' / 'FLUTE'
 
 #----------------------------------------------------------------------
 # AD
-dirflt = drv / Path('CL/FLUTE/GE_AD_F18_NIFTI')
-dirpib = drv / Path('CL/FLUTE/GE_AD_C11_NIFTI')
-dirmri = drv / Path('CL/FLUTE/GE_AD_MRI_NIFTI')
-fflts = [dirflt / f for f in dirflt.glob('*.nii')]
-fpibs = [dirpib / f for f in dirpib.glob('*.nii')]
-fmris = [dirmri / f for f in dirmri.glob('*.nii')]
-fflts.sort()
-fpibs.sort()
-fmris.sort()
+dirflt = drv / 'CL' / 'FLUTE' / 'GE_AD_F18_NIFTI'
+dirpib = drv / 'CL' / 'FLUTE' / 'GE_AD_C11_NIFTI'
+dirmri = drv / 'CL' / 'FLUTE' / 'GE_AD_MRI_NIFTI'
+fflts = sorted(dirflt.glob('*.nii'))
+fpibs = sorted(dirpib.glob('*.nii'))
+fmris = sorted(dirmri.glob('*.nii'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(fflts, fmris)
@@ -51,15 +48,12 @@ with open(str(opth / 'output_flt_a.pkl'), 'wb') as f:
 
 #----------------------------------------------------------------------
 # YC
-dirflt = drv / Path('CL/FLUTE/GE_YHV_F18_NIFTI')
-dirpib = drv / Path('CL/FLUTE/GE_YHV_C11_NIFTI')
-dirmri = drv / Path('CL/FLUTE/GE_YHV_MRI_NIFTI')
-fflts = [dirflt / f for f in dirflt.glob('*.nii')]
-fpibs = [dirpib / f for f in dirpib.glob('*.nii')]
-fmris = [dirmri / f for f in dirmri.glob('*.nii')]
-fflts.sort()
-fpibs.sort()
-fmris.sort()
+dirflt = drv / 'CL' / 'FLUTE' / 'GE_YHV_F18_NIFTI'
+dirpib = drv / 'CL' / 'FLUTE' / 'GE_YHV_C11_NIFTI'
+dirmri = drv / 'CL' / 'FLUTE' / 'GE_YHV_MRI_NIFTI'
+fflts = sorted(dirflt.glob('*.nii'))
+fpibs = sorted(dirpib.glob('*.nii'))
+fmris = sorted(dirmri.glob('*.nii'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(fflts, fmris)

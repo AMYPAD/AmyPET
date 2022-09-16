@@ -49,13 +49,9 @@ if False:
 dirfbb = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_FBB_90110' / 'NIfTI'
 dirpib = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_PiB_5070' / 'NIfTI'
 dirmri = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_MR' / 'NIfTI'
-ffbbs = [dirfbb/f for f in dirfbb.glob('*.nii')]
-fpibs = [dirpib/f for f in dirpib.glob('*.nii')]
-fmris = [dirmri/f for f in dirmri.glob('*.nii')]
-ffbbs.sort()
-fpibs.sort()
-fmris.sort()
-
+ffbbs = sorted(dirfbb.glob('*.nii'))
+fpibs = sorted(dirpib.glob('*.nii'))
+fmris = sorted(dirmri.glob('*.nii'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbbs, fmris)
@@ -73,15 +69,12 @@ with open(str(opth / 'output_fbb_e.pkl'), 'wb') as f:
 
 #----------------------------------------------------------------------
 # YC
-dirfbb = drv / Path('AMYPET/CL/FBB/YC-10_FBB_90110/NIfTI')
-dirpib = drv / Path('AMYPET/CL/FBB/YC-10_PiB_5070/NIfTI')
-dirmri = drv / Path('AMYPET/CL/FBB/YC-10_MR/NIfTI')
-ffbbs = [dirfbb / f for f in dirfbb.glob('*.nii')]
-fpibs = [dirpib / f for f in dirpib.glob('*.nii')]
-fmris = [dirmri / f for f in dirmri.glob('*.nii')]
-ffbbs.sort()
-fpibs.sort()
-fmris.sort()
+dirfbb = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_FBB_90110' / 'NIfTI'
+dirpib = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_PiB_5070' / 'NIfTI'
+dirmri = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_MR' / 'NIfTI'
+ffbbs = sorted(dirfbb.glob('*.nii'))
+fpibs = sorted(dirpib.glob('*.nii'))
+fmris = sorted(dirmri.glob('*.nii'))
 '''
 amypet.im_check_pairs(fpibs, fmris)
 amypet.im_check_pairs(ffbbs, fmris)
