@@ -510,7 +510,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
 
     # > save the mask to NIfTI file
     nimpa.array2nii(
-        crbmsk, petdct['affine'], fpmsk, descrip='AmyPET: probability mask',
+        refmsk, petdct['affine'], fpmsk, descrip='AmyPET: probability mask',
         trnsp=(petdct['transpose'].index(0), petdct['transpose'].index(1),
                petdct['transpose'].index(2)), flip=petdct['flip'])
 
