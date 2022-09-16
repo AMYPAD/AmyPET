@@ -213,11 +213,6 @@ cal = amypet.calib_tracer(outp, outf)
 Tsuvr = amypet.save_suvr2pib(cal, 'fbp')
 
 
-# TEST
-out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'output_test_pib')
-out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth/'output_test_fbb', used_saved=True)
-
-
 with open(opth/'cal_data.pkl', 'wb') as f:
     pickle.dump(cal, f)
 
@@ -225,6 +220,13 @@ with open(opth/'cal_data.pkl', 'rb') as f:
     cal_fbp = pickle.load(f)
 
 
+# TEST
+out_t  = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth/'output_test_pib')
+out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth/'output_test_fbb', used_saved=True)
+
+
+'''
+TESTS FOR CHECKING CONSISTENCY WITH PROVIDED DATA
 import openpyxl as xl
 info = xl.load_workbook(dirdata/'Avid_Centiloid_standard_method.xlsx')
 dat = info['Sheet1']
@@ -250,3 +252,4 @@ plot(suvrf_avid, suvrf_amyp, '.')
 fig, ax  = plt.subplots()
 ax.scatter(cal[rvoi]['calib']['cl_suvr'][:,1], cal[rvoi]['calib']['cl_suvr'][:,2], c='black')
 amypet.aux.identity_line(ax=ax, ls='--', c='b')
+'''
