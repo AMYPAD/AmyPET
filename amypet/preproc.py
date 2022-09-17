@@ -22,8 +22,8 @@ import numpy as np
 import spm12
 from niftypet import nimpa
 
-import amypet
-from amypet import centiloid, preproc_suvr
+from ..aux import get_atlas
+from ..suvr_tools import r_trimup
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
@@ -453,10 +453,10 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
         natout = Path(outpath)
 
     # > get the AAL atlas with the resolution of 1 mm
-    fatl = amypet.get_atlas(atlas='aal', res=1, outpath=natout)
+    fatl = get_atlas(atlas='aal', res=1, outpath=natout)
 
     # > trim and upscale the native PET relative to MR resolution
-    trmout = amypet.r_trimup(cl_dct['petc']['fim'], cl_dct['mric']['fim'], outpath=natout,
+    trmout = r_trimup(cl_dct['petc']['fim'], cl_dct['mric']['fim'], outpath=natout,
                              store_img_intrmd=True)
 
     # > get the trimmed PET as dictionary
