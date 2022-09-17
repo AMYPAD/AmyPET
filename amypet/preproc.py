@@ -22,8 +22,8 @@ import numpy as np
 import spm12
 from niftypet import nimpa
 
-from ..aux import get_atlas
-from ..suvr_tools import r_trimup
+from .aux import get_atlas
+from .suvr_tools import r_trimup
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
