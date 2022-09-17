@@ -238,7 +238,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     # > ensure that the frames exist in part of full dynamic image data
     if frames is not None and nfrm < max(frames):
         raise ValueError('The selected frames do not exist')
-    elif frames is None:
+    elif not frames:
         frames = np.arange(nfrm)
 
     logging.info(f'{nfrm} frames have been found in the dynamic image.')
