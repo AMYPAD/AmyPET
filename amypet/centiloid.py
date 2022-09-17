@@ -270,7 +270,8 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         # > path to anchor point dictionary
         if cl_anchor_path is None:
             cl_fldr = cl_anchor_fldr
-        cl_fldr = Path(cl_anchor_path)
+        else:
+            cl_fldr = Path(cl_anchor_path)
         assert cl_fldr.is_dir()
         #---------------------------------
 
