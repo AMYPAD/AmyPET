@@ -1,10 +1,6 @@
-"""
-Auxiliary functions for the centiloid project.
-"""
+"""Auxiliary functions for the centiloid project"""
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022"
-
-import os
 import pickle
 import re
 import urllib
@@ -25,11 +21,12 @@ cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
 amypet_dir = Path.home() / '.amypet'
 
 # > region full name strings for plots
-rvoi_str = dict(wc='WHOLE CEREBELLUM', cg='CEREBELLUM GM', wcb='WHOLE CEREBELLUM + BRAIN STEM',
-                pns='PONS')
+rvoi_str = {
+    'wc': 'WHOLE CEREBELLUM', 'cg': 'CEREBELLUM GM', 'wcb': 'WHOLE CEREBELLUM + BRAIN STEM',
+    'pns': 'PONS'}
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def get_atlas(atlas='aal', res=1, outpath=amypet_dir):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
 
@@ -39,13 +36,11 @@ def get_atlas(atlas='aal', res=1, outpath=amypet_dir):
                     in the dictionary. TODO: move the dictionary to `defs.py`.
        - res:       the resolution of the atlas in mm.
     '''
-    atlases = dict(
-        ghpath='https://github.com/neurodata/neuroparc/raw/master/atlases/label/Human/',
-        aal='AAL_space-MNI152NLin6_res-',
-        aal_lbl='Anatomical-labels-csv/AAL.csv',
-        schaefer200='Schaefer200_space-MNI152NLin6_res-',
-        talairach='Talairach_space-MNI152NLin6_res-',
-    )
+    atlases = {
+        'ghpath': 'https://github.com/neurodata/neuroparc/raw/master/atlases/label/Human/',
+        'aal': 'AAL_space-MNI152NLin6_res-', 'aal_lbl': 'Anatomical-labels-csv/AAL.csv',
+        'schaefer200': 'Schaefer200_space-MNI152NLin6_res-',
+        'talairach': 'Talairach_space-MNI152NLin6_res-'}
 
     # > get the GitHub data object
     ghd = urllib.request.urlopen(atlases['ghpath'] + atlases[atlas] + f'{res}x{res}x{res}.nii.gz')
@@ -61,10 +56,10 @@ def get_atlas(atlas='aal', res=1, outpath=amypet_dir):
     return fatl
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def im_check_pairs(fpets, fmris):
     '''
     checks visually image by image if the PET and MR have
@@ -89,10 +84,10 @@ def im_check_pairs(fpets, fmris):
         plt.waitforbuttonpress(0)
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def identity_line(ax=None, ls='--', *args, **kwargs):
     '''
     plot identity line for any correlation analysis
@@ -115,10 +110,10 @@ def identity_line(ax=None, ls='--', *args, **kwargs):
     return ax
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def get_clref(fxls):
     '''
     get the excel sheets with CL reference data from the CL project
@@ -130,7 +125,7 @@ def get_clref(fxls):
     wb = openpyxl.load_workbook(fxls)
     ws = wb.active
 
-    pib_tbl = dict(yc={}, ad={})
+    pib_tbl = {'yc': {}, 'ad': {}}
 
     # > cell offsets
     ioff_ad = [5, 50]
@@ -177,7 +172,7 @@ def get_clref(fxls):
     pib_tbl['ad']['cl']['pns'] = np.array([float(i) for i in cpns[ioff_ad[0]:ioff_ad[1]]])
 
     return pib_tbl
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
 
 def check_suvrs(suvr_yc, suvr_ad, refs):
@@ -190,12 +185,12 @@ def check_suvrs(suvr_yc, suvr_ad, refs):
 
     # > prepare diff dictionary for the differences observed
     # > in young controls (yc) and AD patients (ad)
-    diff = dict(yc={}, ad={})
+    diff = {'yc': {}, 'ad': {}}
 
     # > initialise the means for each reference VOI
     for rvoi in rvois:
-        diff['yc'][rvoi] = dict(mean_ref=0, mean=0, N=0)
-        diff['ad'][rvoi] = dict(mean_ref=0, mean=0, N=0)
+        diff['yc'][rvoi] = {'mean_ref': 0, 'mean': 0, 'N': 0}
+        diff['ad'][rvoi] = {'mean_ref': 0, 'mean': 0, 'N': 0}
 
     def run_checks(suvr_dct, grp):
 
@@ -219,11 +214,10 @@ def check_suvrs(suvr_yc, suvr_ad, refs):
                 diff[grp][rvoi]['N'] += 1
                 diff[grp][rvoi]['mean_ref'] += suvr_ref
                 diff[grp][rvoi]['mean'] += suvr
-                diff[grp][rvoi][k] = dict(suvr=suvr, ref=suvr_ref, err=err)
+                diff[grp][rvoi][k] = {'suvr': suvr, 'ref': suvr_ref, 'err': err}
 
-                print(
-                    f'refvoi={rvoi}, indx> {idx}, suvr={suvr:.3f}, ref={suvr_ref:.3f}, error={err:.3f}%'
-                )
+                print(f'refvoi={rvoi}, indx> {idx}, suvr={suvr:.3f},'
+                      f' ref={suvr_ref:.3f}, error={err:.3f}%')
 
             diff[grp][rvoi]['mean'] /= diff[grp][rvoi]['N']
             diff[grp][rvoi]['mean_ref'] /= diff[grp][rvoi]['N']
@@ -249,10 +243,10 @@ def check_suvrs(suvr_yc, suvr_ad, refs):
     return diff
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def check_cls(suvr_yc, suvr_ad, diff, refs):
     ''' check centiloid values relative to the reference in `refs`
         dictionary, using SUVr dictionaries for YC and AD groups
@@ -276,7 +270,7 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
             cl = 100 * (suvr_dct[k]['suvr'][rvoi] - suvr_0) / (suvr_100-suvr_0)
             cl_ref = refs[grp]['cl'][rvoi][i]
 
-            diff[grp][rvoi][k].update(dict(cl=cl, cl_ref=cl_ref))
+            diff[grp][rvoi][k].update(cl=cl, cl_ref=cl_ref)
 
             print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, ref={cl_ref:.3f}')
 
@@ -291,7 +285,7 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
             cl = 100 * (suvr_dct[k]['suvr'][rvoi] - suvr_0) / (suvr_100-suvr_0)
             cl_ref = refs[grp]['cl'][rvoi][i]
 
-            diff[grp][rvoi][k].update(dict(cl=cl, cl_ref=cl_ref))
+            diff[grp][rvoi][k].update(cl=cl, cl_ref=cl_ref)
 
             print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, ref={cl_ref:.3f}')
 
@@ -300,7 +294,7 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
         '''
         return [diff[grp][rvoi][k][cl] for k in diff[grp][rvoi] if grp in k.lower()]
 
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
     for a, rvoi in enumerate(rvois):
@@ -330,16 +324,16 @@ def check_cls(suvr_yc, suvr_ad, diff, refs):
         ax[i, j].grid('on')
 
     fig.tight_layout()
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     return diff
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#======================================================================
+# ======================================================================
 # CL CALIBRATION FOR A NEW TRACER
-#======================================================================
+# ======================================================================
 
 
 def calib_tracer(outpib, outnew, xystr=None, figsize=(10, 10), fontsize=12):
@@ -356,7 +350,7 @@ def calib_tracer(outpib, outnew, xystr=None, figsize=(10, 10), fontsize=12):
     clap = get_cl_anchors()
 
     if xystr is None:
-        xystr = dict(wc=[1.5, 1.1], cg=[2.0, 1.2], wcb=[1.5, 1.0], pns=[1.0, 0.75])
+        xystr = {'wc': [1.5, 1.1], 'cg': [2.0, 1.2], 'wcb': [1.5, 1.0], 'pns': [1.0, 0.75]}
 
     # > extracting the index from names
     pp = re.compile(r'(GE_\w*_\w*_(\d*)_NIFTI)|(Y*(\d*)\w*)')
@@ -372,7 +366,7 @@ def calib_tracer(outpib, outnew, xystr=None, figsize=(10, 10), fontsize=12):
         cl_suvr = []
 
         # > initialise dictionary
-        cal[rvoi] = dict(sbj={}, calib={})
+        cal[rvoi] = {'sbj': {}, 'calib': {}}
 
         for k in outpib:
 
@@ -394,16 +388,15 @@ def calib_tracer(outpib, outnew, xystr=None, figsize=(10, 10), fontsize=12):
             cl = 100 * (suvrp - clap[rvoi][0]) / (clap[rvoi][1] - clap[rvoi][0])
 
             # > put the SUVrs for PiB and FBB into dictionary
-            cal[rvoi]['sbj'][idx] = dict(cl=cl, suvrp=suvrp, suvrf=suvrf)
+            cal[rvoi]['sbj'][idx] = {'cl': cl, 'suvrp': suvrp, 'suvrf': suvrf}
 
             # > ... and a list for a future array
             cl_suvr.append([cl, cal[rvoi]['sbj'][idx]['suvrp'], cal[rvoi]['sbj'][idx]['suvrf']])
 
-            print(
-                f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f}, suvr_pib={suvrp:.3f}, suvr_fbb={suvrf:.3f}'
-            )
+            print(f'refvoi={rvoi}, indx> {idx}, cl={cl:.3f},'
+                  f' suvr_pib={suvrp:.3f}, suvr_fbb={suvrf:.3f}')
 
-        #--------------------------------------------------------------
+        # --------------------------------------------------------------
         # > find the linear relationship for FBB_SUVr = m*PiB_SUVr + b
         # > calculate the tracer `m_std` and `b_std`
         # > (Eq. 2.2.3.1a in Klunk et al. 2015)
@@ -416,12 +409,12 @@ def calib_tracer(outpib, outnew, xystr=None, figsize=(10, 10), fontsize=12):
 
         cl_std_fbb = 100 * (suvr_pib_calc - clap[rvoi][0]) / (clap[rvoi][1] - clap[rvoi][0])
 
-        cal[rvoi]['calib'] = dict(m_std=m_std, b_std=b_std, r2=r2, p=p, stderr=stderr,
-                                  cl_suvr=cl_suvr, suvr_pib_calc=suvr_pib_calc,
-                                  cl_std_fbb=cl_std_fbb)
-        #--------------------------------------------------------------
+        cal[rvoi]['calib'] = {
+            'm_std': m_std, 'b_std': b_std, 'r2': r2, 'p': p, 'stderr': stderr, 'cl_suvr': cl_suvr,
+            'suvr_pib_calc': suvr_pib_calc, 'cl_std_fbb': cl_std_fbb}
+        # --------------------------------------------------------------
 
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # VISUALISATION
 
     fig, ax = plt.subplots(2, 2, figsize=figsize)
@@ -459,19 +452,19 @@ def calib_tracer(outpib, outnew, xystr=None, figsize=(10, 10), fontsize=12):
         ax2[i, j].set_title(rvoi_str[rvoi])
         # > add the same text about the equation used for converting to PiB SUVrs
         ax2[i, j].text(
-            40, 10,
-            f'$y_{{\\mathrm{{SUVr}}}}^{{\\mathrm{{NEW}}}} = {m_std:.4f}x_{{\\mathrm{{SUVr}}}}^{{\\mathrm{{PiB}}}} + {b_std:.4f}$',
+            40, 10, f'$y_{{\\mathrm{{SUVr}}}}^{{\\mathrm{{NEW}}}}'
+            f' = {m_std:.4f}x_{{\\mathrm{{SUVr}}}}^{{\\mathrm{{PiB}}}} + {b_std:.4f}$',
             fontsize=fontsize)
         ax2[i, j].text(40, -5, f'$R^2={r2:.4f}$', fontsize=fontsize)
 
     fig.tight_layout()
     fig2.tight_layout()
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     return cal
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def save_cl_anchors(diff, outpath=None):
     """save the CL anchor points for each reference VOI."""
 
@@ -505,10 +498,10 @@ def get_cl_anchors(path=None):
         return pickle.load(f)
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def save_suvr2pib(cal, tracer, outpath=None):
     ''' save the linear transformation parameters, `m_Std` and `b_Std`;
         the parameters are taken from the bigger calibration dictionary `cal`
@@ -523,8 +516,8 @@ def save_suvr2pib(cal, tracer, outpath=None):
             - 'fbp' for [18F]florbetapir
     '''
 
-    if not tracer in ['fbp', 'fbb', 'flute']:
-        raise ValueError('e> tracer is unrecognised or not given!')
+    if tracer not in ('fbp', 'fbb', 'flute'):
+        raise ValueError('tracer is unrecognised or not given!')
 
     # conversion dictionary
     CNV = {}
@@ -532,7 +525,7 @@ def save_suvr2pib(cal, tracer, outpath=None):
     for rvoi in rvois:
         mstd = cal[rvoi]['calib']['m_std']
         bstd = cal[rvoi]['calib']['b_std']
-        CNV[rvoi] = dict(m_std=mstd, b_std=bstd)
+        CNV[rvoi] = {'m_std': mstd, 'b_std': bstd}
         txt += f'{rvoi}: m_std, b_std = ({mstd}, {bstd})\n'
     print(txt)
 

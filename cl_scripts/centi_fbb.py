@@ -2,19 +2,12 @@
 __author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
-import os
 import pickle
-import sys
 from pathlib import Path
 from subprocess import run
 
 import dcm2niix
-import matplotlib
-import matplotlib.pyplot as plt
-import openpyxl
-import spm12
 from niftypet import nimpa
-from scipy.stats import linregress
 
 import amypet
 from amypet import centiloid as centi
@@ -23,7 +16,7 @@ drv = Path('/data')
 atlases = drv / 'AMYPET' / 'Atlas' / 'CL_2mm'
 opth = drv / 'AMYPET' / 'CL' / 'FBB'
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # > convert to NIfTI as needed
 if False:
     dirdata = drv / 'AMYPET' / 'CL' / 'FBB'
@@ -40,9 +33,9 @@ if False:
         for s in dcmdir:
 
             run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', nout, 'f', '%f_%s', s])
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # ELDRL
 dirfbb = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_FBB_90110' / 'NIfTI'
 dirpib = drv / 'AMYPET' / 'CL' / 'FBB' / 'E-25_PiB_5070' / 'NIfTI'
@@ -61,9 +54,9 @@ out_fe = centi.run(ffbbs, fmris, atlases, tracer='new', outpath=opth / 'output_f
                    used_saved=True)
 with open(str(opth / 'output_fbb_e.pkl'), 'wb') as f:
     pickle.dump(out_fe, f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # YC
 dirfbb = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_FBB_90110' / 'NIfTI'
 dirpib = drv / 'AMYPET' / 'CL' / 'FBB' / 'YC-10_PiB_5070' / 'NIfTI'
@@ -82,10 +75,10 @@ out_fy = centi.run(ffbbs, fmris, atlases, tracer='new', outpath=opth / 'output_f
 with open(str(opth / 'output_fbb_y.pkl'), 'wb') as f:
     pickle.dump(out_fy, f)
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#======================================================================
-#----------------------------------------------------------------------
+# ======================================================================
+# ----------------------------------------------------------------------
 with open(str(opth / 'output_pib_e.pkl'), 'rb') as f:
     out_pe = pickle.load(f)
 
@@ -97,7 +90,7 @@ with open(str(opth / 'output_pib_y.pkl'), 'rb') as f:
 
 with open(str(opth / 'output_fbb_y.pkl'), 'rb') as f:
     out_fy = pickle.load(f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 # combine young and elderly dictionaries
 out_pe.update(out_py)

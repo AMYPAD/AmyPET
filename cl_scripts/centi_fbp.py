@@ -7,18 +7,12 @@ import pickle
 import re
 import shutil
 import sys
-from collections import Counter
 from pathlib import Path
 from subprocess import run
 
 import dcm2niix
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
-import openpyxl
-import spm12
 from niftypet import nimpa
-from scipy.stats import linregress
 
 import amypet
 from amypet import centiloid as centi
@@ -28,7 +22,7 @@ atlases = drv / 'AMYPET' / 'Atlas' / 'CL_2mm'
 dirdata = drv / 'AMYPET' / 'CL' / 'FBP'
 opth = dirdata
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # > convert to NIfTI as needed
 if False:
     intrm_fldr = 'NIfTI_converted_intrm'
@@ -54,14 +48,14 @@ if False:
         sDCM = {}
         for d in dcmdirs:
             prnt = d.parent.parent.parent
-            if not prnt in sDCM:
+            if prnt not in sDCM:
                 sDCM[prnt] = list(d.glob('*.dcm'))
             else:
                 sDCM[prnt] += list(d.glob('*.dcm'))
 
         for s in sDCM:
 
-            #------------------------------------
+            # ------------------------------------
             print(f'i> copying files for subject: {s}')
             tmpdir = opth / 'tmp' / s.name
             nimpa.create_dir(tmpdir)
@@ -73,22 +67,14 @@ if False:
             npth = opth / intrm_fldr / g.name / s.name
             nimpa.create_dir(npth)
 
-            run([
-                dcm2niix.bin,
-                              #'-i', 'y',
-                '-v',
-                'n',
-                '-o',
-                npth,
-                'f',
-                '%f_%s',
-                tmpdir])
+            run([dcm2niix.bin, '-v', 'n', '-o', npth, 'f', '%f_%s', tmpdir])
+            # '-i', 'y',
 
             # > remove the temporary DICOM files
             shutil.rmtree(tmpdir)
-            #------------------------------------
+            # ------------------------------------
 
-            #------------------------------------
+            # ------------------------------------
             # > find all NIfTI files per subject and combine them when needed
             spth = opth / final_fldr / g.name
             nimpa.create_dir(spth)
@@ -112,19 +98,19 @@ if False:
                 tmpim.astype(np.float32), ndct['affine'], fout,
                 trnsp=(ndct['transpose'].index(0), ndct['transpose'].index(1),
                        ndct['transpose'].index(2)), flip=ndct['flip'])
-            #------------------------------------
+            # ------------------------------------
 
-# #==============\
+# # ==============\
 # fnii = Path('/data/AMYPET/CL/FBP/NIfTI_converted/Young_Control_PiB/101437_PiB3_AC/101437_PiB3_AC_unnamed_20120101142541_574880.nii')
 # ndct = nimpa.getnii(fnii, output='all')
 # tmpim = ndct['im']
 # tmpim = np.sum(tmpim, axis=0)
 # fout = fnii.parent/('cc.nii.gz')
-# #==============\
+# # ==============\
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # ELDRL
 dirfbp = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Elder_subject_florbetapir'
 dirpib = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Elder_subject_PiB'
@@ -143,9 +129,9 @@ out_fe = centi.run(ffbps, fmris, atlases, tracer='new', outpath=opth / 'output_f
                    used_saved=True)
 with open(str(opth / 'output_fbp_e.pkl'), 'wb') as f:
     pickle.dump(out_fe, f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # YC
 dirfbp = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Young_Control_florbetapir'
 dirpib = drv / 'AMYPET' / 'CL' / 'FBP' / 'NIfTI' / 'Young_Control_PiB'
@@ -165,12 +151,12 @@ out_fy = centi.run(ffbps, fmris, atlases, tracer='new', outpath=opth / 'output_f
 with open(str(opth / 'output_fbp_y.pkl'), 'wb') as f:
     pickle.dump(out_fy, f)
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 sys.exit()
 
-#======================================================================
-#----------------------------------------------------------------------
+# ======================================================================
+# ----------------------------------------------------------------------
 with open(str(opth / 'output_pib_e.pkl'), 'rb') as f:
     out_pe = pickle.load(f)
 
@@ -182,7 +168,7 @@ with open(str(opth / 'output_pib_y.pkl'), 'rb') as f:
 
 with open(str(opth / 'output_fbp_y.pkl'), 'rb') as f:
     out_fy = pickle.load(f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 # combine young and elderly dictionaries
 out_pe.update(out_py)
@@ -195,7 +181,6 @@ cal = amypet.calib_tracer(outp, outf)
 # > save the transformations from SUVr to SUVr_PiB_Calc
 Tsuvr = amypet.save_suvr2pib(cal, 'fbp')
 
-
 # TEST
 out_t = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth / 'output_test_pib')
 out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth / 'output_test_fbb',
@@ -207,11 +192,9 @@ with open(opth / 'cal_data.pkl', 'wb') as f:
 with open(opth / 'cal_data.pkl', 'rb') as f:
     cal_fbp = pickle.load(f)
 
-
-'''
-TESTS FOR CHECKING CONSISTENCY WITH PROVIDED DATA
-=======
->>>>>>> 2c5df0134c48bf9fad58528eeac341da8ecc8d6a
+# TESTS FOR CHECKING CONSISTENCY WITH PROVIDED DATA
+# >>>>>>> 2c5df0134c48bf9fad58528eeac341da8ecc8d6a
+import matplotlib.pyplot as plt
 import openpyxl as xl
 
 info = xl.load_workbook(dirdata / 'Avid_Centiloid_standard_method.xlsx')
@@ -232,16 +215,9 @@ suvrf_amyp = cal['wc']['calib']['cl_suvr'][:, 2]
 
 clf_avid = cl_wc_fbp[idxs]
 
-figure()
-plot(suvrf_avid, suvrf_amyp, '.')
+plt.figure()
+plt.plot(suvrf_avid, suvrf_amyp, '.')
 
-<<<<<<< HEAD
-fig, ax  = plt.subplots()
-ax.scatter(cal[rvoi]['calib']['cl_suvr'][:,1], cal[rvoi]['calib']['cl_suvr'][:,2], c='black')
-amypet.aux.identity_line(ax=ax, ls='--', c='b')
-'''
-=======
 fig, ax = plt.subplots()
 ax.scatter(cal[rvoi]['calib']['cl_suvr'][:, 1], cal[rvoi]['calib']['cl_suvr'][:, 2], c='black')
 amypet.aux.identity_line(ax=ax, ls='--', c='b')
->>>>>>> 2c5df0134c48bf9fad58528eeac341da8ecc8d6a

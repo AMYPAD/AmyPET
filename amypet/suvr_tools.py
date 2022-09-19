@@ -1,21 +1,14 @@
 import logging
 import os
-import re
-import sys
 from pathlib import Path, PurePath
-
-from matplotlib import pyplot as plt
-
-logging.basicConfig(level=logging.INFO)
-
 from subprocess import run
 
 import dcm2niix
 import numpy as np
-
-#from miutil.fdio import hasext
+from matplotlib import pyplot as plt
 from niftypet import nimpa
 
+logging.basicConfig(level=logging.INFO)
 nifti_ext = ('.nii', '.nii.gz')
 dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
@@ -54,7 +47,7 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
     # > trimmed folder
     trmdir = Path(ftrm['fimi'][0]).parent
 
-    return dict(im=ftrm['im'], trmdir=trmdir, ftrm=ftrm['fimi'][0], trim_scale=scale)
+    return {'im': ftrm['im'], 'trmdir': trmdir, 'ftrm': ftrm['fimi'][0], 'trim_scale': scale}
 
 
 # ========================================================================================
@@ -79,8 +72,8 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
     # > used only for saving ROI mask to file if requested
     affine, flip, trnsp = None, None, None
 
-    #----------------------------------------------
-    #PET
+    # ----------------------------------------------
+    # PET
     if isinstance(impet, dict):
         im = impet['im']
         if 'affine' in impet:
@@ -98,10 +91,10 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
 
     elif isinstance(impet, np.ndarray):
         im = impet
-    #----------------------------------------------
+    # ----------------------------------------------
 
-    #----------------------------------------------
-    #LABELS
+    # ----------------------------------------------
+    # LABELS
     if isinstance(imlabel, dict):
         lbls = imlabel['im']
         if 'affine' in imlabel and affine is None:
@@ -126,9 +119,9 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
 
     # > get rid of NaNs if any in the parcellation/label image
     lbls[np.isnan(lbls)] = 0
-    #----------------------------------------------
+    # ----------------------------------------------
 
-    #----------------------------------------------
+    # ----------------------------------------------
     # > output dictionary
     out = {}
 
@@ -164,7 +157,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
         if output_masks:
             out[voi]['roimsk'] = rmsk
 
-    #----------------------------------------------
+    # ----------------------------------------------
 
     return out
 
@@ -186,7 +179,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     # > convert the path to Path object
     pet_path = Path(pet_path)
 
-    #--------------------------------------
+    # --------------------------------------
     # > sort out the output folder
     if outpath is None:
         petout = pet_path.parent
@@ -199,7 +192,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
         fname = nimpa.rem_chars(pet_path.name.split('.')[0]) + '_static.nii.gz'
     elif not str(fname).endswith(nifti_ext[1]):
         fname += '.nii.gz'
-    #--------------------------------------
+    # --------------------------------------
 
     # > NIfTI case
     if pet_path.is_file() and str(pet_path).endswith(nifti_ext):
@@ -243,11 +236,11 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
 
     logging.info(f'{nfrm} frames have been found in the dynamic image.')
 
-    #------------------------------------------
+    # ------------------------------------------
     # > static image file path
     fstat = petout / fname
 
-    #> check if the static (for SUVr) file already exists
+    # > check if the static (for SUVr) file already exists
     if not fstat.is_file():
 
         if nfrm > 1:
@@ -261,9 +254,9 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
                    imdct['transpose'].index(2)), flip=imdct['flip'])
 
         logging.info(f'Saved SUVr file image to: {fstat}')
-    #------------------------------------------
+    # ------------------------------------------
 
-    return dict(fpet_nii=fpet_nii, fstat=fstat)
+    return {'fpet_nii': fpet_nii, 'fstat': fstat}
 
 
 # ========================================================================================
@@ -317,7 +310,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     else:
         outpath = Path(outpath)
 
-    out['input'] = dict(fpet=petpth, ft1w=t1wpth, flbl=lblpth)
+    out['input'] = {'fpet': petpth, 'ft1w': t1wpth, 'flbl': lblpth}
 
     if not (petpth.exists() and t1wpth.is_file() and lblpth.is_file()):
         raise ValueError('One of the three paths to PET, T1w or label image is incorrect.')
@@ -326,7 +319,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     # > VOI in the label/parcellation image
     if voi_dct is None:
         lbl = nimpa.getnii(lblpth)
-        voi_dct = {int(l): [int(l)] for l in np.unique(lbl)}
+        voi_dct = {int(lab): [int(lab)] for lab in np.unique(lbl)}
 
     if ref_voi is not None and not all([r in voi_dct for r in ref_voi]):
         raise ValueError('Not all VOIs listed as reference are in the VOI definition dictionary.')
@@ -345,7 +338,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     else:
         fmri = t1wpth
 
-    #--------------------------------------------------
+    # --------------------------------------------------
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
@@ -357,7 +350,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     # > trimmed and upsampled PET file
     out['ftrm'] = trmout['ftrm']
     out['trim_scale'] = trmout['trim_scale']
-    #--------------------------------------------------
+    # --------------------------------------------------
 
     # > - - - - - - - - - - - - - - - - - - - - - - - -
     # > parcellations in PET space
@@ -366,9 +359,8 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
 
     if not fplbl.is_file() or reg_fresh:
 
-        logging.info(
-            f'i> registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm for reference and floating images respectively'
-        )
+        logging.info(f'registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm'
+                     ' for reference and floating images respectively')
 
         spm_res = nimpa.coreg_spm(trmout['ftrm'], fmri, fwhm_ref=reg_fwhm_pet,
                                   fwhm_flo=reg_fwhm_mri, fwhm=[7, 7], costfun=reg_costfun,
@@ -434,7 +426,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
 
     out['vois'] = voival
 
-    #-----------------------------------------
+    # -----------------------------------------
     # > QC plot
     if qc_plot and output_masks:
         showpet = nimpa.imsmooth(trmout['im'].astype(np.float32), voxsize=plbl_dct['voxsize'],
@@ -491,6 +483,6 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         plt.savefig(fqc, dpi=300)
         plt.close('all')
         out['fqc'] = fqc
-    #-----------------------------------------
+    # -----------------------------------------
 
     return out

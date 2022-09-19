@@ -2,17 +2,8 @@
 __author__ = "Pawel J Markiewicz"
 __copyright__ = "Copyright 2022"
 
-import os
 import pickle
-import sys
 from pathlib import Path
-
-import matplotlib
-import matplotlib.pyplot as plt
-import openpyxl
-import spm12
-from niftypet import nimpa
-from scipy.stats import linregress
 
 import amypet
 from amypet import centiloid as centi
@@ -21,7 +12,7 @@ drv = Path('/data/AMYPET')
 atlases = drv / 'Atlas' / 'CL_2mm'
 opth = drv / 'CL' / 'FLUTE'
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # AD
 dirflt = drv / 'CL' / 'FLUTE' / 'GE_AD_F18_NIFTI'
 dirpib = drv / 'CL' / 'FLUTE' / 'GE_AD_C11_NIFTI'
@@ -33,16 +24,16 @@ fmris = sorted(dirmri.glob('*.nii'))
 # amypet.im_check_pairs(fflts, fmris)
 
 out_pe = centi.run(fpibs, fmris, atlases, tracer='pib',
-                   outpath=opth / 'output_pib_a')       #, used_saved=True
+                   outpath=opth / 'output_pib_a')       # , used_saved=True
 with open(str(opth / 'output_pib_a.pkl'), 'wb') as f:
     pickle.dump(out_pe, f)
 
 out_fe = centi.run(fflts, fmris, atlases, tracer='new', outpath=opth / 'output_flt_a')
 with open(str(opth / 'output_flt_a.pkl'), 'wb') as f:
     pickle.dump(out_fe, f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 # YC
 dirflt = drv / 'CL' / 'FLUTE' / 'GE_YHV_F18_NIFTI'
 dirpib = drv / 'CL' / 'FLUTE' / 'GE_YHV_C11_NIFTI'
@@ -60,10 +51,10 @@ with open(str(opth / 'output_pib_y.pkl'), 'wb') as f:
 out_fy = centi.run(fflts, fmris, atlases, tracer='new', outpath=opth / 'output_flt_y')
 with open(str(opth / 'output_flt_y.pkl'), 'wb') as f:
     pickle.dump(out_fy, f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-#======================================================================
-#----------------------------------------------------------------------
+# ======================================================================
+# ----------------------------------------------------------------------
 with open(str(opth / 'output_pib_a.pkl'), 'rb') as f:
     out_pa = pickle.load(f)
 
@@ -75,7 +66,7 @@ with open(str(opth / 'output_pib_y.pkl'), 'rb') as f:
 
 with open(str(opth / 'output_flt_y.pkl'), 'rb') as f:
     out_fy = pickle.load(f)
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 # combine young and elderly dictionaries
 out_pa.update(out_py)

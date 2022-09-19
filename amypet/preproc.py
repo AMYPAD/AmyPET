@@ -5,14 +5,10 @@ Preprocessing tools for AmyPET core processes
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022"
 
-import glob
 import logging as log
 import os
-import re
 import shutil
-import sys
-import urllib
-from datetime import datetime, timedelta
+from datetime import datetime
 from itertools import combinations
 from pathlib import Path
 from subprocess import run
@@ -27,18 +23,20 @@ from .suvr_tools import r_trimup
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
-#------------------------------------------------
+# ------------------------------------------------
 # DEFINITIONS:
 # TODO: move these to a separate file, e.g., `defs.py`
 
 # > SUVr time window post injection and duration
-suvr_twindow = dict(flute=[90 * 60, 110 * 60, 1200], fbb=[90 * 60, 110 * 60, 1200],
-                    fbp=[50 * 60, 60 * 60, 600])
+suvr_twindow = {
+    'flute': [90 * 60, 110 * 60, 1200], 'fbb': [90 * 60, 110 * 60, 1200],
+    'fbp': [50 * 60, 60 * 60, 600]}
 margin = 0.1
 
 # tracer names
-tracer_names = dict(flute=['flt', 'flut', 'flute', 'flutemetamol'], fbb=['fbb', 'florbetaben'],
-                    fbp=['fbp', 'florbetapir'])
+tracer_names = {
+    'flute': ['flt', 'flut', 'flute', 'flutemetamol'], 'fbb': ['fbb', 'florbetaben'],
+    'fbp': ['fbp', 'florbetapir']}
 
 # > break time for coffee break protocol (target)
 break_time = 1800
@@ -49,10 +47,10 @@ breakdyn_t = (1200, 2400)
 # > minimum time for the full dynamic acquisition
 fulldyn_time = 3600
 
-#------------------------------------------------
+# ------------------------------------------------
 
 
-#=====================================================================
+# =====================================================================
 def explore_input(
     input_fldr,
     tracer=None,
@@ -93,7 +91,7 @@ def explore_input(
         amyout = Path(outpath)
     nimpa.create_dir(amyout)
 
-    #================================================
+    # ================================================
     # > first check if the folder has DICOM series
 
     # > multiple series in folders (if any)
@@ -108,7 +106,7 @@ def explore_input(
     srs = nimpa.dcmsort(input_fldr, grouping='a+t+d', copy_series=True, outpath=amyout)
     if srs:
         msrs.append(srs)
-    #================================================
+    # ================================================
 
     # > initialise the list of acquisition classification
     msrs_class = []
@@ -125,7 +123,7 @@ def explore_input(
 
         msrs_t.append(srs_t)
 
-        #-----------------------------------------------
+        # -----------------------------------------------
         # > frame timings relative to the injection time -
         #   radiopharmaceutical administration start time
         t_frms = []
@@ -142,9 +140,8 @@ def explore_input(
 
         # > overall acquisition duration
         acq_dur = t_frms[-1][-1] - t_frms[0][0]
-        #-----------------------------------------------
+        # -----------------------------------------------
 
-        #-----------------------------------------------
         # > check if the frames qualify for static, fully dynamic or
         # > coffee-break dynamic acquisition
         acq_type = None
@@ -155,9 +152,8 @@ def explore_input(
                 acq_type = 'fulldyn'
         elif t_frms[0][0] > 1:
             acq_type = 'static'
-        #-----------------------------------------------
+        # -----------------------------------------------
 
-        #-----------------------------------------------
         # > classify tracer if possible and if not given
         if tracer is None:
             if 'tracer' in srs_t[next(iter(srs_t))]:
@@ -173,22 +169,19 @@ def explore_input(
                 # > assuming the first of the following tracers then
                 for t in suvr_twindow:
                     dur = suvr_twindow[t][2]
-                    if acq_dur > dur * (1-margin) and t_frms[0][0] < suvr_twindow[t][0] * (1+
-                                                                                           margin):
+                    if (acq_dur > dur * (1-margin)) and (t_frms[0][0] < suvr_twindow[t][0] *
+                                                         (1+margin)):
                         tracer = t
                         break
-
         else:
             tracer_grp = [tracer in tracer_names[t] for t in tracer_names]
             if any(tracer_grp):
                 tracer = np.array(list(tracer_names.keys()))[tracer_grp][0]
-        #-----------------------------------------------
+        # -----------------------------------------------
 
-        #-----------------------------------------------
         # > is the static acquisition covering the provided SUVr frame definition?
         if acq_type == 'static':
-
-            #-----------------------------------------------
+            # -----------------------------------------------
             # > try to establish the SUVr window even if not provided
             if suvr_win_def is None and not tracer:
                 raise ValueError(
@@ -197,7 +190,7 @@ def explore_input(
                 suvr_win = suvr_twindow[tracer][:2]
             else:
                 suvr_win = suvr_win_def
-            #-----------------------------------------------
+            # -----------------------------------------------
 
             # > window margin
             mrgn_suvr = margin * suvr_twindow[tracer][2]
@@ -210,65 +203,46 @@ def explore_input(
                 frm_0 = t_starts.index(t0_suvr)
                 frm_1 = t_stops.index(t1_suvr)
 
-                msrs_class.append(
-                    dict(
-                        acq=[acq_type, 'suvr'],
-                        time=(t0_suvr, t1_suvr),
-                        timings=t_frms,
-                        idxs=(frm_0, frm_1),
-                        frms=[s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)],
-                    ))
-
+                msrs_class.append({
+                    'acq': [acq_type, 'suvr'], 'time': (t0_suvr, t1_suvr), 'timings': t_frms,
+                    'idxs': (frm_0, frm_1),
+                    'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
             else:
                 log.warning('The acquisition does not cover the requested time frame!')
 
-                msrs_class.append(
-                    dict(
-                        acq=[acq_type],
-                        time=(t_starts[0], t_stops[-1]),
-                        idxs=(0, len(t_frms) - 1),
-                        frms=[s for i, s in enumerate(srs_t)],
-                    ))
-        #-----------------------------------------------
+                msrs_class.append({
+                    'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]),
+                    'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)]})
+        # -----------------------------------------------
         elif acq_type == 'breakdyn':
-
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
 
             frm_0 = t_starts.index(t0_dyn)
             frm_1 = t_stops.index(t1_dyn)
 
-            msrs_class.append(
-                dict(
-                    acq=[acq_type],
-                    time=(t0_dyn, t1_dyn),
-                    timings=t_frms,
-                    idxs=(frm_0, frm_1),
-                    frms=[s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)],
-                ))
-        #-----------------------------------------------
+            msrs_class.append({
+                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                'idxs': (frm_0, frm_1),
+                'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
+        # -----------------------------------------------
         elif acq_type == 'fulldyn':
-
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - fulldyn_time))
 
             frm_0 = t_starts.index(t0_dyn)
             frm_1 = t_stops.index(t1_dyn)
 
-            msrs_class.append(
-                dict(
-                    acq=[acq_type],
-                    time=(t0_dyn, t1_dyn),
-                    timings=t_frms,
-                    idxs=(frm_0, frm_1),
-                    frms=[s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)],
-                ))
-        #-----------------------------------------------
+            msrs_class.append({
+                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                'idxs': (frm_0, frm_1),
+                'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
+        # -----------------------------------------------
 
-    return dict(series=msrs_t, descr=msrs_class, outpath=amyout)
+    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout}
 
 
-#=====================================================================
+# =====================================================================
 def align_suvr(
     suvr_tdata,
     suvr_descr,
@@ -324,7 +298,7 @@ def align_suvr(
         # > output nifty frame files
         nii_frms = []
 
-        #-----------------------------------------------
+        # -----------------------------------------------
         # > convert the individual DICOM frames to NIfTI
         for i, k in enumerate(suvr_descr['frms']):
 
@@ -333,14 +307,14 @@ def align_suvr(
                 suvr_tdata[k]['files'][0].parent])
 
             # > get the converted NIfTI file
-            fnii = [f for f in niidir.glob('{}*.nii*'.format(suvr_tdata[k]['tacq']))]
+            fnii = list(niidir.glob(str(suvr_tdata[k]['tacq']) + '*.nii*'))
             if len(fnii) != 1:
                 raise ValueError('Unexpected number of converted NIfTI files')
             else:
                 nii_frms.append(fnii[0])
-        #-----------------------------------------------
+        # -----------------------------------------------
 
-        #-----------------------------------------------
+        # -----------------------------------------------
         # > CORE ALIGNMENT OF SUVR FRAMES:
 
         # > frame-based motion metric (rotations+translation)
@@ -401,9 +375,10 @@ def align_suvr(
         niiim[rfrm, ...] = niiref['im']
 
         for ifrm in range(len(nii_frms)):
-            if ifrm == rfrm: continue
+            if ifrm == rfrm:
+                continue
 
-            #> resample images for alignment
+            # > resample images for alignment
             frsmpl = nimpa.resample_spm(
                 nii_frms[rfrm],
                 nii_frms[ifrm],
@@ -423,15 +398,15 @@ def align_suvr(
             niiim, niiref['affine'], faligned, descrip='AmyPET: aligned SUVr frames',
             trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
                    niiref['transpose'].index(2)), flip=niiref['flip'])
-        #-----------------------------------------------
+        # -----------------------------------------------
 
-    return dict(fpet=faligned, outpath=niidir, Metric=R, faff=S)
-
-
-#=====================================================================
+    return {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
 
 
-#=====================================================================
+# =====================================================================
+
+
+# =====================================================================
 def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, refvoi_name=None):
     '''
     Preprocess SPM GM segmentation (from CL output) and AAL atlas
@@ -457,7 +432,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
 
     # > trim and upscale the native PET relative to MR resolution
     trmout = r_trimup(cl_dct['petc']['fim'], cl_dct['mric']['fim'], outpath=natout,
-                             store_img_intrmd=True)
+                      store_img_intrmd=True)
 
     # > get the trimmed PET as dictionary
     petdct = nimpa.getnii(trmout['ftrm'], output='all')
@@ -514,5 +489,6 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
         trnsp=(petdct['transpose'].index(0), petdct['transpose'].index(1),
                petdct['transpose'].index(2)), flip=petdct['flip'])
 
-    return dict(fpet=trmout['ftrm'], outpath=natout, finvdef=fmod, fatl=finvatl, fgm=fgmpet,
-                atlas=atl_im, gm_msk=gm_msk, frefvoi=fpmsk, refvoi=refmsk)
+    return {
+        'fpet': trmout['ftrm'], 'outpath': natout, 'finvdef': fmod, 'fatl': finvatl, 'fgm': fgmpet,
+        'atlas': atl_im, 'gm_msk': gm_msk, 'frefvoi': fpmsk, 'refvoi': refmsk}

@@ -32,7 +32,7 @@ from .aux import cl_anchor_fldr, cl_masks_fldr
 log = logging.getLogger(__name__)
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 def load_masks(mskpath, voxsz: int = 2):
     ''' Load the Centiloid PET masks for calculating
         the SUVr to then convert it to Centiloid.
@@ -58,7 +58,7 @@ def load_masks(mskpath, voxsz: int = 2):
     return fmasks, masks
 
 
-#----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 
 def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 2, outpath=None,
@@ -123,7 +123,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
     else:
         raise ValueError('unrecognised input image data')
 
-    #-------------------------------------------------------------
+    # -------------------------------------------------------------
     if flip_pet is not None:
         if isinstance(flip_pet, tuple) and len(pet_mr_list[0]) == 1:
             flips = [flip_pet]
@@ -133,12 +133,12 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
             log.warning('the flip definition is not compatible with the list of PET images')
     else:
         flips = [None] * len(pet_mr_list[0])
-    #-------------------------------------------------------------
+    # -------------------------------------------------------------
 
-    #-------------------------------------------------------------
+    # -------------------------------------------------------------
     # > get the CL masks
     fmasks, masks = load_masks(cl_masks_fldr, voxsz=voxsz)
-    #-------------------------------------------------------------
+    # -------------------------------------------------------------
 
     log.info('iterate through all the input data...')
 
@@ -242,9 +242,10 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                                                 outpath=optho)
 
             log.info(f'subject {onm}: load normalised PET image...')
-            fnpets = [f for f in optho.iterdir() \
-                        if fpet.name.split('.nii')[0] in f.name \
-                        and 'n4bias' not in f.name.lower()]# and not 'mr' in f.name.lower()]
+            fnpets = [
+                f for f in optho.iterdir()
+                if fpet.name.split('.nii')[0] in f.name and 'n4bias' not in f.name.lower()]
+            # and 'mr' not in f.name.lower()
 
             if len(fnpets) == 0:
                 raise ValueError('could not find normalised PET image files')
@@ -263,19 +264,19 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
-        #**************************************************************
+        # **************************************************************
         # C E N T I L O I D   S C A L I N G
-        #**************************************************************
-        #---------------------------------
+        # **************************************************************
+        # ---------------------------------
         # > path to anchor point dictionary
         if cl_anchor_path is None:
             cl_fldr = cl_anchor_fldr
         else:
             cl_fldr = Path(cl_anchor_path)
         assert cl_fldr.is_dir()
-        #---------------------------------
+        # ---------------------------------
 
-        #---------------------------------
+        # ---------------------------------
         # > centiloid transformation for PiB
         pth = cl_fldr / 'CL_PiB_anchors.pkl'
 
@@ -287,9 +288,9 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
 
         with open(pth, 'rb') as f:
             CLA = pickle.load(f)
-        #---------------------------------
+        # ---------------------------------
 
-        #---------------------------------
+        # ---------------------------------
         # > centiloid transformation for PiB
         # > check if SUVr transformation is needed for F-18 tracers
         if tracer in f18_tracers:
@@ -315,21 +316,22 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
 
             # > used now the new PiB converted SUVrs
             suvr = suvr_pib_calc
-        #---------------------------------
+        # ---------------------------------
 
         if tracer != 'new':
             out[onm]['cl'] = cl = {
                 fmsk: 100 * (suvr[fmsk] - CLA[fmsk][0]) / (CLA[fmsk][1] - CLA[fmsk][0])
                 for fmsk in fmasks if fmsk != 'ctx'}
 
-        #**************************************************************
+        # **************************************************************
 
-        #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
         # > output the CL-converted PET image in the MNI space
         if climage and tracer != 'new':
 
             for refvoi in fmasks:
-                if refvoi == 'ctx': continue
+                if refvoi == 'ctx':
+                    continue
 
                 refavg = out[onm]['avgvoi'][refvoi]
 
@@ -358,13 +360,12 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                                npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
 
                 elif tracer != 'new' and abs(cl_ - cl_refvoi) > 0.25:
-                    log.warning(
-                        f'The CL of CL-converted image is different to the calculated CL (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).'
-                    )
+                    log.warning('The CL of CL-converted image is different to the calculated CL'
+                                f' (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
                     log.warning('The CL image has not been generated!')
                 else:
                     log.warning('The CL image has not been generated due to new tracer being used')
-        #-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+        # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
         # -------------------------------------------------------------
         # VISUALISATION
