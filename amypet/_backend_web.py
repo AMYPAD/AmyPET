@@ -1,4 +1,5 @@
 import logging
+import re
 import shlex
 import sys
 from argparse import (
@@ -36,6 +37,17 @@ AmyPET Pipeline
 An https://amypad.eu Project.
 
 {__licence__}"""}
+
+
+def clean_path(path: str):
+    # strip quotes
+    quoted = re.match("(?P<quote>['\"])(.*)(?P=quote)$", path)
+    if quoted:
+        path = quoted.group(2)
+    strip_prefix = "file://"
+    if path.startswith(strip_prefix):
+        return path[len(strip_prefix):]
+    return path
 
 
 class MyParser(BaseParser):
@@ -83,9 +95,7 @@ def main():
                             'name', NONE)
                     elif opt.widget == "DirChooser":
                         # https://github.com/streamlit/streamlit/issues/1019
-                        val = st.text_input(opt.dest, value=dflt, **kwargs)
-                        if val.startswith(prefix := "file://"):
-                            val = val[len(prefix):]
+                        val = clean_path(st.text_input(opt.dest, value=dflt, **kwargs))
                     elif opt.widget == "IntegerField":
                         dflt = opt.default or 0
                         val = st.number_input(opt.dest, min_value=int(opt.widget_options['min']),
