@@ -84,6 +84,8 @@ def main():
                     elif opt.widget == "DirChooser":
                         # https://github.com/streamlit/streamlit/issues/1019
                         val = st.text_input(opt.dest, value=dflt, **kwargs)
+                        if val.startswith(prefix := "file://"):
+                            val = val[len(prefix):]
                     elif opt.widget == "IntegerField":
                         dflt = opt.default or 0
                         val = st.number_input(opt.dest, min_value=int(opt.widget_options['min']),
