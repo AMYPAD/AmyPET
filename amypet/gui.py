@@ -258,8 +258,8 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
          argparser=argparser)
 
     centiloid_func = Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
-                          python_deps=["miutil[nii]", "nimpa", "setuptools", "spm12",
-                                       "tqdm"], argparser=argparser)
+                          python_deps=["miutil[nii]", "nimpa[dcm2niix]",
+                                       "spm12"], argparser=argparser)
     opts = centiloid_func.parser._get_optional_actions()
     tracer = next(i for i in opts if i.dest == 'tracer')
     tracer.choices = centiloid.TRACERS
