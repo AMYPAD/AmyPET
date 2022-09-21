@@ -1,7 +1,6 @@
 import logging
 import shlex
 import sys
-import tkinter as tk
 from argparse import (
     SUPPRESS,
     _HelpAction,
@@ -37,10 +36,6 @@ AmyPET Pipeline
 An https://amypad.eu Project.
 
 {__licence__}"""}
-
-root = tk.Tk()
-root.withdraw()
-root.wm_attributes('-topmost', 1)
 
 
 class MyParser(BaseParser):
@@ -88,18 +83,7 @@ def main():
                             'name', NONE)
                     elif opt.widget == "DirChooser":
                         # https://github.com/streamlit/streamlit/issues/1019
-                        left, right = st.columns(2)
-                        with left:
-                            st.caption(opt.dest)
-                        with right:
-                            clicked = st.button("Browse directories", **kwargs)
-                        key = f'{key_prefix}{opt.dest}_val'
-                        if clicked:
-                            st.session_state[key] = tk.filedialog.askdirectory(
-                                master=root, initialdir=dflt) or dflt
-                        val = st.session_state.get(key, dflt)
-                        with left:
-                            st.write(f"`{val or '(blank)'}`")
+                        val = st.text_input(opt.dest, value=dflt, **kwargs)
                     elif opt.widget == "IntegerField":
                         dflt = opt.default or 0
                         val = st.number_input(opt.dest, min_value=int(opt.widget_options['min']),
