@@ -257,8 +257,12 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
     Func(imtrimup.run, imtrimup.__doc__, version=niftypad.__version__, python_deps=["nimpa"],
          argparser=argparser)
 
-    Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
-         python_deps=["miutil[nii]", "nimpa", "setuptools", "spm12", "tqdm"], argparser=argparser)
+    centiloid_func = Func(centiloid.run, centiloid.__doc__, version=niftypad.__version__,
+                          python_deps=["miutil[nii]", "nimpa", "setuptools", "spm12",
+                                       "tqdm"], argparser=argparser)
+    opts = centiloid_func.parser._get_optional_actions()
+    tracer = next(i for i in opts if i.dest == 'tracer')
+    tracer.choices = centiloid.TRACERS
 
     kinetic_model = Func(
         niftypad.api.kinetic_model, """\
