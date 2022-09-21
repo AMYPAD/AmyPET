@@ -142,6 +142,11 @@ def explore_input(
         acq_dur = t_frms[-1][-1] - t_frms[0][0]
         # -----------------------------------------------
 
+        # -----------------------------------------------
+        # > image path (input)
+        impath = srt_t[next(iter(srt_t))]['files'][0].parent
+        # -----------------------------------------------
+
         # > check if the frames qualify for static, fully dynamic or
         # > coffee-break dynamic acquisition
         acq_type = None
@@ -211,6 +216,7 @@ def explore_input(
                 log.warning('The acquisition does not cover the requested time frame!')
 
                 msrs_class.append({
+                    'inpath':impath,
                     'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]),
                     'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)]})
         # -----------------------------------------------
@@ -222,6 +228,7 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
+                'inpath':impath,
                 'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
@@ -234,12 +241,13 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
+                'inpath':impath,
                 'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
         # -----------------------------------------------
 
-    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout}
+    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer':tracer}
 
 
 # =====================================================================
