@@ -1,4 +1,7 @@
-from streamlit.bootstrap import load_config_options, run
+try:
+    from streamlit.web.bootstrap import load_config_options, run
+except ImportError: # streamlit<1.12
+    from streamlit.bootstrap import load_config_options, run
 
 from . import _backend_web
 
