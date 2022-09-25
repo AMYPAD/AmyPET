@@ -201,8 +201,8 @@ def explore_input(
             mrgn_suvr_start = margin * suvr_twindow[tracer][0]
             mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
 
-            if t_frms[0][0] < suvr_win[0] + mrgn_suvr_start and /
-                t_frms[0][0] > suvr_win[0] - mrgn_suvr_start and /
+            if t_frms[0][0] < suvr_win[0] + mrgn_suvr_start and \
+                t_frms[0][0] > suvr_win[0] - mrgn_suvr_start and \
                 acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
 
                 t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
