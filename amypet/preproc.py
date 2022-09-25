@@ -197,10 +197,13 @@ def explore_input(
                 suvr_win = suvr_win_def
             # -----------------------------------------------
 
-            # > window margin
-            mrgn_suvr = margin * suvr_twindow[tracer][2]
-            if t_frms[0][
-                    0] < suvr_win[0] + mrgn_suvr and acq_dur > suvr_twindow[tracer][2] - mrgn_suvr:
+            # > SUVr window margins, relative to the frame start time and the duration
+            mrgn_suvr_start = margin * suvr_twindow[tracer][0]
+            mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
+
+            if t_frms[0][0] < suvr_win[0] + mrgn_suvr_start and /
+                t_frms[0][0] > suvr_win[0] - mrgn_suvr_start and /
+                acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
 
                 t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
                 t1_suvr = min(t_stops, key=lambda x: abs(x - suvr_win[1]))
