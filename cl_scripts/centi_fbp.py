@@ -220,4 +220,4 @@ plt.plot(suvrf_avid, suvrf_amyp, '.')
 
 fig, ax = plt.subplots()
 ax.scatter(cal[rvoi]['calib']['cl_suvr'][:, 1], cal[rvoi]['calib']['cl_suvr'][:, 2], c='black')
-amypet.aux.identity_line(ax=ax, ls='--', c='b')
+amypet.utils.identity_line(ax=ax, ls='--', c='b')

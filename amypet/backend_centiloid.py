@@ -27,7 +27,7 @@ import spm12
 from miutil.fdio import hasext, nsort
 from niftypet import nimpa
 
-from .aux import cl_anchor_fldr, cl_masks_fldr
+from .utils import cl_anchor_fldr, cl_masks_fldr
 
 log = logging.getLogger(__name__)
 
