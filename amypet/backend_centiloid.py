@@ -451,7 +451,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
 
         plt.tight_layout()
 
-        fqcpng = opths / (onm+'_CL-SUVr_mask_PET_sampling.png')
+        fqcpng = opths / f'{onm}_CL-SUVr_mask_PET_sampling.png'
         plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
 
         plt.close('all')
