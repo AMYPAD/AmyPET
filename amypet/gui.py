@@ -229,7 +229,7 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
         )
         return subparser
 
-    parser = fix_subparser(argparser(prog=None if gui_mode else "amypet"), gui_mode=gui_mode)
+    parser = fix_subparser(argparser(prog=None if gui_mode else "amypet-cli"), gui_mode=gui_mode)
     sub_kwargs = {}
     if sys.version_info[:2] >= (3, 7):
         sub_kwargs["required"] = True

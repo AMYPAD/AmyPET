@@ -23,8 +23,8 @@ Usage
 
 .. code:: sh
 
-    amypet.web     # Web UI version
-    amypet --help  # CLI version
+    amypet             # Web UI version
+    amypet-cli --help  # CLI version
 
 
 .. |Logo| image:: https://amypad.eu/wp-content/themes/AMYPAD/images/AMYPAD_Logo.jpg

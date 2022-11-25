@@ -59,7 +59,7 @@ def main():
 
     def recurse(parser, key_prefix=""):
         opts[PARSER] = parser
-        st.write(f"{'#' * (key_prefix.count('_') + 1)} {parser.prog}")
+        st.write(f"{'#' * (key_prefix.count('_') + 1)} {parser.prog.replace('-cli', '')}")
 
         for opt in parser._actions:
             if isinstance(opt, (_HelpAction, _VersionAction)) or opt.dest in {'dry_run'}:
