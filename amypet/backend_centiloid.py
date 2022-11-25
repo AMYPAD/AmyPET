@@ -449,13 +449,13 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                 f"$CL_{{CBS}}=${cl['wcb']:.1f}", f"$CL_{{PNS}}=${cl['pns']:.1f}"])
             ax[1].text(0, 205, clstr, fontsize=12)
 
-        plt.tight_layout()
+        # plt.tight_layout()
+        fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.1, wspace=0.1)
 
         fqcpng = opths / f'{onm}_CL-SUVr_mask_PET_sampling.png'
         plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
-
-        plt.close('all')
-
+        out[onm]['_amypet_imscroll'] = fig
+        # plt.close('all')
         out[onm]['fqc'] = fqcpng
 
     return out

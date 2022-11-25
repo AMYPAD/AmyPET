@@ -13,7 +13,10 @@ from os import fspath
 from pathlib import Path, PurePath
 
 import matplotlib.pyplot as plt
+import mpld3
 import streamlit as st
+import streamlit.components.v1 as st_components
+from matplotlib.figure import FigureBase
 from packaging.version import Version
 from streamlit.version import _get_installed_streamlit_version
 
@@ -54,14 +57,20 @@ class MyParser(BaseParser):
 
 
 def st_output(res):
-    if isinstance(res, dict) and 'matplotlib.pyplot.imshow' in res:
-        data = res.pop('matplotlib.pyplot.imshow')
+    if isinstance(res, dict) and '_amypet_imscroll' in res:
+        data = res.pop('_amypet_imscroll')
         if isinstance(data, (str, PurePath)):
             st.image(fspath(data))
         else:
-            fig = plt.figure()
-            plt.imshow(data)
-            st.write(fig)
+            if isinstance(data, FigureBase):
+                fig = data
+            else:
+                fig = plt.figure()
+                plt.imshow(data)
+            mpld3.plugins.connect(fig, mpld3.plugins.MousePosition(fmt=".0f"))
+            htm = mpld3.fig_to_html(fig)
+            w, h = fig.get_size_inches()
+            st_components.html(htm, width=int(w * 100) + 50, height=int(h * 100) + 50)
     return st.write(res)
 
 

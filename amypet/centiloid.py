@@ -73,4 +73,4 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, voxs
                            tracer=tracer, outpath=aligned['outpath'] / 'CL')
     cl_dct = next(iter(out_cl.values()))
 
-    return {'matplotlib.pyplot.imshow': cl_dct['fqc'], **cl_dct}
+    return cl_dct
