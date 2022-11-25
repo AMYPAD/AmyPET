@@ -9,6 +9,7 @@ from argparse import (
     _SubParsersAction,
     _VersionAction,
 )
+from os import fspath
 from pathlib import Path, PurePath
 
 import matplotlib.pyplot as plt
@@ -56,7 +57,7 @@ def st_output(res):
     if isinstance(res, dict) and 'matplotlib.pyplot.imshow' in res:
         data = res.pop('matplotlib.pyplot.imshow')
         if isinstance(data, (str, PurePath)):
-            st.image(data)
+            st.image(fspath(data))
         else:
             fig = plt.figure()
             plt.imshow(data)

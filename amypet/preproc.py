@@ -29,7 +29,7 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
-                                        # yapf: ignore
+                                                       # yapf: ignore
     'pib': [90 * 60, 110 * 60, 1200],
     'flute': [90 * 60, 110 * 60, 1200],
     'fbb': [90 * 60, 110 * 60, 1200],
