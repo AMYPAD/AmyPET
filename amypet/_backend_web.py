@@ -11,6 +11,7 @@ from argparse import (
 )
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import streamlit as st
 from packaging.version import Version
 from streamlit.version import _get_installed_streamlit_version
@@ -49,6 +50,15 @@ class MyParser(BaseParser):
             res.widget = widget
             res.widget_options = widget_options or {}
         return res
+
+
+def st_output(res):
+    if isinstance(res, dict) and 'matplotlib.pyplot.imshow' in res:
+        data = res.pop('matplotlib.pyplot.imshow')
+        fig = plt.figure()
+        plt.imshow(data)
+        st.write(fig)
+    return st.write(res)
 
 
 def main():
@@ -141,10 +151,10 @@ def main():
         log.debug(opts)
     elif 'main__' in parser._defaults: # Cmd
         with st.spinner("Running"):
-            st.write(parser._defaults['main__'](cmd[3:], verify_args=False))
+            st_output(parser._defaults['main__'](cmd[3:], verify_args=False))
     elif 'run__' in parser._defaults:  # Func
         with st.spinner("Running"):
-            st.write(parser._defaults['run__'](**opts))
+            st_output(parser._defaults['run__'](**opts))
     else:
         st.error("Unknown action")
 

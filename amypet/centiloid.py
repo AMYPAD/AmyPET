@@ -71,4 +71,6 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, voxs
     # calculate Centiloid (CL)
     out_cl = centiloid_run(suvr_preproc['fstat'], ft1w, voxsz=voxsz, bias_corr=bias_corr,
                            tracer=tracer, outpath=aligned['outpath'] / 'CL')
-    return next(iter(out_cl.values()))
+    cl_dct = next(iter(out_cl.values()))
+
+    return {'matplotlib.pyplot.imshow': cl_dct['fqc'], **cl_dct}
