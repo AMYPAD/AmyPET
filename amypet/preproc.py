@@ -29,17 +29,13 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
-    'pib': [90 * 60, 110 * 60, 1200],
-    'flute': [90 * 60, 110 * 60, 1200],
-    'fbb': [90 * 60, 110 * 60, 1200],
-    'fbp': [50 * 60, 60 * 60, 600]}
+    'pib': [90 * 60, 110 * 60, 1200], 'flute': [90 * 60, 110 * 60, 1200],
+    'fbb': [90 * 60, 110 * 60, 1200], 'fbp': [50 * 60, 60 * 60, 600]}
 
 # tracer names
 tracer_names = {
-    'pib':['pib'],
-    'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
-    'fbb': ['fbb', 'florbetaben'],
-    'fbp': ['fbp', 'florbetapir']}
+    'pib': ['pib'], 'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
+    'fbb': ['fbb', 'florbetaben'], 'fbp': ['fbp', 'florbetapir']}
 
 # > break time for coffee break protocol (target)
 break_time = 1800
@@ -54,13 +50,7 @@ fulldyn_time = 3600
 
 
 # =====================================================================
-def explore_input(
-    input_fldr,
-    tracer=None,
-    suvr_win_def=None,
-    outpath=None,
-    margin = 0.1
-):
+def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, margin=0.1):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -223,10 +213,11 @@ def explore_input(
                 log.warning('The acquisition does not cover the requested time frame!')
 
                 msrs_class.append({
-                    #'inpath':impath,
-                    'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]),
-                    'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)]})
-        # -----------------------------------------------
+                                                        #'inpath':impath,
+                    'acq': [acq_type],
+                    'time': (t_starts[0], t_stops[-1]),
+                    'idxs': (0, len(t_frms) - 1),
+                    'frms': [s for i, s in enumerate(srs_t)]})
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
@@ -235,11 +226,12 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                #'inpath':impath,
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                                          #'inpath':impath,
+                'acq': [acq_type],
+                'time': (t0_dyn, t1_dyn),
+                'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-        # -----------------------------------------------
         elif acq_type == 'fulldyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - fulldyn_time))
@@ -248,13 +240,14 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                #'inpath':impath,
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                                          #'inpath':impath,
+                'acq': [acq_type],
+                'time': (t0_dyn, t1_dyn),
+                'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-        # -----------------------------------------------
 
-    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer':tracer}
+    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
 
 
 # =====================================================================
@@ -423,25 +416,23 @@ def align_suvr(
                    niiref['transpose'].index(2)), flip=niiref['flip'])
         # -----------------------------------------------
 
-        
         outdct = {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
 
         # > save static image which is not aligned
         if not_aligned:
             nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
             for k, fnf in enumerate(nii_frms):
-                nii_noalign[k,...] = nimpa.getnii(fnf)
+                nii_noalign[k, ...] = nimpa.getnii(fnf)
 
             nimpa.array2nii(
-            nii_noalign, niiref['affine'], fnotaligned, descrip='AmyPET: unaligned SUVr frames',
-            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
-                   niiref['transpose'].index(2)), flip=niiref['flip'])
+                nii_noalign, niiref['affine'], fnotaligned,
+                descrip='AmyPET: unaligned SUVr frames',
+                trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                       niiref['transpose'].index(2)), flip=niiref['flip'])
 
             outdct['fpet_notaligned'] = fnotaligned
 
-
     return outdct
-
 
 
 # =====================================================================
