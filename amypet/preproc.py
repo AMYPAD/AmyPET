@@ -29,13 +29,16 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
-    'flute': [90 * 60, 110 * 60, 1200], 'fbb': [90 * 60, 110 * 60, 1200],
+                                                       # yapf: ignore
+    'pib': [90 * 60, 110 * 60, 1200],
+    'flute': [90 * 60, 110 * 60, 1200],
+    'fbb': [90 * 60, 110 * 60, 1200],
     'fbp': [50 * 60, 60 * 60, 600]}
-margin = 0.1
-
-# tracer names
 tracer_names = {
-    'flute': ['flt', 'flut', 'flute', 'flutemetamol'], 'fbb': ['fbb', 'florbetaben'],
+                                                       # yapf: ignore
+    'pib': ['pib'],
+    'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
+    'fbb': ['fbb', 'florbetaben'],
     'fbp': ['fbp', 'florbetapir']}
 
 # > break time for coffee break protocol (target)
@@ -51,12 +54,7 @@ fulldyn_time = 3600
 
 
 # =====================================================================
-def explore_input(
-    input_fldr,
-    tracer=None,
-    suvr_win_def=None,
-    outpath=None,
-):
+def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, margin=0.1):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -76,7 +74,7 @@ def explore_input(
                 defined in`defs.py`)
     - outpath:  output path where all the intermediate and final results are
                 stored.
-
+    - margin:   margin used for accepting SUVr time windows (0.1 corresponds to 10%)
     '''
 
     # > make the input a Path object
@@ -142,6 +140,11 @@ def explore_input(
         acq_dur = t_frms[-1][-1] - t_frms[0][0]
         # -----------------------------------------------
 
+        # # -----------------------------------------------
+        # # > image path (input)
+        # impath = srs_t[next(iter(srs_t))]['files'][0].parent
+        # # -----------------------------------------------
+
         # > check if the frames qualify for static, fully dynamic or
         # > coffee-break dynamic acquisition
         acq_type = None
@@ -192,10 +195,13 @@ def explore_input(
                 suvr_win = suvr_win_def
             # -----------------------------------------------
 
-            # > window margin
-            mrgn_suvr = margin * suvr_twindow[tracer][2]
-            if t_frms[0][
-                    0] < suvr_win[0] + mrgn_suvr and acq_dur > suvr_twindow[tracer][2] - mrgn_suvr:
+            # > SUVr window margins, relative to the frame start time and the duration
+            mrgn_suvr_start = margin * suvr_twindow[tracer][0]
+            mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
+
+            if t_frms[0][0] < suvr_win[0] + mrgn_suvr_start and \
+                t_frms[0][0] > suvr_win[0] - mrgn_suvr_start and \
+                acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
 
                 t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
                 t1_suvr = min(t_stops, key=lambda x: abs(x - suvr_win[1]))
@@ -211,9 +217,11 @@ def explore_input(
                 log.warning('The acquisition does not cover the requested time frame!')
 
                 msrs_class.append({
-                    'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]),
-                    'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)]})
-        # -----------------------------------------------
+                                                        #'inpath':impath,
+                    'acq': [acq_type],
+                    'time': (t_starts[0], t_stops[-1]),
+                    'idxs': (0, len(t_frms) - 1),
+                    'frms': [s for i, s in enumerate(srs_t)]})
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
@@ -222,10 +230,12 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                                          #'inpath':impath,
+                'acq': [acq_type],
+                'time': (t0_dyn, t1_dyn),
+                'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-        # -----------------------------------------------
         elif acq_type == 'fulldyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - fulldyn_time))
@@ -234,12 +244,14 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                                          #'inpath':impath,
+                'acq': [acq_type],
+                'time': (t0_dyn, t1_dyn),
+                'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-        # -----------------------------------------------
 
-    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout}
+    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
 
 
 # =====================================================================
@@ -247,6 +259,7 @@ def align_suvr(
     suvr_tdata,
     suvr_descr,
     outpath=None,
+    not_aligned=True,
     reg_costfun='nmi',
     reg_force=False,
     reg_fwhm=8,
@@ -281,8 +294,15 @@ def align_suvr(
         iter(suvr_tdata))]['series']) + '.nii.gz'
     faligned = niidir / faligned
 
+    # > the same for the not aligned frames, if requested
+    fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(suvr_tdata[next(
+        iter(suvr_tdata))]['series']) + '.nii.gz'
+    fnotaligned = niidir / fnotaligned
+
     # > Matrices: motion metric + paths to affine
     R = S = None
+
+    outdct = None
 
     # > check if the file exists
     if reg_force or not faligned.is_file():
@@ -400,7 +420,23 @@ def align_suvr(
                    niiref['transpose'].index(2)), flip=niiref['flip'])
         # -----------------------------------------------
 
-    return {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+        outdct = {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+
+        # > save static image which is not aligned
+        if not_aligned:
+            nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
+            for k, fnf in enumerate(nii_frms):
+                nii_noalign[k, ...] = nimpa.getnii(fnf)
+
+            nimpa.array2nii(
+                nii_noalign, niiref['affine'], fnotaligned,
+                descrip='AmyPET: unaligned SUVr frames',
+                trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                       niiref['transpose'].index(2)), flip=niiref['flip'])
+
+            outdct['fpet_notaligned'] = fnotaligned
+
+    return outdct
 
 
 # =====================================================================

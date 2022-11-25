@@ -10,9 +10,14 @@ from argparse import (
     _SubParsersAction,
     _VersionAction,
 )
-from pathlib import Path
+from os import fspath
+from pathlib import Path, PurePath
 
+import matplotlib.pyplot as plt
+import mpld3
 import streamlit as st
+import streamlit.components.v1 as st_components
+from matplotlib.figure import FigureBase
 from packaging.version import Version
 from streamlit.version import _get_installed_streamlit_version
 
@@ -63,6 +68,24 @@ class MyParser(BaseParser):
         return res
 
 
+def st_output(res):
+    if isinstance(res, dict) and '_amypet_imscroll' in res:
+        data = res.pop('_amypet_imscroll')
+        if isinstance(data, (str, PurePath)):
+            st.image(fspath(data))
+        else:
+            if isinstance(data, FigureBase):
+                fig = data
+            else:
+                fig = plt.figure()
+                plt.imshow(data)
+            mpld3.plugins.connect(fig, mpld3.plugins.MousePosition(fmt=".0f"))
+            htm = mpld3.fig_to_html(fig)
+            w, h = fig.get_size_inches()
+            st_components.html(htm, width=int(w * 100) + 50, height=int(h * 100) + 50)
+    return st.write(res)
+
+
 def main():
     logging.basicConfig(level=logging.DEBUG)
     st.set_page_config(**CONFIG)
@@ -71,7 +94,7 @@ def main():
 
     def recurse(parser, key_prefix=""):
         opts[PARSER] = parser
-        st.write(f"{'#' * (key_prefix.count('_') + 1)} {parser.prog}")
+        st.write(f"{'#' * (key_prefix.count('_') + 1)} {parser.prog.replace('-cli', '')}")
 
         for opt in parser._actions:
             if isinstance(opt, (_HelpAction, _VersionAction)) or opt.dest in {'dry_run'}:
@@ -151,10 +174,10 @@ def main():
         log.debug(opts)
     elif 'main__' in parser._defaults: # Cmd
         with st.spinner("Running"):
-            st.write(parser._defaults['main__'](cmd[3:], verify_args=False))
+            st_output(parser._defaults['main__'](cmd[3:], verify_args=False))
     elif 'run__' in parser._defaults:  # Func
         with st.spinner("Running"):
-            st.write(parser._defaults['run__'](**opts))
+            st_output(parser._defaults['run__'](**opts))
     else:
         st.error("Unknown action")
 
