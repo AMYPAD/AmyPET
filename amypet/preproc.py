@@ -29,13 +29,17 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
-    'pib': [90 * 60, 110 * 60, 1200], 'flute': [90 * 60, 110 * 60, 1200],
-    'fbb': [90 * 60, 110 * 60, 1200], 'fbp': [50 * 60, 60 * 60, 600]}
-
-# tracer names
+                                        # yapf: ignore
+    'pib': [90 * 60, 110 * 60, 1200],
+    'flute': [90 * 60, 110 * 60, 1200],
+    'fbb': [90 * 60, 110 * 60, 1200],
+    'fbp': [50 * 60, 60 * 60, 600]}
 tracer_names = {
-    'pib': ['pib'], 'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
-    'fbb': ['fbb', 'florbetaben'], 'fbp': ['fbp', 'florbetapir']}
+                                                       # yapf: ignore
+    'pib': ['pib'],
+    'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
+    'fbb': ['fbb', 'florbetaben'],
+    'fbp': ['fbp', 'florbetapir']}
 
 # > break time for coffee break protocol (target)
 break_time = 1800
