@@ -29,13 +29,16 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
-    'flute': [90 * 60, 110 * 60, 1200], 'fbb': [90 * 60, 110 * 60, 1200],
+    'pib': [90 * 60, 110 * 60, 1200],
+    'flute': [90 * 60, 110 * 60, 1200],
+    'fbb': [90 * 60, 110 * 60, 1200],
     'fbp': [50 * 60, 60 * 60, 600]}
-margin = 0.1
 
 # tracer names
 tracer_names = {
-    'flute': ['flt', 'flut', 'flute', 'flutemetamol'], 'fbb': ['fbb', 'florbetaben'],
+    'pib':['pib']
+    'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
+    'fbb': ['fbb', 'florbetaben'],
     'fbp': ['fbp', 'florbetapir']}
 
 # > break time for coffee break protocol (target)
@@ -56,6 +59,7 @@ def explore_input(
     tracer=None,
     suvr_win_def=None,
     outpath=None,
+    margin = 0.1
 ):
     '''
     Process the input folder of amyloid PET DICOM data.
@@ -76,7 +80,7 @@ def explore_input(
                 defined in`defs.py`)
     - outpath:  output path where all the intermediate and final results are
                 stored.
-
+    - margin:   margin used for accepting SUVr time windows (0.1 corresponds to 10%)
     '''
 
     # > make the input a Path object
@@ -258,6 +262,7 @@ def align_suvr(
     suvr_tdata,
     suvr_descr,
     outpath=None,
+    not_aligned=True,
     reg_costfun='nmi',
     reg_force=False,
     reg_fwhm=8,
@@ -292,8 +297,15 @@ def align_suvr(
         iter(suvr_tdata))]['series']) + '.nii.gz'
     faligned = niidir / faligned
 
+    # > the same for the not aligned frames, if requested
+    fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(suvr_tdata[next(
+        iter(suvr_tdata))]['series']) + '.nii.gz'
+    fnotaligned = niidir / fnotaligned
+
     # > Matrices: motion metric + paths to affine
     R = S = None
+
+    outdct = None
 
     # > check if the file exists
     if reg_force or not faligned.is_file():
@@ -411,7 +423,25 @@ def align_suvr(
                    niiref['transpose'].index(2)), flip=niiref['flip'])
         # -----------------------------------------------
 
-    return {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+        
+        outdct = {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+
+        # > save static image which is not aligned
+        if not_aligned:
+            nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
+            for k, fnf in enumerate(nii_frms):
+                nii_noalign[k,...] = nimpa.getnii(fnf)
+
+            nimpa.array2nii(
+            nii_noalign, niiref['affine'], fnotaligned, descrip='AmyPET: unaligned SUVr frames',
+            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                   niiref['transpose'].index(2)), flip=niiref['flip'])
+
+            outdct['fpet_notaligned'] = fnotaligned
+
+
+    return outdct
+
 
 
 # =====================================================================
