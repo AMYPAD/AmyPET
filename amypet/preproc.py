@@ -36,7 +36,7 @@ suvr_twindow = {
 
 # tracer names
 tracer_names = {
-    'pib':['pib']
+    'pib':['pib'],
     'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
     'fbb': ['fbb', 'florbetaben'],
     'fbp': ['fbp', 'florbetapir']}
