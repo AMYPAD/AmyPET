@@ -55,11 +55,12 @@ class MyParser(BaseParser):
 def st_output(res):
     if isinstance(res, dict) and 'matplotlib.pyplot.imshow' in res:
         data = res.pop('matplotlib.pyplot.imshow')
-        fig = plt.figure()
         if isinstance(data, (str, PurePath)):
-            data = plt.imread(data)
-        plt.imshow(data)
-        st.write(fig)
+            st.image(data)
+        else:
+            fig = plt.figure()
+            plt.imshow(data)
+            st.write(fig)
     return st.write(res)
 
 
