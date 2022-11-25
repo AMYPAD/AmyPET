@@ -12,25 +12,31 @@ Options:
   --start TIME  : SUVr start time [default: None:float]
   --end TIME  : SUVr end time [default: None:float]
   --dynamic-analysis  : whether to do dynamic analysis
+  --voxsz VOXELS  : [default: 2:int]
+  --bias-corr  : Perform bias correction
 """
-__author__ = "Casper da Costa-Luis"
+__author__ = ("Casper da Costa-Luis", "Pawel Markiewicz")
 __copyright__ = "Copyright 2022"
 import logging
 import re
 from pathlib import Path
 
 from .backend_centiloid import run as centiloid_run
-from .preproc import explore_input, tracer_names
+from .preproc import align_suvr, explore_input, tracer_names
+from .suvr_tools import preproc_suvr
 
 log = logging.getLogger(__name__)
 # TRACERS = ('pib', 'flt', 'fbp', 'fbb')
 TRACERS = tracer_names.keys()
 
 
-def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, outpath=None):
+def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, voxsz=2,
+        bias_corr=True, outpath=None):
     """Just a stub"""
     inpath = Path(inpath)
     outpath = Path(outpath) if outpath else inpath.parent / f'amypet_output_{inpath.name}'
+    if dynamic_analysis:
+        print("Warning: dynamic_analysis ignored")
 
     # find an MR T1w image
     ft1w = None
@@ -58,8 +64,11 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, outp
         # data description with classification
         suvr_descr = suvr_find[0][1]
 
-    # probably want to use `centiloid_run()`?
-    return {
-        'inpath': inpath, 'tracer': tracer, 'suvr_win_def': suvr_win_def,
-        'dynamic': dynamic_analysis, 'outpath': outpath, 'suvr_tdata': suvr_tdata,
-        'suvr_descr': suvr_descr}
+    # align the PET frames for SUVr/CL
+    aligned = align_suvr(suvr_tdata, suvr_descr, indat['outpath'])
+    # preprocess the aligned PET into a single SUVr frame
+    suvr_preproc = preproc_suvr(aligned['fpet'], outpath=aligned['outpath'])
+    # calculate Centiloid (CL)
+    out_cl = centiloid_run(suvr_preproc['fstat'], ft1w, voxsz=voxsz, bias_corr=bias_corr,
+                           tracer=tracer, outpath=aligned['outpath'] / 'CL')
+    return next(iter(out_cl.values()))
