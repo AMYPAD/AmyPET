@@ -665,9 +665,7 @@ def vr_proc(
 
         out['fsuv'] = fout
 
-
-
-    return 
+    return out
 
 
 
