@@ -625,7 +625,7 @@ def vr_proc(
         B[2, 3] = (-.5 * SZ_IM + 1) *SZ_VX
         im = np.zeros((SZ_IM,SZ_IM,SZ_IM), dtype=np.float32)
         vxstr = str(SZ_VX).replace('.','-')+'mm'
-        outfref = f'VRimref_{SZ_IM}-{vxstr}.nii.gz'
+        outfref = outfref/f'VRimref_{SZ_IM}-{vxstr}.nii.gz'
         nimpa.array2nii(im, B, outfref)
         fref = outfref
 
