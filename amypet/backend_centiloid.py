@@ -364,6 +364,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                     log.warning('The CL image has not been generated due to new tracer being used')
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
+
         # -------------------------------------------------------------
         # VISUALISATION
         # pick masks for visualisation

@@ -528,3 +528,108 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
     return {
         'fpet': trmout['ftrm'], 'outpath': natout, 'finvdef': fmod, 'fatl': finvatl, 'fgm': fgmpet,
         'atlas': atl_im, 'gm_msk': gm_msk, 'frefvoi': fpmsk, 'refvoi': refmsk}
+
+
+
+# =====================================================================
+# > PREPARE FOR VISUAL READING
+def vr_proc(
+        fpet,
+        fmri,
+        pet_affine=np.eye(4),
+        mri_affine=np.eye(4),
+        intrp= 1.0,
+        ref_voxsize = 1.0,
+        ref_imsize=256,
+        fref=None,
+        outfref=None,
+        outpath=None,
+        fcomment=''):
+    '''
+    Generate PET and the accompanying MRI images for amyloid visual reads aligned (rigidly) 
+    to the MNI space.
+
+    Arguments:
+    - fpet:     the PET file name
+    - fmri:     the MRI (T1w) file name
+    - pet_affine:   PET affine given as a file path or a Numpy array 
+    - mri_affine:   MRI affine given as a file path or a Numpy array 
+    - intrp:    interpolation level used in resampling (0:NN, 1: trilinear, etc.) 
+    - ref_voxsize:  the reference voxel size isotropically (default 1.0 mm)
+    - ref_imsize:   the reference image size isotropically (default (256))
+    - fref:     the reference image file path instead of the two above
+    - outpath:  the output path
+    - fcomment: the output file name suffix/comment 
+    - outfref:  if reference given using `ref_voxsize` and `ref_imsize` instead of 
+                reference file path `ferf`, the reference image will be save to
+                this path.
+    '''
+
+
+    if os.path.isfile(fpet) and os.path.isfile(fmri):
+        fpet = Path(fpet)
+        fmri = Path(fmri)
+    else:
+        raise ValueError('Incorrect PET and/or MRI file paths!')
+
+
+    if not isinstance(pet_affine, np.ndarray) and not isinstance(pet_affine, (str, pathlib.PurePath)):
+        raise ValueError('Incorrect PET affine input')
+
+    if not isinstance(mri_affine, np.ndarray) and not isinstance(mri_affine, (str, pathlib.PurePath)):
+        raise ValueError('Incorrect MRI affine input')
+
+    #----------------------------------
+    # > sort out output
+    if outpath is None:
+        opth = fpet.parent/'VR_output'
+    else:
+        opth = outpath
+    nimpa.create_dir(opth)
+
+    if outfref is None:
+        outfref = os.path.join(str(opth),'VRimref')
+
+    #----------------------------------
+
+
+
+    if fref is None:
+        SZ_VX = ref_voxsize
+        SZ_IM = ref_imsize
+        B = np.diag(np.array([-SZ_VX, SZ_VX, SZ_VX, 1]))
+        B[0, 3] = .5 * SZ_IM * SZ_VX
+        B[1, 3] = (-.5 * SZ_IM + 1) * SZ_VX
+        B[2, 3] = (-.5 * SZ_IM + 1) *SZ_VX
+        im = np.zeros((SZ_IM,SZ_IM,SZ_IM), dtype=np.float32)
+        vxstr = str(SZ_VX).replace('.','-')+'mm'
+        outfref = outfref+f'_{SZ_IM}-{vxstr}.nii.gz'
+        nimpa.array2nii(im, B, outfref)
+        fref = outfref
+
+    elif os.path.isfile(fref):
+        log.info('using reference file: '+str(fref))
+        vxstr = ''
+        refd = nimpa.getnii(fref, output='all')
+        SZ_VX = max(refd['voxsize'])
+        SZ_IM = max(refd['dims'])
+        vxstr = str(SZ_VX).replace('.','-')+'mm'
+
+    else:
+        raise ValueError('unknown reference for resampling!')
+
+
+    fpetr = nimpa.resample_spm(fref, fpet, pet_affine, intrp=intrp, fimout=vt_opth/f'PET_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+                                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+    fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=vt_opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+                                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+
+    return dict(fpet=fpetr, fmri=fmrir)
+
+
+
+
+
+# =====================================================================
