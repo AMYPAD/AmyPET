@@ -554,6 +554,8 @@ def vr_proc(
         pet_affine=np.eye(4),
         mri_affine=np.eye(4),
         intrp=1.0,
+        activity=None,
+        weight=None,
         ref_voxsize=1.0,
         ref_imsize=256,
         fref=None,
@@ -561,23 +563,28 @@ def vr_proc(
         outpath=None,
         fcomment=''):
     '''
-    Generate PET and the accompanying MRI images for amyloid visual reads aligned (rigidly) 
-    to the MNI space.
+    Generate PET and the accompanying MRI images for amyloid visual
+    reads aligned (rigidly) to the MNI space.
 
     Arguments:
     - fpet:     the PET file name
     - fmri:     the MRI (T1w) file name
     - pet_affine:   PET affine given as a file path or a Numpy array 
     - mri_affine:   MRI affine given as a file path or a Numpy array 
-    - intrp:    interpolation level used in resampling (0:NN, 1: trilinear, etc.) 
+    - intrp:    interpolation level used in resampling 
+                (0:NN, 1: trilinear, etc.) 
+    - activity: activity in [Bq] of the injected dose, corrected to the 
+                scan start time (the time to which reconstruction 
+                corrects for decay)
+    - weight:   the weight in [kg] of the participant scanned
     - ref_voxsize:  the reference voxel size isotropically (default 1.0 mm)
     - ref_imsize:   the reference image size isotropically (default (256))
     - fref:     the reference image file path instead of the two above
     - outpath:  the output path
     - fcomment: the output file name suffix/comment 
-    - outfref:  if reference given using `ref_voxsize` and `ref_imsize` instead of 
-                reference file path `ferf`, the reference image will be save to
-                this path.
+    - outfref:  if reference given using `ref_voxsize` and `ref_imsize`
+                instead of reference file path `ferf`, the reference
+                image will be save to this path.
     '''
 
 
@@ -639,6 +646,20 @@ def vr_proc(
 
     fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
                                 del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+    if activity is not None and weight is not None:
+        # > correct the weight to grams
+        weight *= 1e3
+        petrd = nimpa.getnii(fpetr, output='all')
+        suvim = petrd['im']/(activity/weight)
+
+        nimpa.array2nii(
+            suvim,
+            petrd['affine'],
+            opth/f'PET-SUV_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+            trnsp = (petrd['transpose'].index(0), petrd['transpose'].index(1), petrd['transpose'].index(2)),
+            flip = petrd['flip'])
+
 
 
     return dict(fpet=fpetr, fmri=fmrir)
