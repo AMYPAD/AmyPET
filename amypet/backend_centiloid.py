@@ -59,7 +59,7 @@ def load_masks(mskpath, voxsz: int = 2):
 
 
 def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 2, outpath=None,
-        visual=False, climage=True, used_saved=False, cl_anchor_path: Optional[Path] = None):
+        visual=False, climage=True, use_saved=False, cl_anchor_path: Optional[Path] = None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -77,7 +77,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
       flip_pet: a list of flips (3D tuples) which flip any dimension
                of the 3D PET image (z,y,x); the list has to have the
                same length as the lists of `fpets` and `fmris`
-      used_saved: if True, looks for already saved normalised PET
+      use_saved: if True, looks for already saved normalised PET
                 images and loads them to avoid processing time.
       visual: SPM-based progress visualisations of image registration or
               or image normalisation.
@@ -168,7 +168,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         else:
             fnpets = []
 
-        if used_saved and len(fnpets) == 1:
+        if use_saved and len(fnpets) == 1:
             log.info(f'subject {onm}: loading already normalised PET image...')
 
         else:

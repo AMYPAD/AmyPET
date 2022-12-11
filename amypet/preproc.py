@@ -415,7 +415,14 @@ def align_suvr(
 
 
 # =====================================================================
-def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, refvoi_name=None):
+def native_proc(
+        cl_dct,
+        atlas='aal',
+        res='1',
+        outpath=None,
+        refvoi_idx=None,
+        refvoi_name=None,
+        resample_mr=False):
     '''
     Preprocess SPM GM segmentation (from CL output) and AAL atlas
     to native PET space which is trimmed and upscaled to MR resolution.
@@ -426,6 +433,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
                 atlas.  The reference VOI will then be separately
                 provided in the output.
     refvoi_name: name of the reference region/VOI
+    resample_mr: if True resamples T1w MR image to the trimmed PET.
 
     '''
 
@@ -445,7 +453,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
     # > get the trimmed PET as dictionary
     petdct = nimpa.getnii(trmout['ftrm'], output='all')
     # > SPM bounding box of the PET image
-    ml = spm12.get_matlab()
+    import matlab as ml
     bbox = spm12.get_bbox(petdct)
 
     # > get the inverse affine transform to PET native space
@@ -472,6 +480,13 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
     fgmpet = spm12.resample_spm(trmout['ftrm'], cl_dct['norm']['c1'], M, intrp=1.0, outpath=natout,
                                 pickname='flo', fcomment='_GM_in_PET', del_ref_uncmpr=True,
                                 del_flo_uncmpr=True, del_out_uncmpr=True)
+
+    # > resample also T1w MR image to the trimmed PET
+    if resample_mr:
+        ft1pet = spm12.resample_spm(trmout['ftrm'], cl_dct['reg1']['freg'], M, intrp=4.0, outpath=natout,
+                    pickname='flo', fcomment='_T1w_in_PET', del_ref_uncmpr=True,
+                    del_flo_uncmpr=True, del_out_uncmpr=True)
+
 
     gm_msk = nimpa.getnii(fgmpet)
     atl_im = nimpa.getnii(finvatl[0])
