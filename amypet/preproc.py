@@ -659,7 +659,7 @@ def vr_proc(
         nimpa.array2nii(
             suvim,
             petrd['affine'],
-            fout
+            fout,
             trnsp = (petrd['transpose'].index(0), petrd['transpose'].index(1), petrd['transpose'].index(2)),
             flip = petrd['flip'])
 
