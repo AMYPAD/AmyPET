@@ -647,22 +647,27 @@ def vr_proc(
     fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
                                 del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
 
+    out = dict(fpet=fpetr, fmri=fmrir)
+
     if activity is not None and weight is not None:
         # > correct the weight to grams
         weight *= 1e3
         petrd = nimpa.getnii(fpetr, output='all')
         suvim = petrd['im']/(activity/weight)
 
+        fout = opth/f'PET-SUV_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
         nimpa.array2nii(
             suvim,
             petrd['affine'],
-            opth/f'PET-SUV_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+            fout
             trnsp = (petrd['transpose'].index(0), petrd['transpose'].index(1), petrd['transpose'].index(2)),
             flip = petrd['flip'])
 
+        out['fsuv'] = fout
 
 
-    return dict(fpet=fpetr, fmri=fmrir)
+
+    return 
 
 
 
