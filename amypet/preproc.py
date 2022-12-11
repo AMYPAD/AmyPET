@@ -647,7 +647,7 @@ def vr_proc(
     fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
                                 del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
 
-    out = dict(fpet=fpetr, fmri=fmrir, fref=fref)
+    out = dict(fpet=Path(fpetr), fmri=Path(fmrir), fref=fref)
 
     if activity is not None and weight is not None:
         # > correct the weight to grams
