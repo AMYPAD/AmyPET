@@ -10,8 +10,8 @@ import openpyxl as xl
 from scipy.stats import linregress
 
 import amypet
-from amypet.aux import cl_anchor_fldr
 from amypet.centiloid import run as centiloid_run
+from amypet.utils import cl_anchor_fldr
 
 # > input paths
 drv = Path('/data/AMYPET')

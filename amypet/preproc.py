@@ -18,8 +18,8 @@ import numpy as np
 import spm12
 from niftypet import nimpa
 
-from .aux import get_atlas
 from .suvr_tools import r_trimup
+from .utils import get_atlas
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
@@ -29,13 +29,16 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
-    'flute': [90 * 60, 110 * 60, 1200], 'fbb': [90 * 60, 110 * 60, 1200],
+                                                       # yapf: ignore
+    'pib': [90 * 60, 110 * 60, 1200],
+    'flute': [90 * 60, 110 * 60, 1200],
+    'fbb': [90 * 60, 110 * 60, 1200],
     'fbp': [50 * 60, 60 * 60, 600]}
-margin = 0.1
-
-# tracer names
 tracer_names = {
-    'flute': ['flt', 'flut', 'flute', 'flutemetamol'], 'fbb': ['fbb', 'florbetaben'],
+                                                       # yapf: ignore
+    'pib': ['pib'],
+    'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
+    'fbb': ['fbb', 'florbetaben'],
     'fbp': ['fbp', 'florbetapir']}
 
 # > break time for coffee break protocol (target)
@@ -51,12 +54,7 @@ fulldyn_time = 3600
 
 
 # =====================================================================
-def explore_input(
-    input_fldr,
-    tracer=None,
-    suvr_win_def=None,
-    outpath=None,
-):
+def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, margin=0.1):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -76,7 +74,7 @@ def explore_input(
                 defined in`defs.py`)
     - outpath:  output path where all the intermediate and final results are
                 stored.
-
+    - margin:   margin used for accepting SUVr time windows (0.1 corresponds to 10%)
     '''
 
     # > make the input a Path object
@@ -197,10 +195,13 @@ def explore_input(
                 suvr_win = suvr_win_def
             # -----------------------------------------------
 
-            # > window margin
-            mrgn_suvr = margin * suvr_twindow[tracer][2]
-            if t_frms[0][
-                    0] < suvr_win[0] + mrgn_suvr and acq_dur > suvr_twindow[tracer][2] - mrgn_suvr:
+            # > SUVr window margins, relative to the frame start time and the duration
+            mrgn_suvr_start = margin * suvr_twindow[tracer][0]
+            mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
+
+            if t_frms[0][0] < suvr_win[0] + mrgn_suvr_start and \
+                t_frms[0][0] > suvr_win[0] - mrgn_suvr_start and \
+                acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
 
                 t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
                 t1_suvr = min(t_stops, key=lambda x: abs(x - suvr_win[1]))
@@ -216,10 +217,11 @@ def explore_input(
                 log.warning('The acquisition does not cover the requested time frame!')
 
                 msrs_class.append({
-                    #'inpath':impath,
-                    'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]),
-                    'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)]})
-        # -----------------------------------------------
+                                                        #'inpath':impath,
+                    'acq': [acq_type],
+                    'time': (t_starts[0], t_stops[-1]),
+                    'idxs': (0, len(t_frms) - 1),
+                    'frms': [s for i, s in enumerate(srs_t)]})
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
@@ -228,11 +230,12 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                #'inpath':impath,
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                                          #'inpath':impath,
+                'acq': [acq_type],
+                'time': (t0_dyn, t1_dyn),
+                'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-        # -----------------------------------------------
         elif acq_type == 'fulldyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - fulldyn_time))
@@ -241,13 +244,14 @@ def explore_input(
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                #'inpath':impath,
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                                          #'inpath':impath,
+                'acq': [acq_type],
+                'time': (t0_dyn, t1_dyn),
+                'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-        # -----------------------------------------------
 
-    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer':tracer}
+    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
 
 
 # =====================================================================
@@ -255,6 +259,7 @@ def align_suvr(
     suvr_tdata,
     suvr_descr,
     outpath=None,
+    not_aligned=True,
     reg_costfun='nmi',
     reg_force=False,
     reg_fwhm=8,
@@ -289,8 +294,15 @@ def align_suvr(
         iter(suvr_tdata))]['series']) + '.nii.gz'
     faligned = niidir / faligned
 
+    # > the same for the not aligned frames, if requested
+    fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(suvr_tdata[next(
+        iter(suvr_tdata))]['series']) + '.nii.gz'
+    fnotaligned = niidir / fnotaligned
+
     # > Matrices: motion metric + paths to affine
     R = S = None
+
+    outdct = None
 
     # > check if the file exists
     if reg_force or not faligned.is_file():
@@ -408,7 +420,23 @@ def align_suvr(
                    niiref['transpose'].index(2)), flip=niiref['flip'])
         # -----------------------------------------------
 
-    return {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+        outdct = {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+
+        # > save static image which is not aligned
+        if not_aligned:
+            nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
+            for k, fnf in enumerate(nii_frms):
+                nii_noalign[k, ...] = nimpa.getnii(fnf)
+
+            nimpa.array2nii(
+                nii_noalign, niiref['affine'], fnotaligned,
+                descrip='AmyPET: unaligned SUVr frames',
+                trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                       niiref['transpose'].index(2)), flip=niiref['flip'])
+
+            outdct['fpet_notaligned'] = fnotaligned
+
+    return outdct
 
 
 # =====================================================================
@@ -515,3 +543,108 @@ def native_proc(
     return {
         'fpet': trmout['ftrm'], 'outpath': natout, 'finvdef': fmod, 'fatl': finvatl, 'fgm': fgmpet,
         'atlas': atl_im, 'gm_msk': gm_msk, 'frefvoi': fpmsk, 'refvoi': refmsk}
+
+
+
+# =====================================================================
+# > PREPARE FOR VISUAL READING
+def vr_proc(
+        fpet,
+        fmri,
+        pet_affine=np.eye(4),
+        mri_affine=np.eye(4),
+        intrp= 1.0,
+        ref_voxsize = 1.0,
+        ref_imsize=256,
+        fref=None,
+        outfref=None,
+        outpath=None,
+        fcomment=''):
+    '''
+    Generate PET and the accompanying MRI images for amyloid visual reads aligned (rigidly) 
+    to the MNI space.
+
+    Arguments:
+    - fpet:     the PET file name
+    - fmri:     the MRI (T1w) file name
+    - pet_affine:   PET affine given as a file path or a Numpy array 
+    - mri_affine:   MRI affine given as a file path or a Numpy array 
+    - intrp:    interpolation level used in resampling (0:NN, 1: trilinear, etc.) 
+    - ref_voxsize:  the reference voxel size isotropically (default 1.0 mm)
+    - ref_imsize:   the reference image size isotropically (default (256))
+    - fref:     the reference image file path instead of the two above
+    - outpath:  the output path
+    - fcomment: the output file name suffix/comment 
+    - outfref:  if reference given using `ref_voxsize` and `ref_imsize` instead of 
+                reference file path `ferf`, the reference image will be save to
+                this path.
+    '''
+
+
+    if os.path.isfile(fpet) and os.path.isfile(fmri):
+        fpet = Path(fpet)
+        fmri = Path(fmri)
+    else:
+        raise ValueError('Incorrect PET and/or MRI file paths!')
+
+
+    if not isinstance(pet_affine, np.ndarray) and not isinstance(pet_affine, (str, pathlib.PurePath)):
+        raise ValueError('Incorrect PET affine input')
+
+    if not isinstance(mri_affine, np.ndarray) and not isinstance(mri_affine, (str, pathlib.PurePath)):
+        raise ValueError('Incorrect MRI affine input')
+
+    #----------------------------------
+    # > sort out output
+    if outpath is None:
+        opth = fpet.parent/'VR_output'
+    else:
+        opth = outpath
+    nimpa.create_dir(opth)
+
+    if outfref is None:
+        outfref = os.path.join(str(opth),'VRimref')
+
+    #----------------------------------
+
+
+
+    if fref is None:
+        SZ_VX = ref_voxsize
+        SZ_IM = ref_imsize
+        B = np.diag(np.array([-SZ_VX, SZ_VX, SZ_VX, 1]))
+        B[0, 3] = .5 * SZ_IM * SZ_VX
+        B[1, 3] = (-.5 * SZ_IM + 1) * SZ_VX
+        B[2, 3] = (-.5 * SZ_IM + 1) *SZ_VX
+        im = np.zeros((SZ_IM,SZ_IM,SZ_IM), dtype=np.float32)
+        vxstr = str(SZ_VX).replace('.','-')+'mm'
+        outfref = outfref+f'_{SZ_IM}-{vxstr}.nii.gz'
+        nimpa.array2nii(im, B, outfref)
+        fref = outfref
+
+    elif os.path.isfile(fref):
+        log.info('using reference file: '+str(fref))
+        vxstr = ''
+        refd = nimpa.getnii(fref, output='all')
+        SZ_VX = max(refd['voxsize'])
+        SZ_IM = max(refd['dims'])
+        vxstr = str(SZ_VX).replace('.','-')+'mm'
+
+    else:
+        raise ValueError('unknown reference for resampling!')
+
+
+    fpetr = nimpa.resample_spm(fref, fpet, pet_affine, intrp=intrp, fimout=vt_opth/f'PET_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+                                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+    fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=vt_opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+                                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+
+    return dict(fpet=fpetr, fmri=fmrir)
+
+
+
+
+
+# =====================================================================

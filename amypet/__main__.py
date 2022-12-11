@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-from .cli import main
+from .web import main
 
 main()
