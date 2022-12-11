@@ -603,7 +603,7 @@ def vr_proc(
     nimpa.create_dir(opth)
 
     if outfref is None:
-        outfref = os.path.join(str(opth),'VRimref')
+        outfref = opth
 
     #----------------------------------
 
@@ -618,7 +618,7 @@ def vr_proc(
         B[2, 3] = (-.5 * SZ_IM + 1) *SZ_VX
         im = np.zeros((SZ_IM,SZ_IM,SZ_IM), dtype=np.float32)
         vxstr = str(SZ_VX).replace('.','-')+'mm'
-        outfref = outfref+f'_{SZ_IM}-{vxstr}.nii.gz'
+        outfref = f'VRimref_{SZ_IM}-{vxstr}.nii.gz'
         nimpa.array2nii(im, B, outfref)
         fref = outfref
 
