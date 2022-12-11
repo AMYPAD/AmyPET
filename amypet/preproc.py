@@ -655,7 +655,7 @@ def vr_proc(
         petrd = nimpa.getnii(fpetr, output='all')
         suvim = petrd['im']/(activity/weight)
 
-        fout = opth/f'PET-SUV_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+        fout = opth/f'PET-SUV_{SZ_IM}_{vxstr}{fcomment}.nii.gz'
         nimpa.array2nii(
             suvim,
             petrd['affine'],
