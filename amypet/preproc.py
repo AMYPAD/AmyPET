@@ -553,8 +553,8 @@ def vr_proc(
         fmri,
         pet_affine=np.eye(4),
         mri_affine=np.eye(4),
-        intrp= 1.0,
-        ref_voxsize = 1.0,
+        intrp=1.0,
+        ref_voxsize=1.0,
         ref_imsize=256,
         fref=None,
         outfref=None,
@@ -634,10 +634,10 @@ def vr_proc(
         raise ValueError('unknown reference for resampling!')
 
 
-    fpetr = nimpa.resample_spm(fref, fpet, pet_affine, intrp=intrp, fimout=vt_opth/f'PET_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+    fpetr = nimpa.resample_spm(fref, fpet, pet_affine, intrp=intrp, fimout=opth/f'PET_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
                                 del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
 
-    fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=vt_opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
+    fmrir = nimpa.resample_spm(fref, fmri, mri_affine, intrp=intrp, fimout=opth/f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
                                 del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
 
 
