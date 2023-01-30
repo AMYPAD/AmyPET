@@ -491,7 +491,7 @@ def native_proc(
     # > copy the inverse definitions to be modified with affine to native PET space
     fmod = shutil.copyfile(cl_dct['norm']['invdef'],
                            cl_dct['norm']['invdef'].split('.')[0] + '_2nat.nii')
-    eng = spm12.ensure_spm('')
+    eng = spm12.ensure_spm()
     eng.amypad_coreg_modify_affine(fmod, Mm)
 
     # > unzip the atlas and transform it to PET space

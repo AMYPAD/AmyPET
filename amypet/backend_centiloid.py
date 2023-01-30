@@ -89,7 +89,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
     # supported F-18 tracers
     f18_tracers = ['fbp', 'fbb', 'flute']
 
-    spm_path = Path(spm12.utils.spm_dir())
+    spm_path = Path(spm12.spm_dir_eng())
 
     out = {}                                           # output dictionary
     tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
