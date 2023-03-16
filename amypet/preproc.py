@@ -266,7 +266,7 @@ def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, marg
                 'time': (t0_suvr, t1_suvr),
                 'timings': [t_frms_[f] for f in range(frm_0, frm_1 + 1)],
                 'idxs': (frm_0, frm_1),
-                'frms': [s for i, s in enumerate(srs_t) if i in suvr_frm_range]
+                'frms': [s for i, s in enumerate(srs_t) if i in suvr_frm_range],
                 'frms_sel': frms_sel})
         else:
             log.warning('The acquisition does not cover the requested time frame!')
