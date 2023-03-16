@@ -184,44 +184,16 @@ def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, marg
 
         # > is the static acquisition covering the provided SUVr frame definition?
         if acq_type == 'static':
-            # -----------------------------------------------
-            # > try to establish the SUVr window even if not provided
-            if suvr_win_def is None and not tracer:
-                raise ValueError(
-                    'Impossible to figure out tracer and SUVr time window - please specify them!')
-            elif suvr_win_def is None and tracer:
-                suvr_win = suvr_twindow[tracer][:2]
-            else:
-                suvr_win = suvr_win_def
-            # -----------------------------------------------
-
-            # > SUVr window margins, relative to the frame start time and the duration
-            mrgn_suvr_start = margin * suvr_twindow[tracer][0]
-            mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
-
-            if t_frms[0][0] < suvr_win[0] + mrgn_suvr_start and \
-                t_frms[0][0] > suvr_win[0] - mrgn_suvr_start and \
-                acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
-
-                t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
-                t1_suvr = min(t_stops, key=lambda x: abs(x - suvr_win[1]))
-
-                frm_0 = t_starts.index(t0_suvr)
-                frm_1 = t_stops.index(t1_suvr)
-
-                msrs_class.append({
-                    'acq': [acq_type, 'suvr'], 'time': (t0_suvr, t1_suvr), 'timings': t_frms,
-                    'idxs': (frm_0, frm_1),
-                    'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-            else:
-                log.warning('The acquisition does not cover the requested time frame!')
-
-                msrs_class.append({
-                                                        #'inpath':impath,
+            msrs_class.append({
                     'acq': [acq_type],
                     'time': (t_starts[0], t_stops[-1]),
+                    'timings': t_frms,
                     'idxs': (0, len(t_frms) - 1),
-                    'frms': [s for i, s in enumerate(srs_t)]})
+                    'frms': [s for i, s in enumerate(srs_t)],
+                    'suvr':{}})
+
+            find_suvr(t_frms, msrs_class, t_starts, t_stops)
+        
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
             t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
@@ -236,20 +208,71 @@ def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, marg
                 'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
+        
         elif acq_type == 'fulldyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
-            t1_dyn = min(t_stops, key=lambda x: abs(x - fulldyn_time))
+            t1_dyn = min(t_stops, key=lambda x: (x - fulldyn_time))
 
             frm_0 = t_starts.index(t0_dyn)
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_class.append({
-                                          #'inpath':impath,
                 'acq': [acq_type],
                 'time': (t0_dyn, t1_dyn),
                 'timings': t_frms,
                 'idxs': (frm_0, frm_1),
-                'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
+                'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)],
+                'suvr':{}})
+
+            find_suvr(t_frms, msrs_class, t_starts, t_stops)
+
+
+    # =================== SUVr =======================
+    def find_suvr(t_frms_, msrs_class_, t_starts_, t_stops_):
+
+        # -----------------------------------------------
+        # > try to establish the SUVr window even if not provided
+        if suvr_win_def is None and not tracer:
+            raise ValueError(
+                'Impossible to figure out tracer and SUVr time window - please specify them!')
+        elif suvr_win_def is None and tracer:
+            suvr_win = suvr_twindow[tracer][:2]
+        else:
+            suvr_win = suvr_win_def
+        # -----------------------------------------------
+
+        # > SUVr window margins, relative to the frame start time and the duration
+        mrgn_suvr_start = margin * suvr_twindow[tracer][0]
+        mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
+
+        if t_frms_[0][0] < suvr_win[0] + mrgn_suvr_start and \
+            t_frms_[0][0] > suvr_win[0] - mrgn_suvr_start and \
+            acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
+
+            t0_suvr = min(t_starts_, key=lambda x: abs(x - suvr_win[0]))
+            t1_suvr = min(t_stops_, key=lambda x: abs(x - suvr_win[1]))
+
+            frm_0 = t_starts_.index(t0_suvr)
+            frm_1 = t_stops_.index(t1_suvr)
+
+            # > SUVr frame range
+            suvr_frm_range = range(frm_0, frm_1 + 1)
+
+            # > indicate which frames were selected for SUVr relative to all static/dynamic frames
+            frms_sel = [i in suvr_frm_range for i, s in enumerate(srs_t)]
+
+            msrs_class_[-1]['acq'].append('suvr')
+            msrs_class_[-1]['suvr'].update({
+                'time': (t0_suvr, t1_suvr),
+                'timings': [t_frms_[f] for f in range(frm_0, frm_1 + 1)],
+                'idxs': (frm_0, frm_1),
+                'frms': [s for i, s in enumerate(srs_t) if i in suvr_frm_range]
+                'frms_sel': frms_sel})
+        else:
+            log.warning('The acquisition does not cover the requested time frame!')
+    # ===================================================
+
+
 
     return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
 
@@ -435,6 +458,9 @@ def align_suvr(
                        niiref['transpose'].index(2)), flip=niiref['flip'])
 
             outdct['fpet_notaligned'] = fnotaligned
+    else:
+        outdct = dict(fpet=faligned, outpath=niidir)
+
 
     return outdct
 
