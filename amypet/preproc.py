@@ -419,7 +419,8 @@ def align_suvr(
         # > copy in the target frame for SUVr composite
         niiim[rfrm, ...] = niiref['im']
 
-        fnii_aligned = []
+        # > aligned individual frames, starting with the reference 
+        fnii_aligned = [nii_frms[rfrm]]
 
         for ifrm in range(len(nii_frms)):
             if ifrm == rfrm:
