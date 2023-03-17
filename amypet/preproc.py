@@ -419,6 +419,8 @@ def align_suvr(
         # > copy in the target frame for SUVr composite
         niiim[rfrm, ...] = niiref['im']
 
+        fnii_aligned = []
+
         for ifrm in range(len(nii_frms)):
             if ifrm == rfrm:
                 continue
@@ -436,7 +438,11 @@ def align_suvr(
                 del_out_uncmpr=True,
             )
 
+            fnii_aligned.append(frsmpl)
+
             niiim[ifrm, ...] = nimpa.getnii(frsmpl)
+
+
 
         # > save aligned SUVr frames
         nimpa.array2nii(
@@ -445,7 +451,12 @@ def align_suvr(
                    niiref['transpose'].index(2)), flip=niiref['flip'])
         # -----------------------------------------------
 
-        outdct = {'fpet': faligned, 'outpath': niidir, 'Metric': R, 'faff': S}
+        outdct = {
+            'fpet': faligned,
+            'fpeti':fnii_aligned,
+            'outpath': niidir,
+            'Metric': R,
+            'faff': S}
 
         # > save static image which is not aligned
         if not_aligned:
