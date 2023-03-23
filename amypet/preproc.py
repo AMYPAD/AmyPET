@@ -12,6 +12,7 @@ from datetime import datetime
 from itertools import combinations
 from pathlib import Path
 from subprocess import run
+import copy
 
 import dcm2niix
 import numpy as np
@@ -277,6 +278,49 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
 
 
     return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
+
+
+# =====================================================================
+def convert2nii(indct, outpath=None):
+    '''convert the individual DICOM series to NIfTI
+       and output a new updated NIfTI dictionary
+    '''
+
+
+    if 'series' not in indct:
+        raise ValueError('The key <series> is not present in the input dictionary!')
+   
+    # > number of studies in  the folder
+    Sn = len(indct['series'])
+
+    if outpath is not None:
+        niidir = Path(outpath)
+        nimpa.create_dir(niidir)
+    else:
+        outpath = Path(indct).parent
+        niidir = outpath/'NIfTIs'
+    
+
+    niidat = copy.deepcopy(indct)
+    niidat['outpath'] = niidir
+
+    for sti in range(Sn):
+        print('study:', sti)
+        for k in indct['series'][sti]:
+            run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', niidir, 'f', '%f_%s',
+                 indct['series'][sti][k]['files'][0].parent])
+
+            # > get the converted NIfTI file
+            fnii = list(niidir.glob(str(indct['series'][sti][k]['tacq']) + '*.nii*'))
+            if len(fnii) != 1:
+                raise ValueError('Unexpected number of converted NIfTI files')
+            else:
+                niidat['series'][sti][k].pop('files', None)
+                niidat['series'][sti][k]['fnii'] = fnii[0]
+
+    return niidat
+# =====================================================================
+
 
 
 # =====================================================================
