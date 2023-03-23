@@ -293,19 +293,19 @@ def convert2nii(indct, outpath=None):
     # > number of studies in  the folder
     Sn = len(indct['series'])
 
+    # > sort out the output path
     if outpath is not None:
         niidir = Path(outpath)
-        nimpa.create_dir(niidir)
     else:
-        outpath = Path(indct).parent
+        outpath = Path(indct['outpath']).parent
         niidir = outpath/'NIfTIs'
+    nimpa.create_dir(niidir)
     
 
     niidat = copy.deepcopy(indct)
     niidat['outpath'] = niidir
 
     for sti in range(Sn):
-        print('study:', sti)
         for k in indct['series'][sti]:
             run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', niidir, 'f', '%f_%s',
                  indct['series'][sti][k]['files'][0].parent])
