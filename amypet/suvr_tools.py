@@ -246,7 +246,7 @@ def align_suvr(
         # > output paths of aligned images for the static part
         fnii_aligned_ = [None for _ in range(nsfrm)]
 
-        niiim_ np.zeros((nsfrm,) + niiref['shape'], dtype=np.float32)
+        niiim_ = np.zeros((nsfrm,) + niiref['shape'], dtype=np.float32)
 
         # > index/counter for SUVr frames
         fsi = 0
