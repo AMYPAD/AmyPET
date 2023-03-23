@@ -62,6 +62,7 @@ def align_suvr(
     reg_costfun='nmi',
     reg_force=False,
     reg_fwhm=8,
+    reg_thrshld=2.0
 ):
     '''
     Align SUVr frames after conversion to NIfTI format.
@@ -72,6 +73,8 @@ def align_suvr(
                 are already calculated and stored in the output folder.
     - reg_fwhm: the FWHM of the Gaussian kernel used for smoothing the images before
                 registration and only for registration purposes.
+    - reg_thrshld: the threshold for the registration metric (combined trans. and rots)
+                when deciding to apply the transformation
 
     '''
 
@@ -229,12 +232,13 @@ def align_suvr(
             outdct['suvr']['fpet_notaligned'] = fnotaligned
 
 
-
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single SUVr frame
-        suvr_frm = amypet.preproc_suvr(faligned, outpath=niidir)
+        suvr_frm = preproc_suvr(faligned, outpath=niidir)
         fref = suvr_frm['fstat']
 
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # The remaining static frames
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > number of static frames
         nsfrm = len(stat_tdata['descr']['frms'])
 
@@ -242,7 +246,7 @@ def align_suvr(
         S_ = [None for _ in range(nsfrm)]
 
         # > motion metric for any remaining frames
-        R_ = np.zeros(nfrms)
+        R_ = np.zeros(nsfrm)
 
         # > output paths of aligned images for the static part
         fnii_aligned_ = [None for _ in range(nsfrm)]
@@ -252,14 +256,14 @@ def align_suvr(
         # > index/counter for SUVr frames
         fsi = 0
 
-        for fi, frm in enumerate(stat_descr['frms']):
-            if not frm in suvr_tdata['descr']['frms']:
+        for fi, frm in enumerate(stat_tdata['descr']['frms']):
+            if not frm in stat_tdata['descr']['suvr']['frms']:
 
-                fnii = niidat
+                fnii = stat_tdata[frm]['fnii']
                 # > register frame to the reference
                 spm_res = nimpa.coreg_spm(fref, fnii, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
                                           fwhm=[13, 13], costfun=reg_costfun,
-                                          fcomment=f'_ref-static', outpath=niistat_dir,
+                                          fcomment=f'_ref-static', outpath=niidir,
                                           visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
 
                 S_[fi] = spm_res['faff']
@@ -276,14 +280,14 @@ def align_suvr(
                         fnii,
                         S_[fi],
                         intrp=1.,
-                        outpath=niialigned_dir,
+                        outpath=rsmpl_opth,
                         pickname='flo',
                         del_ref_uncmpr=True,
                         del_flo_uncmpr=True,
                         del_out_uncmpr=True,
                     )
                 else:
-                    fnii_aligned_[fi] = niialigned_dir/fnii.name
+                    fnii_aligned_[fi] = rsmpl_opth/fnii.name
                     shutil.copyfile(fnii, fnii_aligned_[fi])
 
                 niiim_[fi, ...] = nimpa.getnii(fnii_aligned_[fi])
@@ -291,10 +295,10 @@ def align_suvr(
             else:
                 # > already aligned as part of SUVr
                 fnii_aligned_[fi] = Path(outdct['suvr']['fpeti'][fsi])
-                fsi += 1
-                S_[fi] = S[fsi]
-                R_[fi] = R[fsi]
+                S_[fi] = S[rfrm][fsi]
+                R_[fi] = R[rfrm][fsi]
                 niiim_[fi, ...] = niiim[fsi,...]
+                fsi += 1
 
         # > save aligned static frames
         nimpa.array2nii(
