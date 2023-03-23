@@ -1,4 +1,4 @@
-import logging
+import logging as log
 import os
 from pathlib import Path, PurePath
 from subprocess import run
@@ -9,7 +9,7 @@ from itertools import combinations
 from matplotlib import pyplot as plt
 from niftypet import nimpa
 
-logging.basicConfig(level=logging.INFO)
+log.basicConfig(level=log.INFO)
 nifti_ext = ('.nii', '.nii.gz')
 dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
@@ -356,7 +356,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
 
     # > NIfTI case
     if pet_path.is_file() and str(pet_path).endswith(nifti_ext):
-        logging.info('PET path exists and it is a NIfTI file')
+        log.info('PET path exists and it is a NIfTI file')
 
         fpet_nii = pet_path
 
@@ -394,7 +394,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     elif not frames:
         frames = np.arange(nfrm)
 
-    logging.info(f'{nfrm} frames have been found in the dynamic image.')
+    log.info(f'{nfrm} frames have been found in the dynamic image.')
 
     # ------------------------------------------
     # > static image file path
@@ -413,7 +413,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
             trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
                    imdct['transpose'].index(2)), flip=imdct['flip'])
 
-        logging.info(f'Saved SUVr file image to: {fstat}')
+        log.info(f'Saved SUVr file image to: {fstat}')
     # ------------------------------------------
 
     return {'fpet_nii': fpet_nii, 'fstat': fstat}
@@ -496,10 +496,10 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
     # > output dictionary
     out = {}
 
-    logging.debug('Extracting volumes of interest (VOIs):')
+    log.debug('Extracting volumes of interest (VOIs):')
     for k, voi in enumerate(voi_dct):
 
-        logging.info(f'  VOI: {voi}')
+        log.info(f'  VOI: {voi}')
 
         # > ROI mask
         rmsk = np.zeros(lbls.shape, dtype=bool)
@@ -509,7 +509,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
         emsum = 0
 
         for ri in voi_dct[voi]:
-            logging.debug(f'   label{ri}')
+            log.debug(f'   label{ri}')
             rmsk += np.equal(lbls, ri)
 
         if outpath is not None and not isinstance(imlabel, np.ndarray):
@@ -634,7 +634,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
 
     if not fplbl.is_file() or reg_fresh:
 
-        logging.info(f'registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm'
+        log.info(f'registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm'
                      ' for reference and floating images respectively')
 
         spm_res = nimpa.coreg_spm(trmout['ftrm'], fmri, fwhm_ref=reg_fwhm_pet,
