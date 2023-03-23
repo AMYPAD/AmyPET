@@ -84,7 +84,7 @@ def align_suvr(
         align_out = Path(outpath)
 
     # > NIfTI output folder
-    niidir = align_out / 'NIfTI_static'
+    niidir = align_out / 'NIfTI_aligned'
     nimpa.create_dir(niidir)
 
     # > folder of resampled and aligned NIfTI files (SPM)
@@ -138,7 +138,7 @@ def align_suvr(
             # > one way registration
             spm_res = nimpa.coreg_spm(fnii0, fnii1, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
                                       fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_combi_{frm0}-{frm1}', outpath=fnii0.parent,
+                                      fcomment=f'_combi_{frm0}-{frm1}', outpath=niidir,
                                       visual=0, save_arr=False, del_uncmpr=True)
 
             S[frm0][frm1] = spm_res['faff']
@@ -150,7 +150,7 @@ def align_suvr(
             # > the other way registration
             spm_res = nimpa.coreg_spm(fnii1, fnii0, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
                                       fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_combi_{frm1}-{frm0}', outpath=fnii0.parent,
+                                      fcomment=f'_combi_{frm1}-{frm0}', outpath=niidir,
                                       visual=0, save_arr=False, del_uncmpr=True)
 
             S[frm1][frm0] = spm_res['faff']
@@ -232,9 +232,16 @@ def align_suvr(
             outdct['suvr']['fpet_notaligned'] = fnotaligned
 
 
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # SINGLE SUVR FRAME
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single SUVr frame
         suvr_frm = preproc_suvr(faligned, outpath=niidir)
         fref = suvr_frm['fstat']
+        outdct['suvr']['fsuvr'] = fref
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # The remaining static frames
