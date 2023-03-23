@@ -5,6 +5,7 @@ from subprocess import run
 
 import dcm2niix
 import numpy as np
+from itertools import combinations
 from matplotlib import pyplot as plt
 from niftypet import nimpa
 

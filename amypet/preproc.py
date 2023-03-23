@@ -9,7 +9,6 @@ import logging as log
 import os
 import shutil
 from datetime import datetime
-from itertools import combinations
 from pathlib import Path
 from subprocess import run
 import copy
