@@ -54,7 +54,7 @@ fulldyn_time = 3600
 
 
 # =====================================================================
-def explore_input(input_fldr, tracer=None, suvr_win_def=None, outpath=None, margin=0.1):
+def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, margin=0.1):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
