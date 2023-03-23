@@ -50,6 +50,376 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
     return {'im': ftrm['im'], 'trmdir': trmdir, 'ftrm': ftrm['fimi'][0], 'trim_scale': scale}
 
 
+
+
+
+# =====================================================================
+def align_suvr(
+    stat_tdata,
+    outpath=None,
+    not_aligned=True,
+    reg_costfun='nmi',
+    reg_force=False,
+    reg_fwhm=8,
+):
+    '''
+    Align SUVr frames after conversion to NIfTI format.
+
+    Arguments:
+    - reg_constfun: the cost function used in SPM registration/alignment of frames
+    - reg_force:    force running the registration even if the registration results
+                are already calculated and stored in the output folder.
+    - reg_fwhm: the FWHM of the Gaussian kernel used for smoothing the images before
+                registration and only for registration purposes.
+
+    '''
+
+    if outpath is None:
+        align_out = stat_tdata[stat_tdata['descr']['frms'][0]]['fnii'].parent.parent
+    else:
+        align_out = Path(outpath)
+
+    # > NIfTI output folder
+    niidir = align_out / 'NIfTI_static'
+    nimpa.create_dir(niidir)
+
+    # > folder of resampled and aligned NIfTI files (SPM)
+    rsmpl_opth = niidir / 'SPM-aligned'
+    nimpa.create_dir(rsmpl_opth)
+
+    # > the name of the output re-aligned file name
+    faligned = 'SUVr_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    faligned_s = 'static_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    faligned = niidir / faligned
+    faligned_s = niidir / faligned_s
+
+    # > the same for the not aligned frames, if requested
+    fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    fnotaligned = niidir / fnotaligned
+
+    # > Matrices: motion metric + paths to affine
+    R = S = None
+
+    outdct = None
+
+    # > check if the file exists
+    if reg_force or not faligned.is_file():
+
+        # -----------------------------------------------
+        # > list all NIfTI files
+        nii_frms = []
+        for k in stat_tdata['descr']['suvr']['frms']:
+            nii_frms.append(stat_tdata[k]['fnii'])
+        # -----------------------------------------------
+
+        # -----------------------------------------------
+        # > CORE ALIGNMENT OF SUVR FRAMES:
+
+        # > frame-based motion metric (rotations+translation)
+        R = np.zeros((len(nii_frms), len(nii_frms)), dtype=np.float32)
+
+        # > paths to the affine files
+        S = [[None for _ in range(len(nii_frms))] for _ in range(len(nii_frms))]
+
+        # > go through all possible combinations of frame registration
+        for c in combinations(stat_tdata['descr']['suvr']['frms'], 2):
+            frm0 = stat_tdata['descr']['suvr']['frms'].index(c[0])
+            frm1 = stat_tdata['descr']['suvr']['frms'].index(c[1])
+
+            fnii0 = nii_frms[frm0]
+            fnii1 = nii_frms[frm1]
+
+            log.info(f'registration of frame #{frm0} and frame #{frm1}')
+
+            # > one way registration
+            spm_res = nimpa.coreg_spm(fnii0, fnii1, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
+                                      fwhm=[13, 13], costfun=reg_costfun,
+                                      fcomment=f'_combi_{frm0}-{frm1}', outpath=fnii0.parent,
+                                      visual=0, save_arr=False, del_uncmpr=True)
+
+            S[frm0][frm1] = spm_res['faff']
+
+            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+            trn_ss = np.sum(spm_res['translations']**2)**.5
+            R[frm0, frm1] = rot_ss + trn_ss
+
+            # > the other way registration
+            spm_res = nimpa.coreg_spm(fnii1, fnii0, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
+                                      fwhm=[13, 13], costfun=reg_costfun,
+                                      fcomment=f'_combi_{frm1}-{frm0}', outpath=fnii0.parent,
+                                      visual=0, save_arr=False, del_uncmpr=True)
+
+            S[frm1][frm0] = spm_res['faff']
+
+            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+            trn_ss = np.sum(spm_res['translations']**2)**.5
+            R[frm1, frm0] = rot_ss + trn_ss
+
+        # > sum frames along floating frames
+        fsum = np.sum(R, axis=0)
+
+        # > sum frames along reference frames
+        rsum = np.sum(R, axis=1)
+
+        # > reference frame for SUVr composite frame
+        rfrm = np.argmin(fsum + rsum)
+
+        niiref = nimpa.getnii(nii_frms[rfrm], output='all')
+
+        # > initialise target aligned SUVr image
+        niiim = np.zeros((len(nii_frms),) + niiref['shape'], dtype=np.float32)
+
+        # > copy in the target frame for SUVr composite
+        niiim[rfrm, ...] = niiref['im']
+
+        # > aligned individual frames, starting with the reference 
+        fnii_aligned = [nii_frms[rfrm]]
+
+        for ifrm in range(len(nii_frms)):
+            if ifrm == rfrm:
+                continue
+
+            # > resample images for alignment
+            frsmpl = nimpa.resample_spm(
+                nii_frms[rfrm],
+                nii_frms[ifrm],
+                S[rfrm][ifrm],
+                intrp=1.,
+                outpath=rsmpl_opth,
+                pickname='flo',
+                del_ref_uncmpr=True,
+                del_flo_uncmpr=True,
+                del_out_uncmpr=True,
+            )
+
+            fnii_aligned.append(frsmpl)
+
+            niiim[ifrm, ...] = nimpa.getnii(frsmpl)
+
+
+
+        # > save aligned SUVr frames
+        nimpa.array2nii(
+            niiim, niiref['affine'], faligned, descrip='AmyPET: aligned SUVr frames',
+            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                   niiref['transpose'].index(2)), flip=niiref['flip'])
+        # -----------------------------------------------
+
+        outdct = {}
+        outdct['suvr'] = {
+            'fpet': faligned,
+            'fpeti':fnii_aligned,
+            'outpath': niidir,
+            'Metric': R,
+            'faff': S}
+
+        # > save static image which is not aligned
+        if not_aligned:
+            nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
+            for k, fnf in enumerate(nii_frms):
+                nii_noalign[k, ...] = nimpa.getnii(fnf)
+
+            nimpa.array2nii(
+                nii_noalign, niiref['affine'], fnotaligned,
+                descrip='AmyPET: unaligned SUVr frames',
+                trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                       niiref['transpose'].index(2)), flip=niiref['flip'])
+
+            outdct['suvr']['fpet_notaligned'] = fnotaligned
+
+
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # > preprocess the aligned PET into a single SUVr frame
+        suvr_frm = amypet.preproc_suvr(faligned, outpath=niidir)
+        fref = suvr_frm['fstat']
+
+        # > number of static frames
+        nsfrm = len(stat_tdata['descr']['frms'])
+
+        # > output files for affines
+        S_ = [None for _ in range(nsfrm)]
+
+        # > motion metric for any remaining frames
+        R_ = np.zeros(nfrms)
+
+        # > output paths of aligned images for the static part
+        fnii_aligned_ = [None for _ in range(nsfrm)]
+
+        niiim_ np.zeros((nsfrm,) + niiref['shape'], dtype=np.float32)
+
+        # > index/counter for SUVr frames
+        fsi = 0
+
+        for fi, frm in enumerate(stat_descr['frms']):
+            if not frm in suvr_tdata['descr']['frms']:
+
+                fnii = niidat
+                # > register frame to the reference
+                spm_res = nimpa.coreg_spm(fref, fnii, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
+                                          fwhm=[13, 13], costfun=reg_costfun,
+                                          fcomment=f'_ref-static', outpath=niistat_dir,
+                                          visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
+
+                S_[fi] = spm_res['faff']
+
+                rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+                trn_ss = np.sum(spm_res['translations']**2)**.5
+                R_[fi] = rot_ss + trn_ss
+
+                # > align each frame through resampling 
+                if R_[fi]>reg_thrshld:
+                    # > resample images for alignment
+                    fnii_aligned_[fi] = nimpa.resample_spm(
+                        fref,
+                        fnii,
+                        S_[fi],
+                        intrp=1.,
+                        outpath=niialigned_dir,
+                        pickname='flo',
+                        del_ref_uncmpr=True,
+                        del_flo_uncmpr=True,
+                        del_out_uncmpr=True,
+                    )
+                else:
+                    fnii_aligned_[fi] = niialigned_dir/fnii.name
+                    shutil.copyfile(fnii, fnii_aligned_[fi])
+
+                niiim_[fi, ...] = nimpa.getnii(fnii_aligned_[fi])
+            
+            else:
+                # > already aligned as part of SUVr
+                fnii_aligned_[fi] = Path(outdct['suvr']['fpeti'][fsi])
+                fsi += 1
+                S_[fi] = S[fsi]
+                R_[fi] = R[fsi]
+                niiim_[fi, ...] = niiim[fsi,...]
+
+        # > save aligned static frames
+        nimpa.array2nii(
+            niiim_, niiref['affine'], faligned_s, descrip='AmyPET: aligned static frames',
+            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
+                   niiref['transpose'].index(2)), flip=niiref['flip'])
+
+        outdct['static'] = {
+            'fpet': faligned_s,
+            'fpeti':fnii_aligned_,
+            'outpath': niidir,
+            'Metric': R_,
+            'faff': S_}
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+    else:
+        outdct = {}
+        outdct['suvr'] = dict(fpet=faligned, outpath=niidir)
+        outdct['static'] = dict(fpet=faligned_s, outpath=niidir)
+
+
+    return outdct
+
+
+# =====================================================================
+
+
+
+# ========================================================================================
+def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
+    ''' Prepare the PET image for SUVr analysis.
+        Arguments:
+        - pet_path: path to the folder of DICOM images, or to the NIfTI file
+        - outpath:  output folder path; if not given will assume the parent
+                    folder of the input image
+        - fname:    core name of the static (SUVr) NIfTI file
+        - frames:   list of frames to be used for SUVr processing
+    '''
+
+    if not os.path.exists(pet_path):
+        raise ValueError('The provided path does not exist')
+
+    # > convert the path to Path object
+    pet_path = Path(pet_path)
+
+    # --------------------------------------
+    # > sort out the output folder
+    if outpath is None:
+        petout = pet_path.parent
+    else:
+        petout = Path(outpath)
+
+    nimpa.create_dir(petout)
+
+    if fname is None:
+        fname = nimpa.rem_chars(pet_path.name.split('.')[0]) + '_static.nii.gz'
+    elif not str(fname).endswith(nifti_ext[1]):
+        fname += '.nii.gz'
+    # --------------------------------------
+
+    # > NIfTI case
+    if pet_path.is_file() and str(pet_path).endswith(nifti_ext):
+        logging.info('PET path exists and it is a NIfTI file')
+
+        fpet_nii = pet_path
+
+    # > DICOM case (if any file inside the folder is DICOM)
+    elif pet_path.is_dir() and any([f.suffix in dicom_ext for f in pet_path.glob('*')]):
+
+        # > get the NIfTi images from previous processing
+        fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
+
+        if not fpet_nii:
+            run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', petout, 'f', '%f_%s', pet_path])
+
+        fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
+
+        # > if cannot find a file it might be due to spaces in folder/file names
+        if not fpet_nii:
+            fpet_nii = list(petout.glob(pet_path.name.replace(' ', '_') + '*.nii*'))
+
+        if not fpet_nii:
+            raise ValueError('No SUVr NIfTI files found')
+        elif len(fpet_nii) > 1:
+            raise ValueError('Too many SUVr NIfTI files found')
+        else:
+            fpet_nii = fpet_nii[0]
+
+    # > read the dynamic image
+    imdct = nimpa.getnii(fpet_nii, output='all')
+
+    # > number of dynamic frames
+    nfrm = imdct['hdr']['dim'][4]
+
+    # > ensure that the frames exist in part of full dynamic image data
+    if frames and nfrm < max(frames):
+        raise ValueError('The selected frames do not exist')
+    elif not frames:
+        frames = np.arange(nfrm)
+
+    logging.info(f'{nfrm} frames have been found in the dynamic image.')
+
+    # ------------------------------------------
+    # > static image file path
+    fstat = petout / fname
+
+    # > check if the static (for SUVr) file already exists
+    if not fstat.is_file():
+
+        if nfrm > 1:
+            imstat = np.sum(imdct['im'][frames, ...], axis=0)
+        else:
+            imstat = np.squeeze(imdct['im'])
+
+        nimpa.array2nii(
+            imstat, imdct['affine'], fstat,
+            trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
+                   imdct['transpose'].index(2)), flip=imdct['flip'])
+
+        logging.info(f'Saved SUVr file image to: {fstat}')
+    # ------------------------------------------
+
+    return {'fpet_nii': fpet_nii, 'fstat': fstat}
+
+
+
+
 # ========================================================================================
 def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
     '''
@@ -161,102 +531,6 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
 
     return out
 
-
-# ========================================================================================
-def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
-    ''' Prepare the PET image for SUVr analysis.
-        Arguments:
-        - pet_path: path to the folder of DICOM images, or to the NIfTI file
-        - outpath:  output folder path; if not given will assume the parent
-                    folder of the input image
-        - fname:    core name of the static (SUVr) NIfTI file
-        - frames:   list of frames to be used for SUVr processing
-    '''
-
-    if not os.path.exists(pet_path):
-        raise ValueError('The provided path does not exist')
-
-    # > convert the path to Path object
-    pet_path = Path(pet_path)
-
-    # --------------------------------------
-    # > sort out the output folder
-    if outpath is None:
-        petout = pet_path.parent
-    else:
-        petout = Path(outpath)
-
-    nimpa.create_dir(petout)
-
-    if fname is None:
-        fname = nimpa.rem_chars(pet_path.name.split('.')[0]) + '_static.nii.gz'
-    elif not str(fname).endswith(nifti_ext[1]):
-        fname += '.nii.gz'
-    # --------------------------------------
-
-    # > NIfTI case
-    if pet_path.is_file() and str(pet_path).endswith(nifti_ext):
-        logging.info('PET path exists and it is a NIfTI file')
-
-        fpet_nii = pet_path
-
-    # > DICOM case (if any file inside the folder is DICOM)
-    elif pet_path.is_dir() and any([f.suffix in dicom_ext for f in pet_path.glob('*')]):
-
-        # > get the NIfTi images from previous processing
-        fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
-
-        if not fpet_nii:
-            run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', petout, 'f', '%f_%s', pet_path])
-
-        fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
-
-        # > if cannot find a file it might be due to spaces in folder/file names
-        if not fpet_nii:
-            fpet_nii = list(petout.glob(pet_path.name.replace(' ', '_') + '*.nii*'))
-
-        if not fpet_nii:
-            raise ValueError('No SUVr NIfTI files found')
-        elif len(fpet_nii) > 1:
-            raise ValueError('Too many SUVr NIfTI files found')
-        else:
-            fpet_nii = fpet_nii[0]
-
-    # > read the dynamic image
-    imdct = nimpa.getnii(fpet_nii, output='all')
-
-    # > number of dynamic frames
-    nfrm = imdct['hdr']['dim'][4]
-
-    # > ensure that the frames exist in part of full dynamic image data
-    if frames and nfrm < max(frames):
-        raise ValueError('The selected frames do not exist')
-    elif not frames:
-        frames = np.arange(nfrm)
-
-    logging.info(f'{nfrm} frames have been found in the dynamic image.')
-
-    # ------------------------------------------
-    # > static image file path
-    fstat = petout / fname
-
-    # > check if the static (for SUVr) file already exists
-    if not fstat.is_file():
-
-        if nfrm > 1:
-            imstat = np.sum(imdct['im'][frames, ...], axis=0)
-        else:
-            imstat = np.squeeze(imdct['im'])
-
-        nimpa.array2nii(
-            imstat, imdct['affine'], fstat,
-            trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
-                   imdct['transpose'].index(2)), flip=imdct['flip'])
-
-        logging.info(f'Saved SUVr file image to: {fstat}')
-    # ------------------------------------------
-
-    return {'fpet_nii': fpet_nii, 'fstat': fstat}
 
 
 # ========================================================================================

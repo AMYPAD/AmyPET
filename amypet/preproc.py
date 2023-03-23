@@ -300,6 +300,15 @@ def convert2nii(indct, outpath=None):
         outpath = Path(indct['outpath']).parent
         niidir = outpath/'NIfTIs'
     nimpa.create_dir(niidir)
+
+
+    # > remove any files from previous runs
+    files = niidir.glob('*')
+    for f in files:
+        if f.is_file():
+            os.remove(f)
+        else:
+            shutil.rmtree(f)
     
 
     niidat = copy.deepcopy(indct)
@@ -323,207 +332,6 @@ def convert2nii(indct, outpath=None):
 
 
 
-# =====================================================================
-def align_suvr(
-    suvr_tdata,
-    suvr_descr,
-    outpath=None,
-    not_aligned=True,
-    reg_costfun='nmi',
-    reg_force=False,
-    reg_fwhm=8,
-):
-    '''
-    Align SUVr frames after conversion to NIfTI format.
-
-    Arguments:
-    - reg_constfun: the cost function used in SPM registration/alignment of frames
-    - reg_force:    force running the registration even if the registration results
-                are already calculated and stored in the output folder.
-    - reg_fwhm: the FWHM of the Gaussian kernel used for smoothing the images before
-                registration and only for registration purposes.
-
-    '''
-
-    if outpath is None:
-        align_out = suvr_tdata[next(iter(suvr_tdata))]['files'][0].parent.parent
-    else:
-        align_out = Path(outpath)
-
-    # > NIfTI output folder
-    niidir = align_out / 'NIfTI_SUVr'
-    nimpa.create_dir(niidir)
-
-    # > folder of resampled and aligned NIfTI files (SPM)
-    rsmpl_opth = niidir / 'SPM-aligned'
-    nimpa.create_dir(rsmpl_opth)
-
-    # > the name of the output re-aligned file name
-    faligned = 'SUVr_aligned_' + nimpa.rem_chars(suvr_tdata[next(
-        iter(suvr_tdata))]['series']) + '.nii.gz'
-    faligned = niidir / faligned
-
-    # > the same for the not aligned frames, if requested
-    fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(suvr_tdata[next(
-        iter(suvr_tdata))]['series']) + '.nii.gz'
-    fnotaligned = niidir / fnotaligned
-
-    # > Matrices: motion metric + paths to affine
-    R = S = None
-
-    outdct = None
-
-    # > check if the file exists
-    if reg_force or not faligned.is_file():
-
-        # > remove any files from previous runs
-        files = niidir.glob('*')
-        for f in files:
-            if f.is_file():
-                os.remove(f)
-            else:
-                shutil.rmtree(f)
-
-        # > output nifty frame files
-        nii_frms = []
-
-        # -----------------------------------------------
-        # > convert the individual DICOM frames to NIfTI
-        for i, k in enumerate(suvr_descr['frms']):
-
-            run([
-                dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', niidir, 'f', '%f_%s',
-                suvr_tdata[k]['files'][0].parent])
-
-            # > get the converted NIfTI file
-            fnii = list(niidir.glob(str(suvr_tdata[k]['tacq']) + '*.nii*'))
-            if len(fnii) != 1:
-                raise ValueError('Unexpected number of converted NIfTI files')
-            else:
-                nii_frms.append(fnii[0])
-        # -----------------------------------------------
-
-        # -----------------------------------------------
-        # > CORE ALIGNMENT OF SUVR FRAMES:
-
-        # > frame-based motion metric (rotations+translation)
-        R = np.zeros((len(nii_frms), len(nii_frms)), dtype=np.float32)
-
-        # > paths to the affine files
-        S = [[None for _ in range(len(nii_frms))] for _ in range(len(nii_frms))]
-
-        # > go through all possible combinations of frame registration
-        for c in combinations(suvr_descr['frms'], 2):
-            frm0 = suvr_descr['frms'].index(c[0])
-            frm1 = suvr_descr['frms'].index(c[1])
-
-            fnii0 = nii_frms[frm0]
-            fnii1 = nii_frms[frm1]
-
-            log.info(f'registration of frame #{frm0} and frame #{frm1}')
-
-            # > one way registration
-            spm_res = nimpa.coreg_spm(fnii0, fnii1, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                      fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_combi_{frm0}-{frm1}', outpath=fnii0.parent,
-                                      visual=0, save_arr=False, del_uncmpr=True)
-
-            S[frm0][frm1] = spm_res['faff']
-
-            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-            trn_ss = np.sum(spm_res['translations']**2)**.5
-            R[frm0, frm1] = rot_ss + trn_ss
-
-            # > the other way registration
-            spm_res = nimpa.coreg_spm(fnii1, fnii0, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                      fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_combi_{frm1}-{frm0}', outpath=fnii0.parent,
-                                      visual=0, save_arr=False, del_uncmpr=True)
-
-            S[frm1][frm0] = spm_res['faff']
-
-            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-            trn_ss = np.sum(spm_res['translations']**2)**.5
-            R[frm1, frm0] = rot_ss + trn_ss
-
-        # > sum frames along floating frames
-        fsum = np.sum(R, axis=0)
-
-        # > sum frames along reference frames
-        rsum = np.sum(R, axis=1)
-
-        # > reference frame for SUVr composite frame
-        rfrm = np.argmin(fsum + rsum)
-
-        niiref = nimpa.getnii(nii_frms[rfrm], output='all')
-
-        # > initialise target aligned SUVr image
-        niiim = np.zeros((len(nii_frms),) + niiref['shape'], dtype=np.float32)
-
-        # > copy in the target frame for SUVr composite
-        niiim[rfrm, ...] = niiref['im']
-
-        # > aligned individual frames, starting with the reference 
-        fnii_aligned = [nii_frms[rfrm]]
-
-        for ifrm in range(len(nii_frms)):
-            if ifrm == rfrm:
-                continue
-
-            # > resample images for alignment
-            frsmpl = nimpa.resample_spm(
-                nii_frms[rfrm],
-                nii_frms[ifrm],
-                S[rfrm][ifrm],
-                intrp=1.,
-                outpath=rsmpl_opth,
-                pickname='flo',
-                del_ref_uncmpr=True,
-                del_flo_uncmpr=True,
-                del_out_uncmpr=True,
-            )
-
-            fnii_aligned.append(frsmpl)
-
-            niiim[ifrm, ...] = nimpa.getnii(frsmpl)
-
-
-
-        # > save aligned SUVr frames
-        nimpa.array2nii(
-            niiim, niiref['affine'], faligned, descrip='AmyPET: aligned SUVr frames',
-            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
-                   niiref['transpose'].index(2)), flip=niiref['flip'])
-        # -----------------------------------------------
-
-        outdct = {
-            'fpet': faligned,
-            'fpeti':fnii_aligned,
-            'outpath': niidir,
-            'Metric': R,
-            'faff': S}
-
-        # > save static image which is not aligned
-        if not_aligned:
-            nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
-            for k, fnf in enumerate(nii_frms):
-                nii_noalign[k, ...] = nimpa.getnii(fnf)
-
-            nimpa.array2nii(
-                nii_noalign, niiref['affine'], fnotaligned,
-                descrip='AmyPET: unaligned SUVr frames',
-                trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
-                       niiref['transpose'].index(2)), flip=niiref['flip'])
-
-            outdct['fpet_notaligned'] = fnotaligned
-    else:
-        outdct = dict(fpet=faligned, outpath=niidir)
-
-
-    return outdct
-
-
-# =====================================================================
 
 
 # =====================================================================
