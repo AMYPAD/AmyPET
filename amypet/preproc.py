@@ -360,7 +360,8 @@ def id_acq(dctdat, acq_type='suvr', output_series_id=False):
     if len(acq_find)>1:
         raise ValueError('too many SUVr/static DICOM series detected: only one is accepted')
     elif len(acq_find)==0:
-        raise ValueError('could not identify any SUVr DICOM series in in the input data')
+        log.info('no fully dynamic data found.')
+        return None
     else:
         acq_find = acq_find[0]
 
@@ -399,7 +400,7 @@ def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
         sib, bdyn_tdat = id_acq(niidat, acq_type='break', output_series_id=True)
         sif, fdyn_tdat = id_acq(niidat, acq_type='dyn', output_series_id=True)
         if not bdyn_tdat and not fdyn_tdat:
-            print('i> no early dynamic data detected')
+            log.info('no early dynamic data detected')
             return niidat
         else:
             if bdyn_tdat:
