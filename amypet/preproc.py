@@ -397,18 +397,18 @@ def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
     if artefact=='endfov':
     
         # > extract the early time frames data
-        sib, bdyn_tdat = id_acq(niidat, acq_type='break', output_series_id=True)
-        sif, fdyn_tdat = id_acq(niidat, acq_type='dyn', output_series_id=True)
-        if not bdyn_tdat and not fdyn_tdat:
+        bdyn = id_acq(niidat, acq_type='break', output_series_id=True)
+        fdyn = id_acq(niidat, acq_type='dyn', output_series_id=True)
+        if not bdyn and not fdyn:
             log.info('no early dynamic data detected')
             return niidat
         else:
-            if bdyn_tdat:
-                si = sib
-                dyn_tdat = bdyn_tdat
+            if bdyn:
+                si = bdyn[0]
+                dyn_tdat = bdyn[1]
             else:
-                si = sif
-                dyn_tdat = fdyn_tdat
+                si = fdyn[0]
+                dyn_tdat = fdyn[1]
 
         
         for i,k in enumerate(dyn_tdat['descr']['frms']):
