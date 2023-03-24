@@ -392,16 +392,24 @@ def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
                         correction of the ends of FOV 
     '''
 
+    # > CORRECT FOR FOV-END ARTEFACTS
     if artefact=='endfov':
     
         # > extract the early time frames data
-        si, dyn_tdat = id_acq(niidat, acq_type='break', output_series_id=True)
-        if not dyn_tdat:
-            si, dyn_tdat = id_acq(niidat, acq_type='dyn', output_series_id=True)
-        else:
+        sib, bdyn_tdat = id_acq(niidat, acq_type='break', output_series_id=True)
+        sif, fdyn_tdat = id_acq(niidat, acq_type='dyn', output_series_id=True)
+        if not bdyn_tdat and not fdyn_tdat:
+            print('i> no early dynamic data detected')
             return niidat
+        else:
+            if bdyn_tdat:
+                si = sib
+                dyn_tdat = bdyn_tdat
+            else:
+                si = sif
+                dyn_tdat = fdyn_tdat
 
-        # > CORRECT FOR FOV-END ARTEFACTS
+        
         for i,k in enumerate(dyn_tdat['descr']['frms']):
             if i in arem_frms:
                 imdct = nimpa.getnii(dyn_tdat[k]['fnii'], output='all')
