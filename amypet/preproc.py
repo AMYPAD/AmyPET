@@ -412,7 +412,7 @@ def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
 
         
         for i,k in enumerate(dyn_tdat['descr']['frms']):
-            if i in arem_frms:
+            if i in frames:
                 imdct = nimpa.getnii(dyn_tdat[k]['fnii'], output='all')
                 im = imdct['im']
                 zprf = np.sum(im, axis=(1,2))
