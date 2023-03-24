@@ -335,7 +335,7 @@ def convert2nii(indct, outpath=None):
 
 
 # ========================================================================================
-def id_acq(dctdat, acq_type='suvr'):
+def id_acq(dctdat, acq_type='suvr', output_series_id=False):
     '''
     Identify acquisition type such as SUVr or coffee break data 
     in the dictionary of classified DICOM/NIfTI series.
@@ -370,9 +370,75 @@ def id_acq(dctdat, acq_type='suvr'):
         # > data description with classification
         tdata['descr'] = acq_find[1]
 
-    return tdata
+    if output_series_id:
+        return (acq_find[0], tdata)
+    else:
+        return tdata
 # ========================================================================================
 
+
+
+
+
+# ========================================================================================
+def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
+    ''' Remove artefacts from NIfTI images.
+        Arguments:
+        - niidat:       dictionary of all series NIfTI data
+        - artefact:     what kind of artefact (default is the end 
+                        of FOV)
+        - frames:       the idx of frames which should be corrected
+        - zmrg:         the axial (z) voxel margin where considering
+                        correction of the ends of FOV 
+    '''
+
+    if artefact=='endfov':
+    
+        # > extract the early time frames data
+        si, dyn_tdat = id_acq(niidat, acq_type='break', output_series_id=True)
+        if not dyn_tdat:
+            si, dyn_tdat = id_acq(niidat, acq_type='dyn', output_series_id=True)
+        else:
+            return niidat
+
+        # > CORRECT FOR FOV-END ARTEFACTS
+        for i,k in enumerate(dyn_tdat['descr']['frms']):
+            if i in arem_frms:
+                imdct = nimpa.getnii(dyn_tdat[k]['fnii'], output='all')
+                im = imdct['im']
+                zprf = np.sum(im, axis=(1,2))
+                ztop = np.max(zprf[:zmrg])
+                zbtm = np.max(zprf[-zmrg:])
+                zmid = np.max(zprf[zmrg:-zmrg])
+                #print(k, ztop, zbtm, zmid, ztop>zmid, zbtm>zmid)
+
+                # > remove the artefacts from top and bottom
+                if zbtm>zmid or ztop>zmid:
+                    if zbtm>zmid:
+                        zidx = len(zprf)-zmrg + np.where(zprf[-zmrg:]>zmid)[0]
+                        im[zidx,...] = 0
+                    if ztop>zmid:
+                        zidx = np.where(zprf[:zmrg]>zmid)[0]
+                        im[zidx,...] = 0
+                
+                    # > save to a corrected image
+                    fnew = dyn_tdat[k]['fnii'].parent/(dyn_tdat[k]['fnii'].name.split('.nii')[0]+'_corrected.nii')
+                    nimpa.array2nii(
+                        im,
+                        imdct['affine'],
+                        fnew,
+                        descrip='AmyPET: corrected for FOV-end artefacts',
+                        trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
+                               imdct['transpose'].index(2)),
+                        flip=imdct['flip'])
+
+                    niidat['series'][si][k]['fnii'] = fnew
+
+        return niidat
+    
+    else:
+        raise ValueError('This artefact correction is not available at this stage.')
+# ========================================================================================
 
 
 
