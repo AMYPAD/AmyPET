@@ -279,6 +279,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
     return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
 
 
+
 # =====================================================================
 def convert2nii(indct, outpath=None):
     '''convert the individual DICOM series to NIfTI
@@ -328,6 +329,50 @@ def convert2nii(indct, outpath=None):
 
     return niidat
 # =====================================================================
+
+
+
+
+
+# ========================================================================================
+def id_acq(dctdat, acq_type='suvr'):
+    '''
+    Identify acquisition type such as SUVr or coffee break data 
+    in the dictionary of classified DICOM/NIfTI series.
+    Arguments:
+    - dctdat:       the dictionary with all DICOM/NIfTI series 
+                    (e.g., as the output of explore_input).
+    - acq_type:     can be 'suvr' or 'break'/'breakdyn' or 'dyn'/'fulldyn'.
+    '''
+
+    if acq_type in ['break', 'breakdyn']:
+        acq = 'breakdyn'
+    elif acq_type in ['dyn', 'fulldyn']:
+        acq = 'fulldyn'
+    elif acq_type in ['suvr']:
+        acq = 'suvr'
+    else:
+        raise ValueError('unrecognised acquisition type!')
+
+    # > find the SUVr-compatible acquisition and its index
+    acq_find = [(i,a) for i,a in enumerate(dctdat['descr']) if acq in a['acq']]
+
+    if len(acq_find)>1:
+        raise ValueError('too many SUVr/static DICOM series detected: only one is accepted')
+    elif len(acq_find)==0:
+        raise ValueError('could not identify any SUVr DICOM series in in the input data')
+    else:
+        acq_find = acq_find[0]
+
+        # > time-sorted data for SUVr
+        tdata = dctdat['series'][acq_find[0]]
+
+        # > data description with classification
+        tdata['descr'] = acq_find[1]
+
+    return tdata
+# ========================================================================================
+
 
 
 

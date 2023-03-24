@@ -53,37 +53,6 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
 
 
 
-
-
-
-# ========================================================================================
-def id_suvr(dctdat):
-    '''
-    Identify SUVr data in the dictionary of classified DICOM/NIfTI series.
-    '''
-
-
-    # > find the SUVr-compatible acquisition and its index
-    suvr_find = [(i,a) for i,a in enumerate(dctdat['descr']) if 'suvr' in a['acq']]
-
-    if len(suvr_find)>1:
-        raise ValueError('too many SUVr/static DICOM series detected: only one is accepted')
-    elif len(suvr_find)==0:
-        raise ValueError('could not identify any SUVr DICOM series in in the input data')
-    else:
-        suvr_find = suvr_find[0]
-
-        # > time-sorted data for SUVr
-        stat_tdata = dctdat['series'][suvr_find[0]]
-
-        # > data description with classification
-        stat_tdata['descr'] = suvr_find[1]
-
-    return stat_tdata
-# ========================================================================================
-
-
-
 # =====================================================================
 def align_suvr(
     stat_tdata,
@@ -274,7 +243,7 @@ def align_suvr(
 
 
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
-        # The remaining static frames
+        # The remaining frames of static or fully dynamic PET
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > number of static frames
         nsfrm = len(stat_tdata['descr']['frms'])
