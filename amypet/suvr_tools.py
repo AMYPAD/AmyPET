@@ -211,6 +211,7 @@ def align_suvr(
         outdct = {}
         outdct['suvr'] = {
             'fpet': faligned,
+            'fsuvr':fref,
             'fpeti':fnii_aligned,
             'outpath': niidir,
             'Metric': R,
@@ -237,7 +238,7 @@ def align_suvr(
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single SUVr frame
         suvr_frm = preproc_suvr(faligned, outpath=niidir)
-        fref = suvr_frm['fstat']
+        fref = suvr_frm['fsuvr']
         outdct['suvr']['fsuvr'] = fref
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -320,8 +321,9 @@ def align_suvr(
             'faff': S_}
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
     else:
+        suvr_frm = preproc_suvr(faligned, outpath=niidir)
         outdct = {}
-        outdct['suvr'] = dict(fpet=faligned, outpath=niidir)
+        outdct['suvr'] = dict(fpet=faligned, 'fsuvr':suvr_frm['fsuvr'], outpath=niidir)
         outdct['static'] = dict(fpet=faligned_s, outpath=niidir)
 
 
@@ -426,7 +428,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
         log.info(f'Saved SUVr file image to: {fstat}')
     # ------------------------------------------
 
-    return {'fpet_nii': fpet_nii, 'fstat': fstat}
+    return {'fpet_nii': fpet_nii, 'fsuvr': fstat}
 
 
 
