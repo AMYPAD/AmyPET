@@ -662,7 +662,7 @@ def align_break(
     #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-
+    return dict(fpet=fout, fpeti=faligned+faligned_stat, mashed_frms=mfrms)
 
 
 
