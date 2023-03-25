@@ -211,7 +211,6 @@ def align_suvr(
         outdct = {}
         outdct['suvr'] = {
             'fpet': faligned,
-            'fsuvr':fref,
             'fpeti':fnii_aligned,
             'outpath': niidir,
             'Metric': R,
