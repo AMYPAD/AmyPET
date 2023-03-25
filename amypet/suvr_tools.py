@@ -323,7 +323,7 @@ def align_suvr(
     else:
         suvr_frm = preproc_suvr(faligned, outpath=niidir)
         outdct = {}
-        outdct['suvr'] = dict(fpet=faligned, 'fsuvr':suvr_frm['fsuvr'], outpath=niidir)
+        outdct['suvr'] = dict(fpet=faligned, fsuvr=suvr_frm['fsuvr'], outpath=niidir)
         outdct['static'] = dict(fpet=faligned_s, outpath=niidir)
 
 
