@@ -93,11 +93,13 @@ def align_suvr(
     rsmpl_opth = niidir / 'SPM-aligned'
     nimpa.create_dir(rsmpl_opth)
 
-    # > the name of the output re-aligned file name
+    # > re-aligned output file names
     faligned = 'SUVr_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    faligned_c = 'SUVr_aligned_CoM-mod_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     faligned_s = 'static_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     faligned = niidir / faligned
     faligned_s = niidir / faligned_s
+    faligned_c = niidir / faligned_c
 
     # > the same for the not aligned frames, if requested
     fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
@@ -202,19 +204,42 @@ def align_suvr(
 
             niiim[ifrm, ...] = nimpa.getnii(frsmpl)
 
-
-
         # > save aligned SUVr frames
         nimpa.array2nii(
             niiim, niiref['affine'], faligned, descrip='AmyPET: aligned SUVr frames',
             trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
                    niiref['transpose'].index(2)), flip=niiref['flip'])
+
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # SINGLE SUVR FRAME  &  CoM CORRECTION
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # > preprocess the aligned PET into a single SUVr frame
+        suvr_frm = preproc_suvr(faligned, outpath=niidir, com_correction=True)
+        fref = suvr_frm['fcom']
+        outdct['suvr']['fsuvr'] = fref
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+        # > saved frames aligned and CoM-modified
+        fniic_aligned = []
+        niiim[:] = 0
+        for i in range(len(fnii_aligned)):
+            com_ = nimpa.centre_mass_corr(fnii_aligned[i], outpath=niidir, com=suvr_frm['com'])
+            fniic_aligned.append(com_['fim'])
+            niiim[i, ...] = nimpa.getnii(com_['fim'])
+
+        # > save aligned SUVr frames
+        tmp = nimpa.getnii(fref, output='all')
+        nimpa.array2nii(
+            niiim, tmp['affine'], faligned_c, descrip='AmyPET: aligned SUVr frames, CoM-modified',
+            trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
+                   tmp['transpose'].index(2)), flip=tmp['flip'])
         # -----------------------------------------------
 
         outdct = {}
         outdct['suvr'] = {
-            'fpet': faligned,
-            'fpeti':fnii_aligned,
+            'fpet': faligned_c,
+            'fpeti':fniic_aligned,
             'outpath': niidir,
             'Metric': R,
             'faff': S}
@@ -235,14 +260,6 @@ def align_suvr(
 
 
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
-        # SINGLE SUVR FRAME
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
-        # > preprocess the aligned PET into a single SUVr frame
-        suvr_frm = preproc_suvr(faligned, outpath=niidir, com_correction=True)
-        fref = suvr_frm['fcom']
-        outdct['suvr']['fsuvr'] = fref
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -447,7 +464,7 @@ def preproc_suvr(
         
     # ------------------------------------------
 
-    return {'fpet_nii': fpet_nii, 'fsuvr': fstat, 'fcom':fsuvr_com}
+    return {'fpet_nii': fpet_nii, 'fsuvr': fstat, 'fcom':fsuvr_com, 'com':fsuvr_com['com_abs']}
 
 
 
