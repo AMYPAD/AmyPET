@@ -187,7 +187,15 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                 flip = None
 
             # > modify for the centre of mass being at O(0,0,0)
-            out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
+            # > check first if PET is already modified
+            tmp = nimpa.getnii(fpet, output='all')
+            if 'CoM-modified' in tmp['hdr']['descrip']:
+                out[onm]['petc'] = dict(fim=fpet)
+                log.info('the PET data is already modified for the centre of mass.')
+            else:
+                out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
+            
+            # > the same for MR part
             out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
             log.info(f'subject {onm}: MR registration to MNI space')

@@ -61,7 +61,8 @@ def align_suvr(
     reg_costfun='nmi',
     reg_force=False,
     reg_fwhm=8,
-    reg_thrshld=2.0
+    reg_thrshld=2.0,
+    com_correction=True
 ):
     '''
     Align SUVr frames after conversion to NIfTI format.
@@ -74,6 +75,8 @@ def align_suvr(
                 registration and only for registration purposes.
     - reg_thrshld: the threshold for the registration metric (combined trans. and rots)
                 when deciding to apply the transformation
+    - com_correction: centre-of-mass correction - moves the coordinate system to the 
+                centre of the spatial image intensity distribution.
 
     '''
 
@@ -236,8 +239,8 @@ def align_suvr(
         # SINGLE SUVR FRAME
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single SUVr frame
-        suvr_frm = preproc_suvr(faligned, outpath=niidir)
-        fref = suvr_frm['fsuvr']
+        suvr_frm = preproc_suvr(faligned, outpath=niidir, com_correction=True)
+        fref = suvr_frm['fcom']
         outdct['suvr']['fsuvr'] = fref
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -334,7 +337,13 @@ def align_suvr(
 
 
 # ========================================================================================
-def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
+def preproc_suvr(
+    pet_path,
+    frames=None,
+    outpath=None,
+    fname=None,
+    com_correction=True,
+    force=True):
     ''' Prepare the PET image for SUVr analysis.
         Arguments:
         - pet_path: path to the folder of DICOM images, or to the NIfTI file
@@ -342,6 +351,12 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
                     folder of the input image
         - fname:    core name of the static (SUVr) NIfTI file
         - frames:   list of frames to be used for SUVr processing
+        - com_correction: centre-of-mass correction - moves the coordinate
+                    system to the centre of the spatial image intensity
+                    distribution.
+        - force:    forces the generation of the SUVr image even if it
+                    exists.
+
     '''
 
     if not os.path.exists(pet_path):
@@ -412,7 +427,7 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
     fstat = petout / fname
 
     # > check if the static (for SUVr) file already exists
-    if not fstat.is_file():
+    if not fstat.is_file() or force==True:
 
         if nfrm > 1:
             imstat = np.sum(imdct['im'][frames, ...], axis=0)
@@ -425,9 +440,14 @@ def preproc_suvr(pet_path, frames=None, outpath=None, fname=None):
                    imdct['transpose'].index(2)), flip=imdct['flip'])
 
         log.info(f'Saved SUVr file image to: {fstat}')
+
+        if com_correction:
+            fsuvr_com = nimpa.centre_mass_corr(fstat, outpath=petout)
+            log.info(f'Centre-of-mass corrected SUVr image has been saved to: {fsuvr_com}')
+        
     # ------------------------------------------
 
-    return {'fpet_nii': fpet_nii, 'fsuvr': fstat}
+    return {'fpet_nii': fpet_nii, 'fsuvr': fstat, 'fcom':fsuvr_com}
 
 
 
