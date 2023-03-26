@@ -192,10 +192,10 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
             try: dscr = tmp['hdr']['descrip'].item().decode()
             except: dscr=None
             if isinstance(dscr, str):
-                out[onm]['petc'] = dict(fim=fpet)
+                out[onm]['petc']  = petc = dict(fim=fpet)
                 log.info('the PET data is already modified for the centre of mass.')
             elif dscr is None and 'com-modified' in fpet.name:
-                out[onm]['petc'] = dict(fim=fpet)
+                out[onm]['petc'] = petc = dict(fim=fpet)
                 log.info('the PET data is already modified for the centre of mass.')
             else:
                 out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
