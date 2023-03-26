@@ -210,8 +210,6 @@ def align_suvr(
             trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
                    niiref['transpose'].index(2)), flip=niiref['flip'])
 
-        # > output dictionary
-        outdct = dict(suvr={}, static={})
 
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # SINGLE SUVR FRAME  &  CoM CORRECTION
@@ -219,9 +217,7 @@ def align_suvr(
         # > preprocess the aligned PET into a single SUVr frame
         suvr_frm = preproc_suvr(faligned, outpath=niidir, com_correction=True)
         fref = suvr_frm['fcom']
-        outdct['suvr']['fsuvr'] = fref
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
         # > saved frames aligned and CoM-modified
         fniic_aligned = []
@@ -239,8 +235,12 @@ def align_suvr(
                    tmp['transpose'].index(2)), flip=tmp['flip'])
         # -----------------------------------------------
 
+        # > output dictionary
+        outdct = dict(suvr={}, static={})
+
         outdct['suvr'] = {
             'fpet': faligned_c,
+            'fsuvr':fref,
             'fpeti':fniic_aligned,
             'outpath': niidir,
             'Metric': R,
