@@ -59,7 +59,7 @@ def align_suvr(
     outpath=None,
     not_aligned=True,
     reg_costfun='nmi',
-    reg_force=False,
+    use_stored=False,
     reg_fwhm=8,
     reg_thrshld=2.0,
     com_correction=True
@@ -93,13 +93,15 @@ def align_suvr(
     rsmpl_opth = niidir / 'SPM-aligned'
     nimpa.create_dir(rsmpl_opth)
 
-    # > re-aligned output file names
+    # > re-aligned output file names and output dictionary
     faligned = 'SUVr_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     faligned_c = 'SUVr_aligned_CoM-mod_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    faligned_s = 'static_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    faligned_s = 'Aligned-Frames-to-SUVr' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    falign_dct = 'Aligned-Frames-to-SUVr' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series'])+'.npy'
     faligned = niidir / faligned
     faligned_s = niidir / faligned_s
     faligned_c = niidir / faligned_c
+    falign_dct = niidir / falign_dct
 
     # > the same for the not aligned frames, if requested
     fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
@@ -111,7 +113,7 @@ def align_suvr(
     outdct = None
 
     # > check if the file exists
-    if reg_force or not faligned.is_file():
+    if not use_stored or not falign_dct.is_file():
 
         # -----------------------------------------------
         # > list all NIfTI files
@@ -340,12 +342,15 @@ def align_suvr(
             'outpath': niidir,
             'Metric': R_,
             'faff': S_}
+
+        np.save(falign_dct, outdct)
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
     else:
-        suvr_frm = preproc_suvr(faligned, outpath=niidir)
-        outdct = {}
-        outdct['suvr'] = dict(fpet=faligned, fsuvr=suvr_frm['fsuvr'], outpath=niidir)
-        outdct['static'] = dict(fpet=faligned_s, outpath=niidir)
+        outdct = np.load(falign_dct, allow_pickle=True)
+        # suvr_frm = preproc_suvr(faligned, outpath=niidir)
+        # outdct = {}
+        # outdct['suvr'] = dict(fpet=faligned, fsuvr=suvr_frm['fsuvr'], outpath=niidir)
+        # outdct['static'] = dict(fpet=faligned_s, outpath=niidir)
 
 
     return outdct

@@ -459,7 +459,8 @@ def align_break(
     frame_min_dur=60,
     reg_costfun='nmi',
     reg_fwhm=8,
-    reg_thrshld=2.0):
+    reg_thrshld=2.0,
+    use_stored=False):
     
     ''' Align the Coffee-Break protocol data to Static/SUVr data
         to form one consistent dynamic 4D NIfTI image
@@ -481,8 +482,7 @@ def align_break(
         log.info('no coffee-break protocol data detected.')
         return aligned_suvr
 
-
-   # > the shortest frames acceptable for registration
+    # > the shortest frames acceptable for registration
     frm_lsize = frame_min_dur
 
     # > output folder for mashed frames for registration/alignment
@@ -490,6 +490,15 @@ def align_break(
     rsmpl_opth = mniidir/'SPM-aligned'
     nimpa.create_dir(mniidir)
     nimpa.create_dir(rsmpl_opth)
+
+    # > output dictionary and NIfTI files
+    falign_dct = niidat['outpath']/'NIfTI_aligned'/f'Dynamic-early-frames_study-{tstudy}_aligned-to-SUVr-ref.npy'
+    falign_nii = niidat['outpath']/'NIfTI_aligned'/f'Dynamic-early-frames_study-{tstudy}_aligned-to-SUVr-ref.nii.gz'
+    
+    if use_stored and falign_dct.is_file():
+        outdct = np.load(falign_dct, allow_pickle=True)
+        return outdct
+
 
     # > get the aligned static NIfTI files
     faligned_stat = aligned_suvr['static']['fpeti']
@@ -648,12 +657,10 @@ def align_break(
         niia[fi, ...] = nimpa.getnii(frm)
 
     # > save aligned SUVr frames
-    tstudy = bdyn_tdata[bdyn_tdata['descr']['frms'][0]]['tstudy']
-    fout = niidat['outpath']/'NIfTI_aligned'/f'Dynamic-aligned_{tstudy}_coffe-break-frames_suvr-ref.nii.gz'
     nimpa.array2nii(
         niia,
         tmp['affine'],
-        fout,
+        falign_nii,
         descrip='AmyPET: aligned dynamic frames',
         trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
                tmp['transpose'].index(2)),
@@ -661,8 +668,10 @@ def align_break(
 
     #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
-    return dict(fpet=fout, fpeti=faligned+faligned_stat, mashed_frms=mfrms)
+    outdct = dict(fpet=falign_nii, fpeti=faligned+faligned_stat, mashed_frms=mfrms)
+    np.save(falign_dct, outdct)
+    
+    return outdct
 
 
 
