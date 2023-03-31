@@ -541,7 +541,10 @@ def align_break(
     tmp = nimpa.getnii(faligned[0], output='all')
     niia = np.zeros((nfrma,)+tmp['shape'], dtype=np.float32)
     for fi, frm in enumerate(faligned+faligned_stat):
-        niia[fi, ...] = nimpa.getnii(frm)
+        tmp = nimpa.getnii(frm)
+        # > remove NaNs if any
+        tmp[np.isnan(tmp)] = 0
+        niia[fi, ...] = tmp
 
     # > save aligned SUVr frames
     nimpa.array2nii(
