@@ -21,6 +21,7 @@ from niftypet import nimpa
 
 from .utils import get_atlas
 from .suvr_tools import preproc_suvr
+from .preproc import id_acq
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
