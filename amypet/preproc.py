@@ -321,7 +321,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
 
 
 # =====================================================================
-def convert2nii(indct, outpath=None):
+def convert2nii(indct, outpath=None, use_stored=False):
     '''convert the individual DICOM series to NIfTI
        and output a new updated NIfTI dictionary
     '''
@@ -330,8 +330,6 @@ def convert2nii(indct, outpath=None):
     if 'series' not in indct:
         raise ValueError('The key <series> is not present in the input dictionary!')
    
-    # > number of studies in  the folder
-    Sn = len(indct['series'])
 
     # > sort out the output path
     if outpath is not None:
@@ -341,6 +339,14 @@ def convert2nii(indct, outpath=None):
         niidir = outpath/'NIfTIs'
     nimpa.create_dir(niidir)
 
+    # > output dictionary
+    if use_stored and fniidat.is_file():
+        niidat = np.load(fniidat, allow_pickle=True)
+        niidat = niidat.item()
+        return niidat
+
+    niidat = copy.deepcopy(indct)
+    niidat['outpath'] = niidir
 
     # > remove any files from previous runs
     files = niidir.glob('*')
@@ -350,9 +356,8 @@ def convert2nii(indct, outpath=None):
         else:
             shutil.rmtree(f)
     
-
-    niidat = copy.deepcopy(indct)
-    niidat['outpath'] = niidir
+    # > number of studies in  the folder
+    Sn = len(indct['series'])
 
     for sti in range(Sn):
         for k in indct['series'][sti]:
