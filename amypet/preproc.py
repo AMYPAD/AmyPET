@@ -340,6 +340,7 @@ def convert2nii(indct, outpath=None, use_stored=False):
     nimpa.create_dir(niidir)
 
     # > output dictionary
+    fniidat = niidir/'NIfTI_series_output.npy'
     if use_stored and fniidat.is_file():
         niidat = np.load(fniidat, allow_pickle=True)
         niidat = niidat.item()
@@ -372,6 +373,8 @@ def convert2nii(indct, outpath=None, use_stored=False):
                 niidat['series'][sti][k].pop('files', None)
                 niidat['series'][sti][k]['fnii'] = fnii[0]
 
+    np.save(fniidat, niidat)
+    
     return niidat
 # =====================================================================
 
