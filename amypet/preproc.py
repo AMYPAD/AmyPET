@@ -18,7 +18,6 @@ import numpy as np
 import spm12
 from niftypet import nimpa
 
-from .suvr_tools import r_trimup
 from .utils import get_atlas
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
@@ -51,6 +50,47 @@ breakdyn_t = (1200, 2400)
 fulldyn_time = 3600
 
 # ------------------------------------------------
+
+
+
+# ========================================================================================
+def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
+    '''
+    trim and upscale PET relative to MR T1w or its derivative;
+    derives the scale of upscaling/trimming using the image/voxel sizes
+    '''
+
+    if isinstance(fpet, (str, PurePath)):
+        petdct = nimpa.getnii(fpet, output='all')
+    elif isinstance(fpet, dict) and 'hdr' in fpet:
+        petdct = fpet
+    else:
+        raise ValueError('wrong PET input - accepted are path to image file or dictionary')
+
+    if isinstance(fmri, (str, PurePath)):
+        mridct = nimpa.getnii(fmri, output='all')
+    elif isinstance(fmri, dict) and 'hdr' in fmri:
+        mridct = fmri
+    else:
+        raise ValueError('wrong MR input - accepted are path to image file or dictionary')
+
+    # > get the voxel sizes
+    pet_szyx = petdct['hdr']['pixdim'][1:4]
+    mri_szyx = mridct['hdr']['pixdim'][1:4]
+
+    # > estimate the scale
+    scale = np.abs(np.round(pet_szyx[::-1] / mri_szyx[::-1])).astype(np.int32)
+
+    # > trim the PET image for more accurate regional sampling
+    ftrm = nimpa.imtrimup(fpet, scale=scale, store_img_intrmd=store_img_intrmd, outpath=outpath)
+
+    # > trimmed folder
+    trmdir = Path(ftrm['fimi'][0]).parent
+
+    return {'im': ftrm['im'], 'trmdir': trmdir, 'ftrm': ftrm['fimi'][0], 'trim_scale': scale}
+# ========================================================================================
+
+
 
 
 # =====================================================================
@@ -452,235 +492,6 @@ def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
 
 
 
-# ========================================================================================
-def align_break(
-    niidat,
-    aligned_suvr,
-    frame_min_dur=60,
-    reg_costfun='nmi',
-    reg_fwhm=8,
-    reg_thrshld=2.0,
-    use_stored=False):
-    
-    ''' Align the Coffee-Break protocol data to Static/SUVr data
-        to form one consistent dynamic 4D NIfTI image
-        Arguments:
-        - niidat:   dictionary of all input NIfTI series.
-        - aligned_suvr: dictionary of the alignment output for SUVr frames
-        - frame_min_dur: the shortest PET frame to be used for registration
-                    in the alignment process.
-        - reg_*:    SPM12 registration parameters.
-        - reg_thrshld: the threshold of the metric of combined rotations
-                    and translations to identify significant motion worth
-                    correcting for.
-    '''
-
-    # > identify coffee-break data if any
-    bdyn_tdata = id_acq(niidat, acq_type='break')
-
-    if not bdyn_tdata:
-        log.info('no coffee-break protocol data detected.')
-        return aligned_suvr
-
-    # > the shortest frames acceptable for registration
-    frm_lsize = frame_min_dur
-
-    # > output folder for mashed frames for registration/alignment
-    mniidir = niidat['outpath']/'NIfTI_mashed'
-    rsmpl_opth = mniidir/'SPM-aligned'
-    nimpa.create_dir(mniidir)
-    nimpa.create_dir(rsmpl_opth)
-
-    # > output dictionary and NIfTI files
-    falign_dct = niidat['outpath']/'NIfTI_aligned'/f'Dynamic-early-frames_study-{tstudy}_aligned-to-SUVr-ref.npy'
-    falign_nii = niidat['outpath']/'NIfTI_aligned'/f'Dynamic-early-frames_study-{tstudy}_aligned-to-SUVr-ref.nii.gz'
-    
-    if use_stored and falign_dct.is_file():
-        outdct = np.load(falign_dct, allow_pickle=True)
-        return outdct
-
-
-    # > get the aligned static NIfTI files
-    faligned_stat = aligned_suvr['static']['fpeti']
-
-    # > reference frame (SUVr by default)
-    fref = aligned_suvr['suvr']['fsuvr']
-
-    # > dictionary of coffee-break dynamic frames
-    snii_dct = {k:bdyn_tdata[k]['fnii'] for k in bdyn_tdata['descr']['frms']}
-
-    # > number of frames
-    nfrm = len(snii_dct)
-
-    # > timings of the frames
-    ts = np.array(bdyn_tdata['descr']['timings'])
-
-    # > each frame duration
-    dur = np.zeros(nfrm)
-    dur = np.array([t[1]-t[0] for t in ts])
-
-    # > lowest frame size for registration (in seconds)
-    frms_l = dur<frm_lsize
-
-    # > number of frames to be mashed for registration
-    nmfrm = np.sum(frms_l)
-
-    # > number of resulting mashed frame sets
-    nfrm_l = int(np.floor(np.sum(dur[frms_l])/frm_lsize))
-
-    # > overall list of mashed frames and normal frames
-    #   which are longer than `frm_lsize`
-    mfrms = []
-
-    nmfrm_chck = 0
-    # > mashing frames for registration
-    for i in range(nfrm_l):
-        sfrms = ts[:,1]<=(i+1)*frm_lsize
-        sfrms *= ts[:,1]> i*frm_lsize
-
-        # > list of keys of frames to be mashed
-        k_mfrm = [k for i,k in enumerate(bdyn_tdata['descr']['frms']) if sfrms[i]]
-
-        # > append to the overall list of mashed frames
-        mfrms.append(k_mfrm)
-
-        # > update the overall number of frames to be mashed
-        nmfrm_chck += len(k_mfrm)
-
-    #---------------------
-    if nmfrm_chck!=nmfrm:
-        raise ValueError('Mashing frames inconsistent: number of frames to be mashed incorrectly established.')
-    #---------------------
-    
-    # > add the normal length (not mashed) frames
-    for i,frm in enumerate(~frms_l):
-        if frm:
-            mfrms.append([bdyn_tdata['descr']['frms'][i]])
-            nmfrm_chck += 1
-
-    #---------------------
-    if nmfrm_chck!=len(bdyn_tdata['descr']['frms']):
-        raise ValueError('Mashing frames inconsistency: number of overall frames, including mashed, is incorrectly established.')
-    #---------------------
-    
-
-    # > the output file paths of mashed frames
-    mfrms_out = []
-
-    # > generate NIfTI series of mashed frames for registration
-    for mgrp in mfrms:
-
-        # > image holder
-        tmp = nimpa.getnii(snii_dct[mgrp[0]], output='all')
-        im = np.zeros(tmp['shape'], dtype=np.float32)
-        
-        for frm in mgrp:
-            im += nimpa.getnii(snii_dct[frm])
-
-        # > output file path and name
-        fout = mniidir/(f'mashed_n{len(mgrp)}_' + snii_dct[mgrp[0]].name)
-
-        # > append the mashed frames output file path
-        mfrms_out.append(fout)
-
-        nimpa.array2nii(
-            im,
-            tmp['affine'],
-            fout,
-            descrip='mashed PET frames for registration',
-            trnsp=tmp['transpose'],
-            flip=tmp['flip'])
-
-    if len(mfrms_out)!=len(mfrms):
-        raise ValueError('The number of generated mashed frames is inconsistent with the intended mashed frames')
-
-
-    # > initialise the array for metric of registration result (sum of angles+translations)
-    R = np.zeros(len(mfrms_out))
-
-    # > affine file outputs
-    S = [None for _ in range(len(mfrms_out))]
-
-    # > aligned/resampled file names
-    faligned = [None for _ in range(nfrm)]
-
-    # > counter for base frames
-    fi = 0
-
-    # > register the mashed frames to the reference (SUVr frame by default)
-    for mi, mfrm in enumerate(mfrms_out):
-
-        # > make sure the images are not compressed, i.e., ending with .nii
-        if not mfrm.name.endswith('.nii'):
-            raise ValueError('The mashed frame files should be uncompressed NIfTI')
-
-        # > register mashed frames to the reference
-        spm_res = nimpa.coreg_spm(fref, mfrm, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                  fwhm=[13, 13], costfun=reg_costfun,
-                                  fcomment=f'_mashed_ref-mfrm', outpath=mniidir,
-                                  visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
-
-        S[mi] = (spm_res['faff'])
-
-        rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-        trn_ss = np.sum(spm_res['translations']**2)**.5
-        R[mi] = rot_ss + trn_ss
-
-        # > align each frame through resampling 
-        for frm in mfrms[mi]:
-            if R[mi]>reg_thrshld:
-                # > resample images for alignment
-                faligned[fi] = nimpa.resample_spm(
-                    fref,
-                    snii_dct[frm],
-                    S[mi],
-                    intrp=1.,
-                    outpath=rsmpl_opth,
-                    pickname='flo',
-                    del_ref_uncmpr=True,
-                    del_flo_uncmpr=True,
-                    del_out_uncmpr=True,
-                )
-
-            else:
-                faligned[fi] = rsmpl_opth/frm.name
-                shutil.copyfile(frm, faligned[fi])
-
-            fi += 1
-
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # > number of frames for the whole study
-    nfrma = len(faligned+faligned_stat)
-    tmp = nimpa.getnii(faligned[0], output='all')
-    niia = np.zeros((nfrma,)+tmp['shape'], dtype=np.float32)
-    for fi, frm in enumerate(faligned+faligned_stat):
-        niia[fi, ...] = nimpa.getnii(frm)
-
-    # > save aligned SUVr frames
-    nimpa.array2nii(
-        niia,
-        tmp['affine'],
-        falign_nii,
-        descrip='AmyPET: aligned dynamic frames',
-        trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
-               tmp['transpose'].index(2)),
-        flip=tmp['flip'])
-
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    outdct = dict(fpet=falign_nii, fpeti=faligned+faligned_stat, mashed_frms=mfrms)
-    np.save(falign_dct, outdct)
-    
-    return outdct
-
-
-
-
-
-
-
-
-
 # =====================================================================
 def native_proc(
         cl_dct,
@@ -785,8 +596,14 @@ def native_proc(
 
 
 
+
+
+
+
 # =====================================================================
 # > PREPARE FOR VISUAL READING
+# =====================================================================
+
 def vr_proc(
         fpet,
         fmri,
@@ -850,9 +667,7 @@ def vr_proc(
 
     if outfref is None:
         outfref = opth
-
     #----------------------------------
-
 
 
     if fref is None:
@@ -905,9 +720,4 @@ def vr_proc(
         out['fsuv'] = fout
 
     return out
-
-
-
-
-
 # =====================================================================
