@@ -323,6 +323,7 @@ def align_suvr(
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
     else:
         outdct = np.load(falign_dct, allow_pickle=True)
+        outdct = outdct.item()
         # suvr_frm = preproc_suvr(faligned, outpath=niidir)
         # outdct = {}
         # outdct['suvr'] = dict(fpet=faligned, fsuvr=suvr_frm['fsuvr'], outpath=niidir)
@@ -383,7 +384,7 @@ def align_break(
     
     if use_stored and falign_dct.is_file():
         outdct = np.load(falign_dct, allow_pickle=True)
-        return outdct
+        return outdct.item()
 
 
     # > get the aligned static NIfTI files
