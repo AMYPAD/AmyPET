@@ -6,13 +6,15 @@ __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
 import logging as log
-import os
+import os, shutil
 from pathlib import Path, PurePath
 from subprocess import run
 
 import numpy as np
 from niftypet import nimpa
 import matlab as ml
+import spm12
+
 
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
