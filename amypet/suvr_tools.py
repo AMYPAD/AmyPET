@@ -239,10 +239,22 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
                             trnsp=(trnsp.index(0), trnsp.index(1), trnsp.index(2)), flip=flip)
         else:
             fvoi = None
-
+        
         vxsum += np.sum(rmsk)
-        emsum += np.sum(im[rmsk].astype(np.float64))
 
+        if im.ndims==4:
+            nfrm = im.shape[0]
+            emsum = np.zeros(nfrm, dtype=np.float64)
+            for fi in range(nfrm):
+                emsum[fi] = np.sum(im[fi,rmsk].astype(np.float64))
+        
+        elif im.ndims==3:
+            emsum = np.sum(im[rmsk].astype(np.float64))
+        
+        else:
+            raise ValueError('unrecognised image shape or dimensions')
+
+        
         out[voi] = {'vox_no': vxsum, 'sum': emsum, 'avg': emsum / vxsum, 'fvoi': fvoi}
 
         if output_masks:
