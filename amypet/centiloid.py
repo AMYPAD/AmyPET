@@ -22,7 +22,8 @@ import re
 from pathlib import Path
 
 from .backend_centiloid import run as centiloid_run
-from .preproc import align_suvr, explore_input, tracer_names
+from .preproc import tracer_names
+from .align import align_suvr
 from .suvr_tools import preproc_suvr
 
 log = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, voxs
     suvr_win_def = [start, end] if start and end else None # [t0, t1] - default: None
 
     # processed & classify input data (e.g. auto identify SUVr frames)
+    from niftypet.nipet import explore_input
     indat = explore_input(inpath, tracer=tracer, suvr_win_def=suvr_win_def, outpath=outpath)
 
     # > find the SUVr-compatible acquisition and its index
