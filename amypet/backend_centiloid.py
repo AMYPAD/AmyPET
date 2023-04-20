@@ -59,7 +59,7 @@ def load_masks(mskpath, voxsz: int = 2):
 
 
 def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 2, outpath=None,
-        visual=False, climage=True, use_saved=False, cl_anchor_path: Optional[Path] = None):
+        visual=False, climage=True, use_stored=False, cl_anchor_path: Optional[Path] = None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -77,7 +77,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
       flip_pet: a list of flips (3D tuples) which flip any dimension
                of the 3D PET image (z,y,x); the list has to have the
                same length as the lists of `fpets` and `fmris`
-      use_saved: if True, looks for already saved normalised PET
+      use_stored: if True, looks for already saved normalised PET
                 images and loads them to avoid processing time.
       visual: SPM-based progress visualisations of image registration or
               or image normalisation.
@@ -86,6 +86,12 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                 saved.
     """
 
+
+    if use_stored and outpath is not None and (Path(outpath)/'CL_output.npy').is_file():
+        out = np.load(Path(outpath)/'CL_output.npy', allow_pickle=True)
+        out = out.item()
+        return out
+        
     # supported F-18 tracers
     f18_tracers = ['fbp', 'fbb', 'flute']
 
@@ -168,99 +174,96 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         else:
             fnpets = []
 
-        if use_saved and len(fnpets) == 1:
-            log.info(f'subject {onm}: loading already normalised PET image...')
 
+
+        # run bias field correction unless cancelled
+        if bias_corr:
+            log.info(f'subject {onm}: running MR bias field correction')
+            out[onm]['n4'] = nimpa.bias_field_correction(fmri, executable='sitk', outpath=spth)
+            fmri = out[onm]['n4']['fim']
+
+        log.info(f'subject {onm}: centre of mass correction')
+        # > check if flipping the PET is requested
+        if flips[fi] is not None and any(flips[fi]):
+            flip = flips[fi]
         else:
+            flip = None
 
-            # run bias field correction unless cancelled
-            if bias_corr:
-                log.info(f'subject {onm}: running MR bias field correction')
-                out[onm]['n4'] = nimpa.bias_field_correction(fmri, executable='sitk', outpath=spth)
-                fmri = out[onm]['n4']['fim']
+        # > modify for the centre of mass being at O(0,0,0)
+        # > check first if PET is already modified
+        tmp = nimpa.getnii(fpet, output='all')
+        try: dscr = tmp['hdr']['descrip'].item().decode()
+        except: dscr=None
+        if isinstance(dscr, str):
+            out[onm]['petc']  = petc = dict(fim=fpet)
+            log.info('the PET data is already modified for the centre of mass.')
+        elif dscr is None and 'com-modified' in fpet.name:
+            out[onm]['petc'] = petc = dict(fim=fpet)
+            log.info('the PET data is already modified for the centre of mass.')
+        else:
+            out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
+        
+        # > the same for MR part
+        out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
-            log.info(f'subject {onm}: centre of mass correction')
-            # > check if flipping the PET is requested
-            if flips[fi] is not None and any(flips[fi]):
-                flip = flips[fi]
-            else:
-                flip = None
+        log.info(f'subject {onm}: MR registration to MNI space')
+        out[onm]['reg1'] = reg1 = spm12.coreg_spm(
+            tmpl_avg,
+            mric['fim'],
+            fwhm_ref=0,
+            fwhm_flo=3,
+            outpath=opthr,
+            fname_aff="",
+            fcomment="",
+            pickname="ref",
+            costfun="nmi",
+            graphics=1,
+            visual=int(visual),
+            del_uncmpr=True,
+            save_arr=True,
+            save_txt=True,
+            modify_nii=True,
+        )
 
-            # > modify for the centre of mass being at O(0,0,0)
-            # > check first if PET is already modified
-            tmp = nimpa.getnii(fpet, output='all')
-            try: dscr = tmp['hdr']['descrip'].item().decode()
-            except: dscr=None
-            if isinstance(dscr, str):
-                out[onm]['petc']  = petc = dict(fim=fpet)
-                log.info('the PET data is already modified for the centre of mass.')
-            elif dscr is None and 'com-modified' in fpet.name:
-                out[onm]['petc'] = petc = dict(fim=fpet)
-                log.info('the PET data is already modified for the centre of mass.')
-            else:
-                out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
-            
-            # > the same for MR part
-            out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
+        log.info(f'subject {onm}: PET -> MR registration')
+        out[onm]['reg2'] = reg2 = spm12.coreg_spm(
+            reg1['freg'],
+            petc['fim'],
+            fwhm_ref=3,
+            fwhm_flo=6,
+            outpath=opthr,
+            fname_aff="",
+            fcomment='_mr-reg',
+            pickname="ref",
+            costfun="nmi",
+            graphics=1,
+            visual=int(visual),
+            del_uncmpr=True,
+            save_arr=True,
+            save_txt=True,
+            modify_nii=True,
+        )
 
-            log.info(f'subject {onm}: MR registration to MNI space')
-            out[onm]['reg1'] = reg1 = spm12.coreg_spm(
-                tmpl_avg,
-                mric['fim'],
-                fwhm_ref=0,
-                fwhm_flo=3,
-                outpath=opthr,
-                fname_aff="",
-                fcomment="",
-                pickname="ref",
-                costfun="nmi",
-                graphics=1,
-                visual=int(visual),
-                del_uncmpr=True,
-                save_arr=True,
-                save_txt=True,
-                modify_nii=True,
-            )
+        log.info(f'subject {onm}: MR normalisation/segmentation...')
+        out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
+                                                store_nat_gm=True, store_nat_wm=False,
+                                                store_nat_csf=True, store_fwd=True,
+                                                store_inv=True, visual=visual)
+        # > normalise
+        list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
+        out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
+                                            outpath=optho)
 
-            log.info(f'subject {onm}: PET -> MR registration')
-            out[onm]['reg2'] = reg2 = spm12.coreg_spm(
-                reg1['freg'],
-                petc['fim'],
-                fwhm_ref=3,
-                fwhm_flo=6,
-                outpath=opthr,
-                fname_aff="",
-                fcomment='_mr-reg',
-                pickname="ref",
-                costfun="nmi",
-                graphics=1,
-                visual=int(visual),
-                del_uncmpr=True,
-                save_arr=True,
-                save_txt=True,
-                modify_nii=True,
-            )
+        log.info(f'subject {onm}: load normalised PET image...')
+        fnpets = [
+            f for f in optho.iterdir()
+            if fpet.name.split('.nii')[0] in f.name and 'n4bias' not in f.name.lower()]
+        # and 'mr' not in f.name.lower()
 
-            log.info(f'subject {onm}: MR normalisation/segmentation...')
-            out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
-                                                    store_nat_gm=True, store_nat_wm=False,
-                                                    store_nat_csf=True, store_fwd=True,
-                                                    store_inv=True, visual=visual)
-            # > normalise
-            list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
-            out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
-                                                outpath=optho)
-
-            log.info(f'subject {onm}: load normalised PET image...')
-            fnpets = [
-                f for f in optho.iterdir()
-                if fpet.name.split('.nii')[0] in f.name and 'n4bias' not in f.name.lower()]
-            # and 'mr' not in f.name.lower()
-
-            if len(fnpets) == 0:
-                raise ValueError('could not find normalised PET image files')
-            elif len(fnpets) > 1:
-                raise ValueError('too many potential normalised PET image files found')
+        if len(fnpets) == 0:
+            raise ValueError('could not find normalised PET image files')
+        elif len(fnpets) > 1:
+            raise ValueError('too many potential normalised PET image files found')
 
         npet_dct = nimpa.getnii(fnpets[0], output='all')
         npet = npet_dct['im']
