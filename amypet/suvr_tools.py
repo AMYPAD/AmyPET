@@ -256,7 +256,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
         
         vxsum += np.sum(rmsk)
 
-        if im.ndims==4:
+        if im.ndim==4:
             nfrm = im.shape[0]
             emsum = np.zeros(nfrm, dtype=np.float64)
             for fi in range(nfrm):
