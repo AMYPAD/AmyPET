@@ -244,7 +244,9 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
         for ri in voi_dct[voi]:
             log.debug(f'   label{ri}')
             rmsk += np.equal(lbls, ri)
-        rmsk *= amsk
+
+        # > apply the mask
+        rmsk = rmsk*amsk
 
         if outpath is not None and not isinstance(atlas, np.ndarray):
             nimpa.create_dir(outpath)
