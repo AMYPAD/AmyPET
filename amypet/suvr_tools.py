@@ -262,10 +262,10 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
             nfrm = im.shape[0]
             emsum = np.zeros(nfrm, dtype=np.float64)
             for fi in range(nfrm):
-                emsum[fi] = np.sum(im[fi,rmsk].astype(np.float64))
+                emsum[fi] = np.sum(im[fi,...].astype(np.float64) * rmsk)
         
         elif im.ndims==3:
-            emsum = np.sum(im[rmsk].astype(np.float64))
+            emsum = np.sum(im.astype(np.float64)*rmsk)
         
         else:
             raise ValueError('unrecognised image shape or dimensions')
