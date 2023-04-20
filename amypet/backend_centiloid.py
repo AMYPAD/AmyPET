@@ -91,7 +91,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         out = np.load(Path(outpath)/'CL_output.npy', allow_pickle=True)
         out = out.item()
         return out
-        
+
     # supported F-18 tracers
     f18_tracers = ['fbp', 'fbb', 'flute']
 
@@ -475,4 +475,5 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         plt.close('all')
         out[onm]['fqc'] = fqcpng
 
+    np.save(opth/'CL_output.npy', out)
     return out
