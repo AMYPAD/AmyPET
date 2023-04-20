@@ -142,18 +142,20 @@ def preproc_suvr(
 
 
 # ========================================================================================
-def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
+def extract_vois(impet, atals, voi_dct, atlas_mask=None, outpath=None, output_masks=False):
     '''
-    Extract VOI mean values from PET image `impet` using image labels `imlabel`.
+    Extract VOI mean values from PET image `impet` using image labels `atals`.
     Both can be dictionaries, file paths or Numpy arrays.
     They have to be aligned and have the same dimensions.
     If path (output) is given, the ROI masks will be saved to file(s).
     Arguments:
         - impet:    PET image as Numpy array
-        - imlabel:  image of labels (integer values); the labels can come
+        - atals:  image of labels (integer values); the labels can come
                     from T1w-based parcellation or an atlas.
         - voi_dct:  dictionary of VOIs, with entries of labels creating
                     composite volumes
+        - atlas_mask: masks the atlas with an additional maks, e.g., with the
+                    grey matter probability mask.
         - output_masks: if `True`, output Numpy VOI masks in the output
                     dictionary
         - outpath:  if given as a folder path, the VOI masks will be saved
@@ -186,17 +188,17 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
 
     # ----------------------------------------------
     # LABELS
-    if isinstance(imlabel, dict):
-        lbls = imlabel['im']
-        if 'affine' in imlabel and affine is None:
-            affine = imlabel['affine']
-        if 'flip' in imlabel and flip is None:
-            flip = imlabel['flip']
-        if 'transpose' in imlabel and trnsp is None:
-            trnsp = imlabel['transpose']
+    if isinstance(atals, dict):
+        lbls = atals['im']
+        if 'affine' in atals and affine is None:
+            affine = atals['affine']
+        if 'flip' in atals and flip is None:
+            flip = atals['flip']
+        if 'transpose' in atals and trnsp is None:
+            trnsp = atals['transpose']
 
-    elif isinstance(imlabel, (str, PurePath)) and os.path.isfile(imlabel):
-        prd = nimpa.getnii(imlabel, output='all')
+    elif isinstance(atals, (str, PurePath)) and os.path.isfile(atals):
+        prd = nimpa.getnii(atals, output='all')
         lbls = prd['im']
         if affine is None:
             affine = prd['affine']
@@ -205,11 +207,22 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
         if trnsp is None:
             trnsp = prd['transpose']
 
-    elif isinstance(imlabel, np.ndarray):
-        lbls = imlabel
+    elif isinstance(atals, np.ndarray):
+        lbls = atals
 
     # > get rid of NaNs if any in the parcellation/label image
     lbls[np.isnan(lbls)] = 0
+
+    # > atlas mask
+    if atlas_mask is not None:
+        if isinstance(atlas_mask, (str, PurePath)) and os.path.isfile(atlas_mask):
+            amsk = nimpa.getnii(atlas_mask)
+        elif isinstance(atlas_mask, np.ndarray):
+            amsk = atlas_mask
+        else:
+            raise ValueError('Incorrectly provided atlas mask')
+    else:
+        amsk = 1
     # ----------------------------------------------
 
     # ----------------------------------------------
@@ -231,6 +244,7 @@ def extract_vois(impet, imlabel, voi_dct, outpath=None, output_masks=False):
         for ri in voi_dct[voi]:
             log.debug(f'   label{ri}')
             rmsk += np.equal(lbls, ri)
+        rmsk * amsk
 
         if outpath is not None and not isinstance(imlabel, np.ndarray):
             nimpa.create_dir(outpath)
