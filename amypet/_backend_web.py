@@ -17,7 +17,10 @@ import matplotlib.pyplot as plt
 import mpld3
 import streamlit as st
 import streamlit.components.v1 as st_components
-from matplotlib.figure import FigureBase
+try:
+    from matplotlib.figure import FigureBase
+except ImportError:
+    from matplotlib.figure import Figure as FigureBase
 from packaging.version import Version
 from streamlit.version import _get_installed_streamlit_version
 

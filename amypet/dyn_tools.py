@@ -12,7 +12,6 @@ from subprocess import run
 
 import numpy as np
 from niftypet import nimpa
-import matlab as ml
 import spm12
 
 
@@ -86,6 +85,7 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
 
     # > get the inverse affine transform to PET native space
     M = np.linalg.inv(cl_dct['reg2']['affine'])
+    import matlab as ml
     Mm = ml.double(M.tolist())
 
     # > copy the inverse definitions to be modified with affine to native PET space
