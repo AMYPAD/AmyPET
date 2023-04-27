@@ -22,6 +22,11 @@ from niftypet import nimpa
 from .utils import get_atlas
 from .suvr_tools import preproc_suvr
 from .preproc import id_acq
+from .preproc import tracer_names
+
+# > tracer in different radionuclide group
+f18group = ['fbb', 'fbp', 'flute']
+c11group = ['pib']
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
@@ -344,7 +349,9 @@ def align_break(
     reg_costfun='nmi',
     reg_fwhm=8,
     reg_thrshld=2.0,
-    use_stored=False):
+    decay_corr=True,
+    use_stored=False,
+    ):
     
     ''' Align the Coffee-Break protocol data to Static/SUVr data
         to form one consistent dynamic 4D NIfTI image
@@ -357,6 +364,8 @@ def align_break(
         - reg_thrshld: the threshold of the metric of combined rotations
                     and translations to identify significant motion worth
                     correcting for.
+        - decay_corr: correct for decay between different series relative
+                    to the earliest one
     '''
 
     # > identify coffee-break data if any
@@ -365,6 +374,36 @@ def align_break(
     if not bdyn_tdata:
         log.info('no coffee-break protocol data detected.')
         return aligned_suvr
+
+    #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+    if decay_corr:
+        # > DECAY CORRECTION
+        # > get the start time of each series for decay correction if requested
+        ts = [sri['time'][0] for sri in niidat['descr']]
+        # > index the earliest ref time
+        i_tref = np.argmin(ts)
+        idxs = list(range(len(ts)))
+        idxs.pop(i_tref)
+        i_tsrs = idxs
+        # > time difference
+        td = [ts[i]-ts[i_tref] for i in i_tsrs]
+        if len(td)>1:
+            raise ValueError('currently only one dynamic break is allowed - detected more than one')
+        else:
+            td = td[0]
+
+        # > what tracer / radionuclide is used?
+        istp = 'F18'*(niidat['tracer'] in f18group) + 'C11'*(niidat['tracer'] in c11group)
+
+        # > decay constant using half-life
+        lmbd = np.log(2) / nimpa.resources.riLUT[istp]['thalf']
+
+        # > decay correction factor
+        dcycrr = 1/np.exp(-lmbd * td)
+    else:
+        dcycrr = 1.
+    #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+
 
     # > the shortest frames acceptable for registration
     frm_lsize = frame_min_dur
@@ -540,11 +579,18 @@ def align_break(
     nfrma = len(faligned+faligned_stat)
     tmp = nimpa.getnii(faligned[0], output='all')
     niia = np.zeros((nfrma,)+tmp['shape'], dtype=np.float32)
-    for fi, frm in enumerate(faligned+faligned_stat):
+    for fi, frm in enumerate(faligned):
         im_ = nimpa.getnii(frm)
         # > remove NaNs if any
         im_[np.isnan(im_)] = 0
         niia[fi, ...] = im_
+
+    for fii, frm in enumerate(faligned_stat):
+        im_ = dcycrr * nimpa.getnii(frm)
+        # > remove NaNs if any
+        im_[np.isnan(im_)] = 0
+        niia[fi+fii, ...] = im_
+
 
     # > save aligned SUVr frames
     nimpa.array2nii(
