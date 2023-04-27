@@ -120,7 +120,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
             rmsk += np.equal(lbls, ri)
 
         # > apply the mask on mask
-        if amsk==1:
+        if not isinstance(amsk, np.ndarray) and amsk==1:
             msk2 = rmsk
         else:
             msk2 = rmsk*amsk
