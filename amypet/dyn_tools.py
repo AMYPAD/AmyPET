@@ -117,4 +117,4 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
     gm[np.isnan(gm)] = 0
 
 
-    return dict(fatlpet=finvatl, fgmpet=fgmpet, atlmap=atl, gmap=gm, outpath=opth)
+    return dict(fatlpet=finvatl, fgmpet=fgmpet, atlpet=atl, gmpet=gm, outpath=opth)

@@ -349,7 +349,7 @@ def align_break(
     reg_costfun='nmi',
     reg_fwhm=8,
     reg_thrshld=2.0,
-    decay_corr=True,
+    decay_corr=False,
     use_stored=False,
     ):
     
