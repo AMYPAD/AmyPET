@@ -40,15 +40,48 @@ def get_atlas(atlas='aal', res=1):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
 
        Options:
-       - atlas:     one of many atlases, e.g., 'aal' which is the default;
-                    the number of atlases available can be extended by entering it
-                    in the dictionary.
+       - atlas:     one of many atlases, e.g., 'aal' (default) or 'hammers';
+                    the number of atlases available can be extended by using:
+                    'https://github.com/neurodata/neuroparc/raw/master/atlases/label/Human/'
        - res:       the resolution of the atlas in mm.
     '''
 
-    fatl = atals_fldr/f'AAL3v1_{res}mm.nii.gz'
-    if not fatl.is_file():
-        raise IOError('unrecognised atlas!')
+    if atlas.lower()=='aal':
+        fatl = atals_fldr/f'AAL3v1_{res}mm.nii.gz'
+        if not fatl.is_file():
+            raise IOError('unrecognised atlas!')
+
+    elif atlas.lower()=='hammers':
+        ghd = urllib.request.urlopen(
+            'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
+        data = ghd.read()
+
+        fatl = atals_fldr / f'atlases-{atlas}_res-{res}mm.tar.gz'
+        with open(fatl, 'wb') as f:
+            f.write(data)
+
+        import tarfile
+        file = tarfile.open(fatl)
+        file.extractall(atals_fldr)
+        file.close()
+
+        hfldr = list(atals_fldr.glob('Hammers_*n30r95*MNI152*SPM12*'))
+        if len(hfldr)!=1:
+            raise IOError('Confused with obtaining the Hammers atlases')
+        else:
+            hfldr = hfldr[0]
+
+        fatl = list(hfldr.glob('Hammers_*full*'))
+        if len(fatl)!=1:
+            raise IOError('Confused with obtaining the Hammers atlas (FULL)')
+        else:
+            fatl = fatl[0]
+
+        if not (atals_fldr/'hammers_license').is_file():
+            import webbrowser
+            webbrowser.open('http://brain-development.org/brain-atlases/adult-brain-atlases/individual-adult-brain-atlases-new/')
+            with open(atals_fldr/'hammers_license', 'w') as f:
+                f.write('submit the license')
 
     return fatl
 

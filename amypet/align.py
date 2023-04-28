@@ -41,7 +41,8 @@ def align_suvr(
     use_stored=False,
     reg_fwhm=8,
     reg_thrshld=2.0,
-    com_correction=True
+    com_correction=True,
+    save_params=False,
 ):
     '''
     Align SUVr frames after conversion to NIfTI format.
@@ -56,6 +57,7 @@ def align_suvr(
                 when deciding to apply the transformation
     - com_correction: centre-of-mass correction - moves the coordinate system to the 
                 centre of the spatial image intensity distribution.
+    - save_params:  save all the rotations and translations into a 3D matrix
 
     '''
 
@@ -66,7 +68,9 @@ def align_suvr(
 
     # > NIfTI output folder
     niidir = align_out / 'NIfTI_aligned'
+    niidir_i = niidir / 'intermediate'
     nimpa.create_dir(niidir)
+    nimpa.create_dir(niidir_i)
 
     # > folder of resampled and aligned NIfTI files (SPM)
     rsmpl_opth = niidir / 'SPM-aligned'
@@ -79,14 +83,14 @@ def align_suvr(
     faligned_c = 'SUVr_aligned_CoM-mod_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     faligned_s = 'Aligned-Frames-to-SUVr_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     falign_dct = f'Aligned-Frames-to-SUVr_study-{tstudy}_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series'])+'.npy'
-    faligned = niidir / faligned
+    faligned = niidir_i/faligned
     faligned_s = niidir / faligned_s
     faligned_c = niidir / faligned_c
     falign_dct = niidir / falign_dct
 
     # > the same for the not aligned frames, if requested
     fnotaligned = 'SUVr_NOT_aligned_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    fnotaligned = niidir / fnotaligned
+    fnotaligned = niidir_i / fnotaligned
 
     # > Matrices: motion metric + paths to affine
     R = S = None
@@ -108,6 +112,9 @@ def align_suvr(
 
         # > frame-based motion metric (rotations+translation)
         R = np.zeros((len(nii_frms), len(nii_frms)), dtype=np.float32)
+
+        # > save all rotations and translations if requested
+        #R_ = np.zeros((len(nii_frms), len(nii_frms), 6), dtype=np.float32)
 
         # > paths to the affine files
         S = [[None for _ in range(len(nii_frms))] for _ in range(len(nii_frms))]
@@ -145,6 +152,7 @@ def align_suvr(
             rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
             trn_ss = np.sum(spm_res['translations']**2)**.5
             R[frm1, frm0] = rot_ss + trn_ss
+            #R_[frm1, frm0, :] = numpy.concatenate((spm_res['rotations'], spm_res['translations'], ...), axis=0)  
 
         # > sum frames along floating frames
         fsum = np.sum(R, axis=0)
