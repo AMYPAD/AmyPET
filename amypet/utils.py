@@ -26,6 +26,7 @@ rvois = ['wc', 'cg', 'wcb', 'pns']
 # > folder name with the default conversion tables after calibration
 cl_anchor_fldr = Path(resource_filename(__name__, 'data/cl_anchor_tables'))
 cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
+atals_fldr = Path(resource_filename(__name__, 'data/atlas'))
 amypet_dir = Path.home() / '.amypet'
 
 # > region full name strings for plots
@@ -35,31 +36,19 @@ rvoi_str = {
 
 
 # ----------------------------------------------------------------------
-def get_atlas(atlas='aal', res=1, outpath=amypet_dir):
+def get_atlas(atlas='aal', res=1):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
 
        Options:
        - atlas:     one of many atlases, e.g., 'aal' which is the default;
                     the number of atlases available can be extended by entering it
-                    in the dictionary. TODO: move the dictionary to `defs.py`.
+                    in the dictionary.
        - res:       the resolution of the atlas in mm.
     '''
-    atlases = {
-        'ghpath': 'https://github.com/neurodata/neuroparc/raw/master/atlases/label/Human/',
-        'aal': 'AAL_space-MNI152NLin6_res-', 'aal_lbl': 'Anatomical-labels-csv/AAL.csv',
-        'schaefer200': 'Schaefer200_space-MNI152NLin6_res-',
-        'talairach': 'Talairach_space-MNI152NLin6_res-'}
 
-    # > get the GitHub data object
-    ghd = urllib.request.urlopen(atlases['ghpath'] + atlases[atlas] + f'{res}x{res}x{res}.nii.gz')
-    data = ghd.read()
-
-    # > save to file
-    nimpa.create_dir(outpath)
-
-    fatl = outpath / f'atlas-{atlas}_res-{res}mm.nii.gz'
-    with open(fatl, 'wb') as f:
-        f.write(data)
+    fatl = atals_fldr/f'AAL3v1_{res}mm.nii.gz'
+    if not fatl.is_file():
+        raise IOError('unrecognised atlas!')
 
     return fatl
 
