@@ -64,7 +64,7 @@ def get_atlas(atlas='aal', res=1):
         # > atlas dictionary
         datlas = dict((i[0].text, i[1].text) for i in lbls)
 
-        dict(fatlas=fatl, flabels=flbl, vois=datlas)
+        outdct = dict(fatlas=fatl, flabels=flbl, vois=datlas)
 
 
     elif atlas.lower()=='hammers':
