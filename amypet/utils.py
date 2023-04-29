@@ -2,6 +2,9 @@ import pickle
 import re
 import urllib
 from pathlib import Path
+import xml.etree.ElementTree as ET
+import re
+import tarfile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +29,7 @@ rvois = ['wc', 'cg', 'wcb', 'pns']
 # > folder name with the default conversion tables after calibration
 cl_anchor_fldr = Path(resource_filename(__name__, 'data/cl_anchor_tables'))
 cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
-atals_fldr = Path(resource_filename(__name__, 'data/atlas'))
+atlas_fldr = Path(resource_filename(__name__, 'data/atlas'))
 amypet_dir = Path.home() / '.amypet'
 
 # > region full name strings for plots
@@ -47,25 +50,40 @@ def get_atlas(atlas='aal', res=1):
     '''
 
     if atlas.lower()=='aal':
-        fatl = atals_fldr/f'AAL3v1_{res}mm.nii.gz'
+        fatl = atlas_fldr/f'AAL3v1_{res}mm.nii.gz'
         if not fatl.is_file():
             raise IOError('unrecognised atlas!')
 
-    elif atlas.lower()=='hammers':
-        ghd = urllib.request.urlopen(
-            'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
-        data = ghd.read()
+        flbl = atlas_fldr/f'AAL3v1.xml'
 
-        fatl = atals_fldr / f'atlases-{atlas}_res-{res}mm.tar.gz'
+        tree = ET.parse(flbl)
+        lbls = tree.getroot()
+
+        lbls = lbls[1]
+
+        # > atlas dictionary
+        datlas = dict((i[0].text, i[1].text) for i in lbls)
+
+        dict(fatlas=fatl, flabels=flbl, vois=datlas)
+
+
+    elif atlas.lower()=='hammers':
+        # > main URL 
+        murl = 'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers'
+
+        # > atlas
+        urld = urllib.request.urlopen(murl + '/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
+        data = urld.read()
+
+        fatl = atlas_fldr / f'atlases-{atlas}_res-{res}mm.tar.gz'
         with open(fatl, 'wb') as f:
             f.write(data)
 
-        import tarfile
         file = tarfile.open(fatl)
-        file.extractall(atals_fldr)
+        file.extractall(atlas_fldr)
         file.close()
 
-        hfldr = list(atals_fldr.glob('Hammers_*n30r95*MNI152*SPM12*'))
+        hfldr = list(atlas_fldr.glob('Hammers_*n30r95*MNI152*SPM12'))
         if len(hfldr)!=1:
             raise IOError('Confused with obtaining the Hammers atlases')
         else:
@@ -77,13 +95,68 @@ def get_atlas(atlas='aal', res=1):
         else:
             fatl = fatl[0]
 
-        if not (atals_fldr/'hammers_license').is_file():
+
+
+        # > atlas demographics
+        urld = urllib.request.urlopen(murl + '/Hammers_mith-n30-ancillary-data.tar.gz')
+        data = urld.read()
+        fdmg = atlas_fldr / f'atlas-{atlas}_demographics.tar.gz'
+        with open(fdmg, 'wb') as f:
+            f.write(data)
+
+        file = tarfile.open(fdmg)
+        file.extractall(atlas_fldr)
+        file.close()
+
+        dfldr = list(atlas_fldr.glob('Hammers_*ancillary-data'))
+        if len(dfldr)!=1:
+            raise IOError('Confused with obtaining the Hammers atlas demographics')
+        else:
+            dfldr = dfldr[0]
+
+        flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
+        if len(flbl)!=1:
+            raise IOError('Confused with obtaining the Hammers atlas labels file')
+        else:
+            flbl = flbl[0]
+
+
+        with open(flbl) as f:
+            xml = f.read()
+
+        # > correct the first line of xml file if needed
+        if xml[:5]!='<?xml':
+            xml = '<?xml version="1.0" encoding="UTF-8" ?>\n'+xml
+
+        # > add a single <data> node
+        lbls = ET.fromstring(re.sub(r"(<\?xml[^>]+\?>)", r"\1<data>", xml) + "</data>")
+
+        # > atlas dictionary
+        datlas = dict((i[0].text, i[1].text) for i in lbls)
+
+        # > lobes VOIs
+        lobes = ['FL', 'TL', 'PL', 'OL', 'CG', 'in']
+        dlobes = {}
+        for k in datlas:
+            lstr = datls[k][:2]
+            if lstr in lobes:
+                if not lstr in dlobes:
+                    dlobes[lstr] = [int(k)]
+                else:
+                    dlobes[lstr].append(int(k))
+
+        #--------------------------------------------------
+        # LICENSE
+        if not (atlas_fldr/'hammers_license').is_file():
             import webbrowser
             webbrowser.open('http://brain-development.org/brain-atlases/adult-brain-atlases/individual-adult-brain-atlases-new/')
-            with open(atals_fldr/'hammers_license', 'w') as f:
+            with open(atlas_fldr/'hammers_license', 'w') as f:
                 f.write('submit the license')
+        #--------------------------------------------------
 
-    return fatl
+        outdct = dict(fatlas=fatl, flabels=flbl, voi_lobes=dlobes, vois=datlas)
+
+    return outdct
 
 
 # ----------------------------------------------------------------------
