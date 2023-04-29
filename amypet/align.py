@@ -597,7 +597,7 @@ def align_break(
         im_ = dcycrr * nimpa.getnii(frm)
         # > remove NaNs if any
         im_[np.isnan(im_)] = 0
-        niia[fi+fii, ...] = im_
+        niia[fi+1+fii, ...] = im_
 
 
     # > save aligned SUVr frames

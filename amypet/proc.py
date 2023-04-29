@@ -110,10 +110,6 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
         # > ROI mask
         rmsk = np.zeros(lbls.shape, dtype=bool)
-        # > number of voxels in the ROI
-        vxsum = 0
-        # > voxel emission sum
-        emsum = 0
 
         for ri in voi_dct[voi]:
             log.debug(f'   label{ri}')
@@ -133,7 +129,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
         else:
             fvoi = None
         
-        vxsum += np.sum(msk2)
+        vxsum = np.sum(msk2)
 
         if im.ndim==4:
             nfrm = im.shape[0]
