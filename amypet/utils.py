@@ -68,10 +68,9 @@ def get_atlas(atlas='aal', res=1):
 
 
     elif atlas.lower()=='hammers':
+        
         # > main URL 
         murl = 'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers'
-
-        def atlascheck()
 
         # > hammers atlas and demographics folders
         hfldr = list(atlas_fldr.glob('Hammers_*n30r95*MNI152*SPM12'))
