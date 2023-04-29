@@ -138,7 +138,7 @@ def get_atlas(atlas='aal', res=1):
         lobes = ['FL', 'TL', 'PL', 'OL', 'CG', 'in']
         dlobes = {}
         for k in datlas:
-            lstr = datls[k][:2]
+            lstr = datlas[k][:2]
             if lstr in lobes:
                 if not lstr in dlobes:
                     dlobes[lstr] = [int(k)]
