@@ -71,54 +71,78 @@ def get_atlas(atlas='aal', res=1):
         # > main URL 
         murl = 'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers'
 
-        # > atlas
-        urld = urllib.request.urlopen(murl + '/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
-        data = urld.read()
+        def atlascheck()
 
-        fatl = atlas_fldr / f'atlases-{atlas}_res-{res}mm.tar.gz'
-        with open(fatl, 'wb') as f:
-            f.write(data)
-
-        file = tarfile.open(fatl)
-        file.extractall(atlas_fldr)
-        file.close()
-
+        # > hammers atlas and demographics folders
         hfldr = list(atlas_fldr.glob('Hammers_*n30r95*MNI152*SPM12'))
-        if len(hfldr)!=1:
-            raise IOError('Confused with obtaining the Hammers atlases')
-        else:
-            hfldr = hfldr[0]
-
-        fatl = list(hfldr.glob('Hammers_*full*'))
-        if len(fatl)!=1:
-            raise IOError('Confused with obtaining the Hammers atlas (FULL)')
-        else:
-            fatl = fatl[0]
-
-
-
-        # > atlas demographics
-        urld = urllib.request.urlopen(murl + '/Hammers_mith-n30-ancillary-data.tar.gz')
-        data = urld.read()
-        fdmg = atlas_fldr / f'atlas-{atlas}_demographics.tar.gz'
-        with open(fdmg, 'wb') as f:
-            f.write(data)
-
-        file = tarfile.open(fdmg)
-        file.extractall(atlas_fldr)
-        file.close()
-
         dfldr = list(atlas_fldr.glob('Hammers_*ancillary-data'))
-        if len(dfldr)!=1:
-            raise IOError('Confused with obtaining the Hammers atlas demographics')
-        else:
+
+        if hfldr and dfldr and (atlas_fldr/'hammers_license').is_file():
+            hfldr = hfldr[0]
             dfldr = dfldr[0]
 
-        flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
-        if len(flbl)!=1:
-            raise IOError('Confused with obtaining the Hammers atlas labels file')
+            fatl = list(hfldr.glob('Hammers_*full*'))
+            if len(fatl)!=1:
+                raise IOError('Confused with obtaining the Hammers atlas (FULL)')
+            else:
+                fatl = fatl[0]
+
+            flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
+            if len(flbl)!=1:
+                raise IOError('Confused with obtaining the Hammers atlas labels file')
+            else:
+                flbl = flbl[0]
+
         else:
-            flbl = flbl[0]
+
+            # > atlas
+            urld = urllib.request.urlopen(murl + '/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
+            data = urld.read()
+
+            fatl = atlas_fldr / f'atlases-{atlas}_res-{res}mm.tar.gz'
+            with open(fatl, 'wb') as f:
+                f.write(data)
+
+            file = tarfile.open(fatl)
+            file.extractall(atlas_fldr)
+            file.close()
+
+            hfldr = list(atlas_fldr.glob('Hammers_*n30r95*MNI152*SPM12'))
+            if len(hfldr)!=1:
+                raise IOError('Confused with obtaining the Hammers atlases')
+            else:
+                hfldr = hfldr[0]
+
+            fatl = list(hfldr.glob('Hammers_*full*'))
+            if len(fatl)!=1:
+                raise IOError('Confused with obtaining the Hammers atlas (FULL)')
+            else:
+                fatl = fatl[0]
+
+
+
+            # > atlas demographics
+            urld = urllib.request.urlopen(murl + '/Hammers_mith-n30-ancillary-data.tar.gz')
+            data = urld.read()
+            fdmg = atlas_fldr / f'atlas-{atlas}_demographics.tar.gz'
+            with open(fdmg, 'wb') as f:
+                f.write(data)
+
+            file = tarfile.open(fdmg)
+            file.extractall(atlas_fldr)
+            file.close()
+
+            dfldr = list(atlas_fldr.glob('Hammers_*ancillary-data'))
+            if len(dfldr)!=1:
+                raise IOError('Confused with obtaining the Hammers atlas demographics')
+            else:
+                dfldr = dfldr[0]
+
+            flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
+            if len(flbl)!=1:
+                raise IOError('Confused with obtaining the Hammers atlas labels file')
+            else:
+                flbl = flbl[0]
 
 
         with open(flbl) as f:
@@ -134,7 +158,7 @@ def get_atlas(atlas='aal', res=1):
         # > atlas dictionary
         datlas = dict((i[0].text, i[1].text) for i in lbls)
 
-        # > lobes VOIs
+        # > dictionary of lobe VOIs
         lobes = ['FL', 'TL', 'PL', 'OL', 'CG', 'in']
         dlobes = {}
         for k in datlas:
