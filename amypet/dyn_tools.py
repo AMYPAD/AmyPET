@@ -158,7 +158,7 @@ def km_voi(
 
     ax[1].plot(tac.mft, tac.tac, 'b*', label='tac')
     ax[1].plot(dt2mft(dt_gaps), tac.km_results['tacf'], 'r', label='fit')
-    ax[1].title(f'R1={r1:4.3e}; k2={k2:4.3e}; BP={bp:4.3e}')
+    ax[1].set_title(f'R1={r1:4.3e}; k2={k2:4.3e}; BP={bp:4.3e}')
     ax[1].set_xlabel('Time [s]')
     ax[1].set_ylabel('Activity')
 
