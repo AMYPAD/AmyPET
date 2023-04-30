@@ -167,7 +167,7 @@ def km_voi(
     plt.tight_layout()
 
     fpng = opth / f'{model}_fitting.png'
-    plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
+    plt.savefig(fpng, dpi=150, facecolor='auto', edgecolor='auto')
 
     return dict(r1=r1, k2=k2, bp=bp, TAC=tac, fig=fpng)
 
