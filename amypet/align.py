@@ -694,7 +694,7 @@ def align_break(
     ts = np.array(bdyn_tdata['descr']['timings'])
 
     #----------------------------------
-    aligned = amypet.align_frames(
+    aligned = align_frames(
         fniis, ts,
         aligned_suvr['suvr']['fsuvr'],
         frm_lsize=frame_min_dur,
