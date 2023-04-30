@@ -32,6 +32,251 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 
 
+def align_frames(
+    fniis,
+    times,
+    fref,
+    frm_lsize=60,
+    reg_thrshld=2.0,
+    save4d=True,
+    f4d=None,
+    outpath=None):
+    '''
+    Align frames by mashing the short ones as defined by the threshold.
+    Arguments:
+    fniis:      list of PET frames for alignment
+    times:      is a list or an array of start/stop (2D list/array) or
+                a 1D time duration list/array.
+    fref:       the NIfTI file of a reference frame to which registration/
+                alignment is performed.
+    frm_lsize:  the shortest acceptable frame for registration purposes,
+                default is 60 seconds
+    reg_thrshld:the threshold above which registration transformation
+                is deemed to represent motion (not noise); based on a metric
+                of combined rotations and translations (rigid body)
+    saved4d:    if True, saves aligned frames into a one 4D NIfTI file.
+    f4d:        the file name of the 4D output NIfTI file.
+
+    '''
+
+
+    # > number of frames
+    nfrm = len(fniis)
+
+    if isinstance(times, list) or isinstance(times, np.ndarray):
+        tmp = np.array(times)
+        if tmp.ndim==2:
+            dur = np.zeros(nfrm)
+            dur = np.array([t[1]-t[0] for t in tmp])
+        elif tmp.ndim==1:
+            dur = tmp
+        else:
+            raise ValueError('unrecognised dimension for frame times')
+
+        if len(dur)!=len(fniis):
+            raise ValueError('the number of frames must be the same as number of frame time definitions')
+    else:
+        raise ValueError('unrecognised frame times')
+
+
+    #----------------------------------
+    # > output dictionary
+    outdct = {}
+
+    if outpath is None:
+        opth = Path(fniis[0]).parent
+    else:
+        opth = Path(outpath)
+
+    mniidir = opth/'mashed'
+    rsmpl_opth = mniidir/'aligned'
+    nimpa.create_dir(mniidir)
+    nimpa.create_dir(rsmpl_opth)
+    #----------------------------------
+    
+
+    # > short frame size for registration (in seconds)
+    frms_l = dur<frm_lsize
+
+    # > number of frames to be mashed for registration
+    nmfrm = np.sum(frms_l)
+
+    # > number of resulting mashed frame sets, e.g., the consecutive frames can be mashed into one or more frames
+    nset = int(np.floor(np.sum(dur[frms_l])/frm_lsize))
+
+    # > overall list of mashed frames and normal frames which are longer than `frm_lsize`
+    mfrms = []
+
+    nmfrm_chck = 0
+    # > mashing frames for registration
+    for i in range(nset):
+        sfrms = ts[:,1]<=(i+1)*frm_lsize
+        sfrms *= ts[:,1]> i*frm_lsize
+
+        # > list of keys of frames to be mashed
+        ifrm = [i for i in range(nfrm) if sfrms[i]]
+
+        # > append to the overall list of mashed frames
+        mfrms.append(ifrm)
+
+        # > update the overall number of frames to be mashed
+        nmfrm_chck += len(ifrm)
+
+
+    # >> CHECKS >>
+    #---------------------
+    if nmfrm_chck!=nmfrm:
+        raise ValueError('Mashing frames inconsistent: number of frames to be mashed incorrectly established.')
+    #---------------------
+    # > add the normal length (not mashed) frames
+    for i,frm in enumerate(~frms_l):
+        if frm:
+            mfrms.append([i])
+            nmfrm_chck += 1
+    #---------------------
+    if nmfrm_chck!=nfrm:
+        raise ValueError('Mashing frames inconsistency: number of overall frames, including mashed, is incorrectly established.')
+    #---------------------
+    # << <<
+
+
+    # > the output file paths of mashed frames
+    mfrms_out = []
+
+    # > generate NIfTI series of mashed frames for registration
+    for mgrp in mfrms:
+
+        # > image holder
+        tmp = nimpa.getnii(fniis[mgrp[0]], output='all')
+        im = np.zeros(tmp['shape'], dtype=np.float32)
+        
+        for i in mgrp:
+            im += nimpa.getnii(fniis[i])
+
+        # > output file path and name
+        fout = mniidir/(f'mashed_n{len(mgrp)}_' + fniis[mgrp[0]].name)
+
+        # > append the mashed frames output file path
+        mfrms_out.append(fout)
+
+        nimpa.array2nii(
+            im,
+            tmp['affine'],
+            fout,
+            descrip='mashed PET frames for registration',
+            trnsp=tmp['transpose'],
+            flip=tmp['flip'])
+
+    if len(mfrms_out)!=len(mfrms):
+        raise ValueError('The number of generated mashed frames is inconsistent with the intended mashed frames')
+
+
+    outdct['mashed_frame_idx'] = mfrms
+    outdct['mashed_files'] = mfrms_out
+
+    # > initialise the array for metric of registration result (sum of angles+translations)
+    R = np.zeros(len(mfrms_out))
+
+    # > full rotations and translations for mashed and full frames
+    RT = np.zeros((len(mfrms_out), 6), dtype=np.float32)
+    RTf= np.zeros((nfrm, 6), )
+
+    # > affine file outputs
+    S = [None for _ in range(len(mfrms_out))]
+
+    # > aligned/resampled file names
+    faligned = [None for _ in range(nfrm)]
+
+    # > counter for base frames
+    fi = 0
+
+    # > register the mashed frames to the reference (SUVr frame by default)
+    for mi, mfrm in enumerate(mfrms_out):
+
+        # > make sure the images are not compressed, i.e., ending with .nii
+        if not mfrm.name.endswith('.nii'):
+            raise ValueError('The mashed frame files should be uncompressed NIfTI')
+
+        # > register mashed frames to the reference
+        spm_res = nimpa.coreg_spm(fref, mfrm, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
+                                  fwhm=[13, 13], costfun=reg_costfun,
+                                  fcomment=f'_mashed_ref-mfrm', outpath=mniidir,
+                                  visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
+
+        S[mi] = (spm_res['faff'])
+
+        RT[mi,:] = np.concatenate((spm_res['rotations'], spm_res['translations']), axis=0)
+        rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+        trn_ss = np.sum(spm_res['translations']**2)**.5
+        R[mi] = rot_ss + trn_ss
+
+        # > align each frame through resampling 
+        for i in mfrms[mi]:
+
+            # > get the rotation and translation parameters for each frame
+            RTf[i,:] = RT[mi,:]
+
+            if R[mi]>reg_thrshld:
+                # > resample images for alignment
+                faligned[fi] = nimpa.resample_spm(
+                    fref,
+                    fniis[i],
+                    S[mi],
+                    intrp=1.,
+                    outpath=rsmpl_opth,
+                    pickname='flo',
+                    del_ref_uncmpr=True,
+                    del_flo_uncmpr=True,
+                    del_out_uncmpr=True,
+                )
+
+            else:
+                faligned[fi] = rsmpl_opth/fniis[mfrms[mi][i]].name
+                shutil.copyfile(fniis[mfrms[mi][i]].name, faligned[fi])
+
+            fi += 1
+
+
+    outdct['affines'] = S
+    outdct['metric'] = R
+    # > for every frame:
+    outdct['rot_trans'] = RTf
+    outdct['faligned'] = faligned
+
+    if save4d:
+        if f4d is not None and Path(f4d).parent.is_dir():
+            falign_nii = f4d
+        else:
+            falign_nii = opth/'aligned_via_mashing_using_ref_4D.nii.gz'
+
+        # > number of frames for the whole study
+        nfrm4d = len(faligned)
+        tmp = nimpa.getnii(faligned[0], output='all')
+        niia = np.zeros((nfrm4d,)+tmp['shape'], dtype=np.float32)
+        for i, frm in enumerate(faligned):
+            im_ = nimpa.getnii(frm)
+            # > remove NaNs if any
+            im_[np.isnan(im_)] = 0
+            niia[i, ...] = im_
+
+        # > save aligned frames
+        nimpa.array2nii(
+            niia,
+            tmp['affine'],
+            falign_nii,
+            descrip='AmyPET: aligned dynamic frames',
+            trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
+                   tmp['transpose'].index(2)),
+            flip=tmp['flip'])
+
+        outdct['f4d'] = falign_nii
+        outdct['im4d'] = niia
+
+    return outdct
+
+
+
+
 # =====================================================================
 def align_suvr(
     stat_tdata,
@@ -600,7 +845,7 @@ def align_break(
         niia[fi+1+fii, ...] = im_
 
 
-    # > save aligned SUVr frames
+    # > save aligned frames
     nimpa.array2nii(
         niia,
         tmp['affine'],
