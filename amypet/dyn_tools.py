@@ -163,7 +163,6 @@ def km_voi(
     ax[1].set_ylabel('Activity')
 
     ax[1].legend()
-    ax[1].show()
 
     plt.tight_layout()
 
