@@ -66,10 +66,9 @@ def align_frames(
     if isinstance(times, list) or isinstance(times, np.ndarray):
         tmp = np.array(times)
         if tmp.ndim==2:
+            ts = tmp
             dur = np.zeros(nfrm)
-            dur = np.array([t[1]-t[0] for t in tmp])
-        elif tmp.ndim==1:
-            dur = tmp
+            dur = np.array([t[1]-t[0] for t in ts])
         else:
             raise ValueError('unrecognised dimension for frame times')
 
