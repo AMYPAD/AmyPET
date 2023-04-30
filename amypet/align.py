@@ -40,6 +40,8 @@ def align_frames(
     reg_thrshld=2.0,
     save4d=True,
     f4d=None,
+    reg_fwhm=8,
+    reg_costfun='nmi',
     outpath=None):
     '''
     Align frames by mashing the short ones as defined by the threshold.
@@ -56,6 +58,10 @@ def align_frames(
                 of combined rotations and translations (rigid body)
     saved4d:    if True, saves aligned frames into a one 4D NIfTI file.
     f4d:        the file name of the 4D output NIfTI file.
+    reg_fwhm:   FWHM of the smoothing used for reference and floating 
+                images in registration.
+    reg_costfun:the registration cost function, by default the normalised
+                mutual information, 'nmi'.
 
     '''
 
