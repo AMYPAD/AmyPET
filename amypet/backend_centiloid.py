@@ -57,48 +57,17 @@ def load_masks(mskpath, voxsz: int = 2):
 
     return fmasks, masks
 
-
-def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 2, outpath=None,
-        visual=False, climage=True, use_stored=False, cl_anchor_path: Optional[Path] = None):
-    """
-    Process centiloid (CL) using input file lists for PET and MRI
-    images, `fpets` and `fmris` (must be in NIfTI format).
-    Args:
-      outpath: path to the output folder
-      bias_corr: bias filed correction for the MR image (True/False)
-      tracer: specifies what tracer is being used and so the right
-              transformation is used; by default it is PiB.  Currently
-              [18F]flutemetamol, 'flute', and [18F]florbetaben, 'fbb'
-              are supported.
-              IMPORTANT: when calibrating a new tracer, ensure that
-              `tracer`='new'.
-      voxsz: voxel size for SPM normalisation writing function
-             (output MR and PET images will have this voxel size).
-      flip_pet: a list of flips (3D tuples) which flip any dimension
-               of the 3D PET image (z,y,x); the list has to have the
-               same length as the lists of `fpets` and `fmris`
-      use_stored: if True, looks for already saved normalised PET
-                images and loads them to avoid processing time.
-      visual: SPM-based progress visualisations of image registration or
-              or image normalisation.
-      climage: outputs the CL-converted PET image in the MNI space
-      cl_anchor_path: The path where optional CL anchor dictionary is
-                saved.
-    """
-
-
-    if use_stored and outpath is not None and (Path(outpath)/'CL_output.npy').is_file():
-        out = np.load(Path(outpath)/'CL_output.npy', allow_pickle=True)
-        out = out.item()
-        return out
-
-    # supported F-18 tracers
-    f18_tracers = ['fbp', 'fbb', 'flute']
-
-    spm_path = Path(spm12.spm_dir()) #_eng
-
-    out = {}                                           # output dictionary
-    tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
+#--------------------------------------------------------------------
+def sort_input(fpets, fmris, flip_pet=None):
+    ''' Classify input data of PET and MRI and optionally flip PET
+        if needed.
+        Arguments:
+        - fpets:    list or string or Path to PET image(s)
+        - fmris:    list or string or Path to MRI image(s)
+        - flip_pet: a list of flips (3D tuples) which flip any dimension
+                    of the 3D PET image (z,y,x); the list has to have the
+                    same length as the lists of `fpets` and `fmris`.
+    '''
 
     if isinstance(fpets, (str, Path)) and isinstance(fmris, (str, Path)):
         # when single PET and MR files are given
@@ -138,6 +107,69 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         flips = [None] * len(pet_mr_list[0])
     # -------------------------------------------------------------
 
+    return pet_mr_list, flips
+#--------------------------------------------------------------------
+
+
+
+def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
+        stages='f', voxsz: int = 2, outpath=None, use_stored=False,
+        visual=False, climage=True, cl_anchor_path: Optional[Path] = None):
+    """
+    Process centiloid (CL) using input file lists for PET and MRI
+    images, `fpets` and `fmris` (must be in NIfTI format).
+    Args:
+      outpath: path to the output folder
+      bias_corr: bias filed correction for the MR image (True/False)
+      tracer: specifies what tracer is being used and so the right
+              transformation is used; by default it is PiB.  Currently
+              [18F]flutemetamol, 'flute', and [18F]florbetaben, 'fbb'
+              are supported.
+              IMPORTANT: when calibrating a new tracer, ensure that
+              `tracer`='new'.
+      stage: processes the data up to:
+             (1) registration - both PET and MRI are registered
+             to MNI space, `stages`='r'
+             (2) normalisation - includes the non-linear MRI 
+             registration and segmentation, `stages`='n'
+             (3) Centiloid process/scaling, `stages`='c'
+             (4) Full with visualisation, `stages`='f' (default)
+
+      voxsz: voxel size for SPM normalisation writing function
+             (output MR and PET images will have this voxel size).
+      flip_pet: a list of flips (3D tuples) which flip any dimension
+               of the 3D PET image (z,y,x); the list has to have the
+               same length as the lists of `fpets` and `fmris`
+      use_stored: if True, looks for already saved normalised PET
+                images and loads them to avoid processing time.
+      visual: SPM-based progress visualisations of image registration or
+              or image normalisation.
+      climage: outputs the CL-converted PET image in the MNI space
+      cl_anchor_path: The path where optional CL anchor dictionary is
+                saved.
+    """
+
+    # > the processing stages must be one of registration 'r',
+    # > normalisation 'n', CL scaling 'c' or full 'f':
+    if not stages in ['r', 'n', 'c', 'f']:
+        raise ValueError('unrecognised processing stages')
+
+    if use_stored and outpath is not None and (Path(outpath)/'CL_output.npy').is_file():
+        out = np.load(Path(outpath)/'CL_output.npy', allow_pickle=True)
+        out = out.item()
+        return out
+
+    # supported F-18 tracers
+    f18_tracers = ['fbp', 'fbb', 'flute']
+
+    spm_path = Path(spm12.spm_dir()) #_eng
+
+    out = {}                                           # output dictionary
+    tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
+
+
+    pet_mr_list, flips = sort_input(fpets, fmris, flip_pet=None)
+
     # -------------------------------------------------------------
     # > get the CL masks
     fmasks, masks = load_masks(cl_masks_fldr, voxsz=voxsz)
@@ -175,20 +207,20 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
             fnpets = []
 
 
-
         # run bias field correction unless cancelled
         if bias_corr:
             log.info(f'subject {onm}: running MR bias field correction')
             out[onm]['n4'] = nimpa.bias_field_correction(fmri, executable='sitk', outpath=spth)
             fmri = out[onm]['n4']['fim']
 
-        log.info(f'subject {onm}: centre of mass correction')
+        
         # > check if flipping the PET is requested
         if flips[fi] is not None and any(flips[fi]):
             flip = flips[fi]
         else:
             flip = None
 
+        log.info(f'subject {onm}: centre of mass correction')
         # > modify for the centre of mass being at O(0,0,0)
         # > check first if PET is already modified
         tmp = nimpa.getnii(fpet, output='all')
@@ -244,6 +276,9 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
             modify_nii=True,
         )
 
+        if stages=='r':
+            return out
+
         log.info(f'subject {onm}: MR normalisation/segmentation...')
         out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
                                                 store_nat_gm=True, store_nat_wm=False,
@@ -276,6 +311,9 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
         out[onm]['suvr'] = suvr = {
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
+
+        if stages=='n':
+            return out
 
         # **************************************************************
         # C E N T I L O I D   S C A L I N G
@@ -380,6 +418,8 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True, voxsz: int = 
                     log.warning('The CL image has not been generated due to new tracer being used')
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
+        if not stages=='f':
+            return out
 
         # -------------------------------------------------------------
         # VISUALISATION
