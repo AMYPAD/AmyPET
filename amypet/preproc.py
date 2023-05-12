@@ -210,6 +210,11 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
 
         msrs_t.append(srs_t)
 
+        # for k in srs_t if 
+
+        # if not ('radio_start_time' in srs_t[k] and 'frm_dur' in srs_t[k]):
+        #     continue
+
         # -----------------------------------------------
         # > frame timings relative to the injection time -
         #   radiopharmaceutical administration start time
@@ -321,7 +326,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
 
 
 # =====================================================================
-def convert2nii(indct, outpath=None, use_stored=False):
+def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
     '''convert the individual DICOM series to NIfTI
        and output a new updated NIfTI dictionary
     '''
@@ -360,10 +365,15 @@ def convert2nii(indct, outpath=None, use_stored=False):
     # > number of studies in  the folder
     Sn = len(indct['series'])
 
+    if ignore_derived:
+        iopt = 'y'
+    else:
+        iopt = 'n'
+
     for sti in range(Sn):
         for k in indct['series'][sti]:
-            run([dcm2niix.bin, '-i', 'y', '-v', 'n', '-o', niidir, 'f', '%f_%s',
-                 indct['series'][sti][k]['files'][0].parent])
+            run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', niidir, '-f', '%f_%s',
+                 str(indct['series'][sti][k]['files'][0].parent)])
 
             # > get the converted NIfTI file
             fnii = list(niidir.glob(str(indct['series'][sti][k]['tacq']) + '*.nii*'))
