@@ -113,7 +113,7 @@ def sort_input(fpets, fmris, flip_pet=None):
 
 
 def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
-        stages='f', voxsz: int = 2, outpath=None, use_stored=False,
+        stage='f', voxsz: int = 2, outpath=None, use_stored=False,
         visual=False, climage=True, cl_anchor_path: Optional[Path] = None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
@@ -129,11 +129,11 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
               `tracer`='new'.
       stage: processes the data up to:
              (1) registration - both PET and MRI are registered
-             to MNI space, `stages`='r'
+             to MNI space, `stage`='r'
              (2) normalisation - includes the non-linear MRI 
-             registration and segmentation, `stages`='n'
-             (3) Centiloid process/scaling, `stages`='c'
-             (4) Full with visualisation, `stages`='f' (default)
+             registration and segmentation, `stage`='n'
+             (3) Centiloid process/scaling, `stage`='c'
+             (4) Full with visualisation, `stage`='f' (default)
 
       voxsz: voxel size for SPM normalisation writing function
              (output MR and PET images will have this voxel size).
@@ -141,7 +141,8 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
                of the 3D PET image (z,y,x); the list has to have the
                same length as the lists of `fpets` and `fmris`
       use_stored: if True, looks for already saved normalised PET
-                images and loads them to avoid processing time.
+                images and loads them to avoid processing time;
+                works only when `outpath` is provided.
       visual: SPM-based progress visualisations of image registration or
               or image normalisation.
       climage: outputs the CL-converted PET image in the MNI space
@@ -149,20 +150,27 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
                 saved.
     """
 
-    # > the processing stages must be one of registration 'r',
+    # > the processing stage must be one of registration 'r',
     # > normalisation 'n', CL scaling 'c' or full 'f':
-    if not stages in ['r', 'n', 'c', 'f']:
-        raise ValueError('unrecognised processing stages')
+    if not stage in ['r', 'n', 'c', 'f']:
+        raise ValueError('unrecognised processing stage')
 
-    if use_stored and outpath is not None and (Path(outpath)/'CL_output.npy').is_file():
-        out = np.load(Path(outpath)/'CL_output.npy', allow_pickle=True)
-        out = out.item()
-        return out
+    # > output dictionary file name
+    # > if exists and requested, it will be loaded without computing.
+    if outpath is not None:
+        fcldct = Path(outpath)/f'CL_output_stage-{stage}.npy'
+        if use_stored and fcldct.is_file():
+            out = np.load(fcldct, allow_pickle=True)
+            out = out.item()
+            return out
+    else:
+        fcldct = None
+
 
     # supported F-18 tracers
     f18_tracers = ['fbp', 'fbb', 'flute']
 
-    spm_path = Path(spm12.spm_dir()) #_eng
+    spm_path = Path(spm12.spm_dir_eng())
 
     out = {}                                           # output dictionary
     tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
@@ -276,7 +284,9 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
             modify_nii=True,
         )
 
-        if stages=='r':
+        if stage=='r':
+            if fcldct is not None:
+                np.save(fcldct, out)
             return out
 
         log.info(f'subject {onm}: MR normalisation/segmentation...')
@@ -312,7 +322,9 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
-        if stages=='n':
+        if stage=='n':
+            if fcldct is not None:
+                np.save(fcldct, out)
             return out
 
         # **************************************************************
@@ -418,7 +430,9 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
                     log.warning('The CL image has not been generated due to new tracer being used')
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
-        if not stages=='f':
+        if not stage=='f':
+            if fcldct is not None:
+                np.save(fcldct, out)
             return out
 
         # -------------------------------------------------------------
@@ -515,5 +529,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
         plt.close('all')
         out[onm]['fqc'] = fqcpng
 
-    np.save(opth/'CL_output.npy', out)
+    if fcldct is not None:
+        np.save(fcldct, out)
+
     return out
