@@ -372,7 +372,7 @@ def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
 
     for sti in range(Sn):
         for k in indct['series'][sti]:
-            run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', niidir, '-f', '%f_%s',
+            run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', str(niidir), '-f', '%f_%s',
                  str(indct['series'][sti][k]['files'][0].parent)])
 
             # > get the converted NIfTI file
