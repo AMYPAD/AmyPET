@@ -444,7 +444,7 @@ def align_suvr(
             fnii_aligned.append(frsmpl)
 
             niiim[ifrm, ...] = nimpa.getnii(frsmpl)
-
+        niiim[np.isnan(niiim)] = 0
         # > save aligned SUVr frames
         nimpa.array2nii(
             niiim, niiref['affine'], faligned, descrip='AmyPET: aligned SUVr frames',
