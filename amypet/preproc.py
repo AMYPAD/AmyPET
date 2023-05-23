@@ -53,7 +53,9 @@ fulldyn_time = 3600
 
 
 # ========================================================================================
+
 def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False):
+
     ''' Convert DICOM folder to NIfTI using `dcm2niix`.
     '''
 

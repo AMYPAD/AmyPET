@@ -229,6 +229,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
         else:
             flip = None
 
+
         if cmass_corr_pet:
             log.info(f'subject {onm}: centre of mass correction')
             # > modify for the centre of mass being at O(0,0,0)
