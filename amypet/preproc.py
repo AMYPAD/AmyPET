@@ -52,6 +52,59 @@ fulldyn_time = 3600
 # ------------------------------------------------
 
 
+# ========================================================================================
+def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False):
+    ''' Convert DICOM folder to NIfTI using `dcm2niix`.
+    '''
+
+    inpath = Path(inpath)
+    if not inpath.is_dir():
+        raise IOError('Invalid input folder!')
+
+    if outpath is None:
+        opth = inpath
+    else:
+        opth = Path(outpath)
+        nimpa.create_dir(opth)
+
+    if ignore_derived:
+        iopt = 'y'
+    else:
+        iopt = 'n'
+
+
+    # > remove previously converted files
+    if remove_previous:
+        files = [f for f in opth.iterdir() if f.suffix in ['.gz', '.nii', '.json']]
+        for f in files:
+            if f.is_file():
+                os.remove(f)
+            else:
+                shutil.rmtree(f)
+
+    run([
+        dcm2niix.bin,
+        '-i', iopt,
+        '-v', 'n',
+        '-o', str(opth),
+        '-f', '%f_%s',
+        str(inpath)])
+
+    # > get the converted NIfTI file
+    fnii = list(opth.glob('*.nii*'))
+    
+    if len(fnii) > 1:
+        log.warning('Detected more than one NIfTI files in the output folder')
+        out = fnii
+    elif len(fnii)==0:
+        log.warning('No converted NIfTI files')
+        out = None
+    else:
+        out = fnii[0]
+
+    return out
+
+
 
 # ========================================================================================
 def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
@@ -94,7 +147,9 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
 
 
 # =====================================================================
-def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, margin=0.1):
+def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
+                    outpath=None, margin=0.1, find_suvr=False,
+                    grouping='a+t+d'):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -115,11 +170,15 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
     - outpath:  output path where all the intermediate and final results are
                 stored.
     - margin:   margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+    - find_suvr:if True, finds the possible SUVr frame window
+    - grouping: defines how DICOMs are grouped, default is 'a+t+d', which is
+                by acquisition and series times plus series description;
+                see nimpa.dcmsort() for details.
     '''
 
 
     # =================== SUVr =======================
-    def find_suvr(t_frms_, msrs_class_, t_starts_, t_stops_):
+    def suvr_inf(t_frms_, msrs_class_, t_starts_, t_stops_):
         ''' find SUVr frames among the static/dynamic frames
         '''
 
@@ -185,12 +244,12 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
     msrs = []
     for itm in input_fldr.iterdir():
         if itm.is_dir():
-            srs = nimpa.dcmsort(itm, grouping='a+t+d', copy_series=True, outpath=amyout)
+            srs = nimpa.dcmsort(itm, grouping=grouping, copy_series=True, outpath=amyout)
             if srs:
                 msrs.append(srs)
 
     # > check files in the input folder
-    srs = nimpa.dcmsort(input_fldr, grouping='a+t+d', copy_series=True, outpath=amyout)
+    srs = nimpa.dcmsort(input_fldr, grouping=grouping, copy_series=True, outpath=amyout)
     if srs:
         msrs.append(srs)
     # ================================================
@@ -210,22 +269,26 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
 
         msrs_t.append(srs_t)
 
-        # for k in srs_t if 
-
-        # if not ('radio_start_time' in srs_t[k] and 'frm_dur' in srs_t[k]):
-        #     continue
 
         # -----------------------------------------------
         # > frame timings relative to the injection time -
         #   radiopharmaceutical administration start time
         t_frms = []
         for k in srs_t:
+
+            if not ('radio_start_time' in srs_t[k] and 'frm_dur' in srs_t[k]): 
+                log.info('non-PET DICOM data detected')
+                continue
+
             t0 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
                                    '%Y%m%d%H%M%S') - srs_t[k]['radio_start_time']
             t1 = datetime.strptime(
                 srs_t[k]['dstudy'] + srs_t[k]['tacq'],
                 '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - srs_t[k]['radio_start_time']
             t_frms.append((t0.seconds, t1.seconds))
+
+        # > if not PET frame timings found, continue
+        if not t_frms: continue
 
         t_starts = [t[0] for t in t_frms]
         t_stops = [t[1] for t in t_frms]
@@ -286,7 +349,8 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
                     'frms': [s for i, s in enumerate(srs_t)],
                     'suvr':{}})
 
-            find_suvr(t_frms, msrs_class, t_starts, t_stops)
+            if find_suvr:
+                suvr_inf(t_frms, msrs_class, t_starts, t_stops)
         
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
@@ -318,7 +382,8 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None, outpath=None, ma
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)],
                 'suvr':{}})
 
-            find_suvr(t_frms, msrs_class, t_starts, t_stops)
+            if find_suvr:
+                suvr_inf(t_frms, msrs_class, t_starts, t_stops)
 
 
     return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
@@ -372,15 +437,15 @@ def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
 
     for sti in range(Sn):
         for k in indct['series'][sti]:
-            run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', niidir, '-f', '%f_%s',
-                 str(indct['series'][sti][k]['files'][0].parent)])
+            _fnii = dicom2nifti(indct['series'][sti][k]['files'][0].parent, outpath=niidir, ignore_derived=iopt)
 
             # > get the converted NIfTI file
             fnii = list(niidir.glob(str(indct['series'][sti][k]['tacq']) + '*.nii*'))
+            niidat['series'][sti][k].pop('files', None)
             if len(fnii) != 1:
-                raise ValueError('Unexpected number of converted NIfTI files')
+                log.warning('Converted to more than one NIfTI files')
+                niidat['series'][sti][k]['fnii'] = fnii
             else:
-                niidat['series'][sti][k].pop('files', None)
                 niidat['series'][sti][k]['fnii'] = fnii[0]
 
     np.save(fniidat, niidat)

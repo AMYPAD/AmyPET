@@ -113,7 +113,7 @@ def sort_input(fpets, fmris, flip_pet=None):
 
 
 def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
-        stage='f', voxsz: int = 2, outpath=None, use_stored=False,
+        cmass_corr_pet=True, stage='f', voxsz: int = 2, outpath=None, use_stored=False,
         visual=False, climage=True, cl_anchor_path: Optional[Path] = None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
@@ -134,6 +134,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
              registration and segmentation, `stage`='n'
              (3) Centiloid process/scaling, `stage`='c'
              (4) Full with visualisation, `stage`='f' (default)
+      cmass_corr_pet: correct PET centre of mass if True (default)
 
       voxsz: voxel size for SPM normalisation writing function
              (output MR and PET images will have this voxel size).
@@ -228,22 +229,26 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
         else:
             flip = None
 
-        log.info(f'subject {onm}: centre of mass correction')
-        # > modify for the centre of mass being at O(0,0,0)
-        # > check first if PET is already modified
-        tmp = nimpa.getnii(fpet, output='all')
-        try: dscr = tmp['hdr']['descrip'].item().decode()
-        except: dscr=None
-        if isinstance(dscr, str):
-            out[onm]['petc']  = petc = dict(fim=fpet)
-            log.info('the PET data is already modified for the centre of mass.')
-        elif dscr is None and 'com-modified' in fpet.name:
-            out[onm]['petc'] = petc = dict(fim=fpet)
-            log.info('the PET data is already modified for the centre of mass.')
+        if cmass_corr_pet:
+            log.info(f'subject {onm}: centre of mass correction')
+            # > modify for the centre of mass being at O(0,0,0)
+            # > check first if PET is already modified
+            tmp = nimpa.getnii(fpet, output='all')
+            try: dscr = tmp['hdr']['descrip'].item().decode()
+            except: dscr=None
+            if isinstance(dscr, str) and 'CoM-modified' in dscr:
+                out[onm]['petc']  = petc = dict(fim=fpet)
+                log.info('the PET data is already modified for the centre of mass.')
+            elif dscr is None and 'com-modified' in fpet.name:
+                out[onm]['petc'] = petc = dict(fim=fpet)
+                log.info('the PET data is already modified for the centre of mass.')
+            else:
+                out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
         else:
-            out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
+            out[onm]['petc'] = petc = dict(fim=fpet)
+            log.info('PET image has NOT been corrected for the centre of mass.')
         
-        # > the same for MR part
+        # > centre of mass correction for the MR part
         out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
         log.info(f'subject {onm}: MR registration to MNI space')

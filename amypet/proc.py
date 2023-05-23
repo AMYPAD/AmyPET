@@ -75,7 +75,7 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
     fniiatl = nimpa.nii_ugzip(fatl, outpath=opth)
 
     # > inverse transform the atlas to PET space
-    finvatl = spm12.normw_spm(str(fmod), [fniiatl + ',1'], voxsz=petdct['voxsize'], intrp=0., bbox=bbox,
+    finvatl = spm12.normw_spm(str(fmod), [fniiatl + ',1'], voxsz=np.flip(petdct['voxsize']), intrp=0., bbox=bbox,
                               outpath=str(opth))[0]
 
     # > remove the uncompressed input atlas after transforming it
@@ -94,7 +94,7 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
     gm[np.isnan(gm)] = 0
 
 
-    return dict(fatlpet=finvatl, fgmpet=fgmpet, atlpet=atl, gmpet=gm, outpath=opth)
+    return dict(fatlpet=finvatl, fgmpet=fgmpet, atlpet=atl, gmpet=gm, outpath=opth, bbox=bbox)
 
 
 
@@ -126,7 +126,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
     # ----------------------------------------------
     # PET
     if isinstance(impet, dict):
-        im = impet['im']
+        im = np.array(impet['im'])
         if 'affine' in impet:
             affine = impet['affine']
         if 'flip' in impet:
@@ -136,7 +136,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
     elif isinstance(impet, (str, PurePath)) and os.path.isfile(impet):
         imd = nimpa.getnii(impet, output='all')
-        im = imd['im']
+        im = np.array(imd['im'])
         flip = imd['flip']
         trnsp = imd['transpose']
 
@@ -221,7 +221,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
             for fi in range(nfrm):
                 emsum[fi] = np.sum(im[fi,...].astype(np.float64) * msk2)
         
-        elif im.ndims==3:
+        elif im.ndim==3:
             emsum = np.sum(im.astype(np.float64)*msk2)
         
         else:
@@ -281,7 +281,6 @@ def proc_vois(
         opth = outpath
     nimpa.create_dir(opth)
 
-
     # > get the atlas
     if isinstance(atlas, (str, PurePath)) and Path(atlas).name.endswith(('.nii', '.nii.gz')):
         fatl = atlas
@@ -292,7 +291,7 @@ def proc_vois(
     if voi_idx is not None and isinstance(voi_idx, dict):
         dvoi = voi_idx
     else:
-        if atlas=='all':
+        if atlas=='aal':
             # > New AAL3 codes!
             dvoi=dict(
                     cerebellum=list(range(95,120)),

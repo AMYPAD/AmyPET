@@ -15,6 +15,7 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 from niftypet import nimpa
 import spm12
+from tqdm import trange
 
 #--- NiftyPAD ---
 from niftypad import basis
@@ -251,7 +252,7 @@ def km_img(
         'dt':dt,
         'inputf1':ref.inputf1cubic,
         'w':None,
-        'k2p':0.00025,
+        'k2p':k2p,
         'beta_lim':beta_lim,
         'n_beta':n_beta,
         'b': b}
@@ -268,8 +269,8 @@ def km_img(
     km_outputs = ['R1', 'k2', 'BP']
 
     # > loop through dims to iteratively go over each voxel
-    for zi in range(petnii.shape[2]):
-        print("z-slice #:", str(zi))
+    for zi in trange(petnii.shape[2], desc='image z-slice'):
+        #print("z-slice #:", str(zi))
         for yi in range(petnii.shape[1]):
             for xi in range(petnii.shape[0]):
                 # > array of voxel TAC
