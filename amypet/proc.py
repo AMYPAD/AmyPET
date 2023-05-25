@@ -244,8 +244,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 # ========================================================================================
 def proc_vois(
     niidat,
-    aligned_suvr,
-    aligned_brk,
+    aligned,
     cl_dct,
     atlas='hammers',
     voi_idx=None,
@@ -330,7 +329,7 @@ def proc_vois(
 
 
     # > get the atlas and GM probability mask in PET space using CL inverse pipeline
-    atlgm = atl2pet(aligned_suvr['suvr']['fsuvr'], fatl, cl_dct, outpath=opth)
+    atlgm = atl2pet(aligned['suvr']['fsuvr'], fatl, cl_dct, outpath=opth)
 
     # > TO DO: the dynamic image can be in aligned_suvr
 
@@ -339,7 +338,7 @@ def proc_vois(
     else:
         gmmsk = None
     
-    rvoi = extract_vois(aligned_brk['fpet'], atlgm['fatlpet'], dvoi, atlas_mask=gmmsk, outpath=opth/'masks', output_masks=True)
+    rvoi = extract_vois(aligned['fpet'], atlgm['fatlpet'], dvoi, atlas_mask=gmmsk, outpath=opth/'masks', output_masks=True)
 
 
     # > timing of all frames
