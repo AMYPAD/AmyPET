@@ -112,9 +112,9 @@ def sort_input(fpets, fmris, flip_pet=None):
 
 
 
-def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
+def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         cmass_corr_pet=True, stage='f', voxsz: int = 2, outpath=None, use_stored=False,
-        visual=False, climage=True, cl_anchor_path: Optional[Path] = None):
+        climage=True, cl_anchor_path: Optional[Path] = None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -257,14 +257,14 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
             tmpl_avg,
             mric['fim'],
             fwhm_ref=0,
-            fwhm_flo=3,
+            fwhm_flo=Cnt['regpars']['fwhm_t1_mni'],
             outpath=opthr,
             fname_aff="",
             fcomment="",
             pickname="ref",
-            costfun="nmi",
+            costfun=Cnt['regpars']['costfun'],
             graphics=1,
-            visual=int(visual),
+            visual=int(Cnt['regpars']['visual']),
             del_uncmpr=True,
             save_arr=True,
             save_txt=True,
@@ -275,15 +275,15 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
         out[onm]['reg2'] = reg2 = spm12.coreg_spm(
             reg1['freg'],
             petc['fim'],
-            fwhm_ref=3,
-            fwhm_flo=6,
+            fwhm_ref=Cnt['regpars']['fwhm_t1'],
+            fwhm_flo=Cnt['regpars']['fwhm_pet'],
             outpath=opthr,
             fname_aff="",
             fcomment='_mr-reg',
             pickname="ref",
-            costfun="nmi",
+            costfun=Cnt['regpars']['costfun'],
             graphics=1,
-            visual=int(visual),
+            visual=int(Cnt['regpars']['visual']),
             del_uncmpr=True,
             save_arr=True,
             save_txt=True,
@@ -299,7 +299,7 @@ def run(fpets, fmris, tracer='pib', flip_pet=None, bias_corr=True,
         out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
                                                 store_nat_gm=True, store_nat_wm=False,
                                                 store_nat_csf=True, store_fwd=True,
-                                                store_inv=True, visual=visual)
+                                                store_inv=True, visual=int(Cnt['regpars']['visual']))
         # > normalise
         list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
         out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),

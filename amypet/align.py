@@ -282,9 +282,8 @@ def align_frames(
 
 # =====================================================================
 def align(niidat,
+          Cnt,
           outpath=None,
-          frame_min_dur=60,
-          decay_corr=False,
           use_stored=True):
 
     ''' align all the frames in static, dynamic or coffee-break
@@ -312,23 +311,32 @@ def align(niidat,
     # ALIGN PET FRAMES FOR STATIC/DYNAMIC IMAGING
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # > align the PET frames around the equilibrium static scan (SUVr)
-    aligned_suvr = align_suvr(stat_tdata, opth, use_stored=True)
+    aligned_suvr = align_suvr(
+        stat_tdata,
+        Cnt,
+        outpath=opth,
+        use_stored=True)
+
 
     # > align for all dynamic frames (if any remaining)
-    aligned_dyn = align_break(niidat, aligned_suvr, frame_min_dur=60, decay_corr=False, use_stored=True)
+    aligned_dyn = align_break(
+        niidat,
+        aligned_suvr,
+        Cnt,
+        use_stored=True)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     return aligned_dyn
 
+
+
 # =====================================================================
 def align_suvr(
     stat_tdata,
+    Cnt,
     outpath=None,
     not_aligned=True,
-    reg_costfun='nmi',
     use_stored=False,
-    reg_fwhm=8,
-    reg_thrshld=2.0,
     com_correction=True,
     save_params=False,
 ):
@@ -336,18 +344,17 @@ def align_suvr(
     Align SUVr frames after conversion to NIfTI format.
 
     Arguments:
-    - reg_constfun: the cost function used in SPM registration/alignment of frames
-    - reg_force:    force running the registration even if the registration results
-                are already calculated and stored in the output folder.
-    - reg_fwhm: the FWHM of the Gaussian kernel used for smoothing the images before
-                registration and only for registration purposes.
-    - reg_thrshld: the threshold for the registration metric (combined trans. and rots)
-                when deciding to apply the transformation
     - com_correction: centre-of-mass correction - moves the coordinate system to the 
                 centre of the spatial image intensity distribution.
     - save_params:  save all the rotations and translations into a 3D matrix
 
     '''
+
+    # > the FWHM of the Gaussian kernel used for smoothing the images before registration and only for registration purposes.
+    reg_fwhm = Cnt['align']['reg_fwhm']
+    # > the threshold for the registration metric (combined trans. and rots) when deciding to apply the transformation
+    reg_thrshld = Cnt['align']['reg_thrshld']
+    reg_costfun = Cnt['align']['reg_costfun']
 
     if outpath is None:
         align_out = stat_tdata[stat_tdata['descr']['frms'][0]]['fnii'].parent.parent
@@ -638,11 +645,7 @@ def align_suvr(
 def align_break(
     niidat,
     aligned_suvr,
-    frame_min_dur=60,
-    reg_costfun='nmi',
-    reg_fwhm=8,
-    reg_thrshld=2.0,
-    decay_corr=False,
+    Cnt,
     use_stored=False,
     ):
     
@@ -651,15 +654,19 @@ def align_break(
         Arguments:
         - niidat:   dictionary of all input NIfTI series.
         - aligned_suvr: dictionary of the alignment output for SUVr frames
-        - frame_min_dur: the shortest PET frame to be used for registration
-                    in the alignment process.
-        - reg_*:    SPM12 registration parameters.
-        - reg_thrshld: the threshold of the metric of combined rotations
-                    and translations to identify significant motion worth
-                    correcting for.
-        - decay_corr: correct for decay between different series relative
-                    to the earliest one
+        - frame_min_dur: 
+        - decay_corr: 
     '''
+
+    reg_fwhm = Cnt['align']['reg_fwhm']
+    # > the threshold for the registration metric (combined trans. and rots) when deciding to apply the transformation
+    reg_thrshld = Cnt['align']['reg_thrshld']
+    # > registration cost function
+    reg_costfun = Cnt['align']['reg_costfun']
+    # > the shortest PET frame to be used for registration in the alignment process.
+    frame_min_dur=Cnt['align']['frame_min_dur']
+    # > correct for decay between different series relative to the earliest one
+    decay_corr=Cnt['align']['decay_corr'],
 
     # > identify coffee-break data if any
     bdyn_tdata = id_acq(niidat, acq_type='break')

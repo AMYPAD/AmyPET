@@ -26,6 +26,8 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 # DEFINITIONS:
 # TODO: move these to a separate file, e.g., `defs.py`
 
+pttrn_t1 = ['mprage', 't1', 't1w']
+
 # > SUVr time window post injection and duration
 suvr_twindow = {
                                                        # yapf: ignore
@@ -51,9 +53,49 @@ fulldyn_time = 3600
 
 # ------------------------------------------------
 
-
 # ========================================================================================
 
+def get_t1(input_fldr, ignore_derived=False, rem_prev_conv=True):
+    '''find an MR T1w image (NIfTI of DICOM folder)
+
+        Arguments:
+        - input_fldr:   input folder where the search for T1w folder
+                        with DICOM or NIfTI files is performed, or
+                        the T1w NIfTI files.
+        - ignore_derived: if True, ignores derived DICOM files in
+                        conversion to NIfTI.
+        - rem_prev_conv:if True, removes previous conversions to NIfTI
+                        from DICOM
+    '''
+    
+    fniit1 = None
+    dt1dcm = None
+
+    input_fldr = Path(input_fldr)
+
+    for f in input_fldr.iterdir():
+        if f.is_file() and f.name.endswith(('.nii','.nii.gz')) and any([p in f.name.lower() for p in pttrn_t1]):
+            fniit1 = f
+            break
+        if f.is_dir() and any([p in f.name.lower() for p in pttrn_t1]):
+            t1dcm = nimpa.dcmsort(f)
+            if not t1dcm:
+                niilist = list(f.glob('*.nii*'))
+                if len(niilist)>1:
+                    log.warning('found more than one potential T1w image - confused and aborting')
+                elif len(niilist)==1:
+                    fniit1 = niilist[0]
+                    break
+                else:
+                    log.warning('could not find a potential T1w image ')
+            else:
+                dt1dcm = f
+                fniit1 = dicom2nifti(dt1dcm, outpath=dt1dcm, ignore_derived=ignore_derived, remove_previous=rem_prev_conv)
+                break
+
+    return fniit1
+
+# ========================================================================================
 def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False):
 
     ''' Convert DICOM folder to NIfTI using `dcm2niix`.
@@ -507,19 +549,20 @@ def id_acq(dctdat, acq_type='suvr', output_series_id=False):
 
 
 # ========================================================================================
-def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
+def rem_artefacts(niidat, Cnt, artefact='endfov'):
     ''' Remove artefacts from NIfTI images.
         Arguments:
         - niidat:       dictionary of all series NIfTI data
         - artefact:     what kind of artefact (default is the end 
                         of FOV)
-        - frames:       the idx of frames which should be corrected
-        - zmrg:         the axial (z) voxel margin where considering
-                        correction of the ends of FOV 
     '''
 
     # > CORRECT FOR FOV-END ARTEFACTS
     if artefact=='endfov':
+
+        # > the axial (z) voxel margin where performing
+        # > correction of the ends of FOV
+        zmrg = Cnt['endfov_corr']['z_margin']
     
         # > extract the early time frames data
         bdyn = id_acq(niidat, acq_type='break', output_series_id=True)
@@ -537,7 +580,7 @@ def rem_artefacts(niidat, artefact='endfov', frames=None, zmrg=10):
 
         
         for i,k in enumerate(dyn_tdat['descr']['frms']):
-            if i in frames:
+            if i in Cnt['endfov_corr']['frm_rng']:
                 imdct = nimpa.getnii(dyn_tdat[k]['fnii'], output='all')
                 im = imdct['im']
                 zprf = np.sum(im, axis=(1,2))

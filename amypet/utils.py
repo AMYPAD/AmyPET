@@ -12,6 +12,8 @@ from niftypet import nimpa
 from pkg_resources import resource_filename
 from scipy.stats import linregress
 
+from .amypet_config import *
+
 try:
     from os import cpu_count
 except ImportError:
@@ -36,6 +38,11 @@ amypet_dir = Path.home() / '.amypet'
 rvoi_str = {
     'wc': 'WHOLE CEREBELLUM', 'cg': 'CEREBELLUM GM', 'wcb': 'WHOLE CEREBELLUM + BRAIN STEM',
     'pns': 'PONS'}
+
+
+def init():
+    res = get_params()
+    return res.Cnt
 
 
 # ----------------------------------------------------------------------
