@@ -26,7 +26,7 @@ log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 # DEFINITIONS:
 # TODO: move these to a separate file, e.g., `defs.py`
 
-pttrn_t1 = ['mprage', 't1', 't1w']
+pttrn_t1 = ['mprage', 't1', 't1w', 'spgr']
 
 # > SUVr time window post injection and duration
 suvr_twindow = {
