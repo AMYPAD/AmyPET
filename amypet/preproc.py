@@ -22,46 +22,16 @@ from .utils import get_atlas
 
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
-# ------------------------------------------------
-# DEFINITIONS:
-# TODO: move these to a separate file, e.g., `defs.py`
 
-pttrn_t1 = ['mprage', 't1', 't1w', 'spgr']
-
-# > SUVr time window post injection and duration
-suvr_twindow = {
-                                                       # yapf: ignore
-    'pib': [90 * 60, 110 * 60, 1200],
-    'flute': [90 * 60, 110 * 60, 1200],
-    'fbb': [90 * 60, 110 * 60, 1200],
-    'fbp': [50 * 60, 60 * 60, 600]}
-tracer_names = {
-                                                       # yapf: ignore
-    'pib': ['pib'],
-    'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
-    'fbb': ['fbb', 'florbetaben'],
-    'fbp': ['fbp', 'florbetapir']}
-
-# > break time for coffee break protocol (target)
-break_time = 1800
-
-# > time margin for the 1st coffee break acquisition
-breakdyn_t = (1200, 2400)
-
-# > minimum time for the full dynamic acquisition
-fulldyn_time = 3600
-
-# ------------------------------------------------
-
-# ========================================================================================
-
-def get_t1(input_fldr, ignore_derived=False, rem_prev_conv=True):
+# =======================================================================================
+def get_t1(input_fldr, Cnt, ignore_derived=False, rem_prev_conv=True):
     '''find an MR T1w image (NIfTI of DICOM folder)
 
         Arguments:
         - input_fldr:   input folder where the search for T1w folder
                         with DICOM or NIfTI files is performed, or
                         the T1w NIfTI files.
+        - Cnt:          Constants and parameters' dictionary
         - ignore_derived: if True, ignores derived DICOM files in
                         conversion to NIfTI.
         - rem_prev_conv:if True, removes previous conversions to NIfTI
@@ -74,10 +44,10 @@ def get_t1(input_fldr, ignore_derived=False, rem_prev_conv=True):
     input_fldr = Path(input_fldr)
 
     for f in input_fldr.iterdir():
-        if f.is_file() and f.name.endswith(('.nii','.nii.gz')) and any([p in f.name.lower() for p in pttrn_t1]):
+        if f.is_file() and f.name.endswith(('.nii','.nii.gz')) and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
             fniit1 = f
             break
-        if f.is_dir() and any([p in f.name.lower() for p in pttrn_t1]):
+        if f.is_dir() and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
             t1dcm = nimpa.dcmsort(f)
             if not t1dcm:
                 niilist = list(f.glob('*.nii*'))
@@ -189,11 +159,81 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
 
 
 
+# =========================== SUVr =============================
+def suvr_inf(srs_dscr, t_frms, srs, Cnt, suvr_win_def=None, tracer=None):
+    ''' find SUVr frames among the static/dynamic frames
+    '''
+
+    # ------------------------------------------------
+    # > SUVr time window post injection and duration
+    suvr_twindow = Cnt['timings']['suvr_twindow']
+
+    # > margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+    margin = Cnt['timings']['margin']
+    # ------------------------------------------------
+
+
+    # -----------------------------------------------
+    # > try to establish the SUVr window even if not provided
+    if suvr_win_def is None and not tracer:
+        raise ValueError(
+            'Impossible to figure out tracer and SUVr time window - please specify them!')
+    elif suvr_win_def is None and tracer:
+        suvr_win = suvr_twindow[tracer][:2]
+    else:
+        suvr_win = suvr_win_def
+    # -----------------------------------------------
+
+    t_starts = [t[0] for t in t_frms]
+    t_stops = [t[1] for t in t_frms]
+
+
+    # > SUVr window margins, relative to the frame time and the duration
+    tmn = t_frms[0][0]
+    tmx = t_frms[-1][-1]
+
+    suvr_dur = suvr_win[1]-suvr_win[0]
+    mrgn_start_mx = int(suvr_win[0] + margin*suvr_dur)
+    mrgn_start_mn = int(suvr_win[0] - margin*suvr_dur)
+    mrgn_stop_mx = int(suvr_win[1] + margin*suvr_dur)
+    mrgn_stop_mn = int(suvr_win[1] - margin*suvr_dur)
+
+    diff_start = min(tmx, mrgn_start_mx) - max(tmn, mrgn_start_mn)
+    diff_stop  = min(tmx, mrgn_stop_mx)  - max(tmn, mrgn_stop_mn)
+
+    if diff_start>=0 and diff_stop>=0:
+
+        t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
+        t1_suvr = min(t_stops, key=lambda x: abs(x - suvr_win[1]))
+
+        frm_0 = t_starts.index(t0_suvr)
+        frm_1 = t_stops.index(t1_suvr)
+
+        # > SUVr frame range
+        suvr_frm_range = range(frm_0, frm_1 + 1)
+
+        # > indicate which frames were selected for SUVr relative to all static/dynamic frames
+        frms_sel = [i in suvr_frm_range for i, s in enumerate(srs)]
+
+        srs_dscr['acq'].append('suvr')
+        if not 'suvr' in srs_dscr:
+            srs_dscr['suvr'] = {}
+        srs_dscr['suvr'].update({
+            'time': (t0_suvr, t1_suvr),
+            'timings': [t_frms[f] for f in range(frm_0, frm_1 + 1)],
+            'idxs': (frm_0, frm_1),
+            'frms': [s for i, s in enumerate(srs) if i in suvr_frm_range],
+            'frms_sel': frms_sel})
+    else:
+        log.warning('The acquisition does not cover the requested time frame!')
+# ===================================================
+
+
+
 
 # =====================================================================
-def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
-                    outpath=None, margin=0.1, find_suvr=False,
-                    grouping='a+t+d'):
+def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
+                    outpath=None, find_suvr=False, grouping='a+t+d'):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -213,60 +253,32 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
                 defined in`defs.py`)
     - outpath:  output path where all the intermediate and final results are
                 stored.
-    - margin:   margin used for accepting SUVr time windows (0.1 corresponds to 10%)
     - find_suvr:if True, finds the possible SUVr frame window
     - grouping: defines how DICOMs are grouped, default is 'a+t+d', which is
                 by acquisition and series times plus series description;
                 see nimpa.dcmsort() for details.
     '''
 
+    # ------------------------------------------------
+    # DEFINITIONS:
+    pttrn_t1 = Cnt['pttrn_t1']
 
-    # =================== SUVr =======================
-    def suvr_inf(t_frms_, msrs_class_, t_starts_, t_stops_):
-        ''' find SUVr frames among the static/dynamic frames
-        '''
+    # > SUVr time window post injection and duration
+    suvr_twindow = Cnt['timings']['suvr_twindow']
+    tracer_names = Cnt['tracer_names']
 
-        # -----------------------------------------------
-        # > try to establish the SUVr window even if not provided
-        if suvr_win_def is None and not tracer:
-            raise ValueError(
-                'Impossible to figure out tracer and SUVr time window - please specify them!')
-        elif suvr_win_def is None and tracer:
-            suvr_win = suvr_twindow[tracer][:2]
-        else:
-            suvr_win = suvr_win_def
-        # -----------------------------------------------
+    # > break time for coffee break protocol (target)
+    break_time = Cnt['timings']['break_time']
 
-        # > SUVr window margins, relative to the frame start time and the duration
-        mrgn_suvr_start = margin * suvr_twindow[tracer][0]
-        mrgn_suvr_dur = margin * suvr_twindow[tracer][2]
+    # > time margin for the 1st coffee break acquisition
+    breakdyn_t = Cnt['timings']['breakdyn_t']
 
-        if t_frms_[0][0] < suvr_win[0] + mrgn_suvr_start and \
-            t_frms_[0][0] > suvr_win[0] - mrgn_suvr_start and \
-            acq_dur > suvr_twindow[tracer][2] - mrgn_suvr_dur:
-
-            t0_suvr = min(t_starts_, key=lambda x: abs(x - suvr_win[0]))
-            t1_suvr = min(t_stops_, key=lambda x: abs(x - suvr_win[1]))
-
-            frm_0 = t_starts_.index(t0_suvr)
-            frm_1 = t_stops_.index(t1_suvr)
-
-            # > SUVr frame range
-            suvr_frm_range = range(frm_0, frm_1 + 1)
-
-            # > indicate which frames were selected for SUVr relative to all static/dynamic frames
-            frms_sel = [i in suvr_frm_range for i, s in enumerate(srs_t)]
-
-            msrs_class_[-1]['acq'].append('suvr')
-            msrs_class_[-1]['suvr'].update({
-                'time': (t0_suvr, t1_suvr),
-                'timings': [t_frms_[f] for f in range(frm_0, frm_1 + 1)],
-                'idxs': (frm_0, frm_1),
-                'frms': [s for i, s in enumerate(srs_t) if i in suvr_frm_range],
-                'frms_sel': frms_sel})
-        else:
-            log.warning('The acquisition does not cover the requested time frame!')
-    # ===================================================
+    # > minimum time for the full dynamic acquisition
+    fulldyn_time = Cnt['timings']['fulldyn_time']
+    
+    # > margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+    margin = Cnt['timings']['margin']
+    # ------------------------------------------------
 
 
     # > make the input a Path object
@@ -299,7 +311,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
     # ================================================
 
     # > initialise the list of acquisition classification
-    msrs_class = []
+    msrs_dscr = []
 
     # > time-sorted series
     msrs_t = []
@@ -336,9 +348,6 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
 
         t_starts = [t[0] for t in t_frms]
         t_stops = [t[1] for t in t_frms]
-
-        # > overall acquisition duration
-        acq_dur = t_frms[-1][-1] - t_frms[0][0]
         # -----------------------------------------------
 
         # # -----------------------------------------------
@@ -385,7 +394,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
 
         # > is the static acquisition covering the provided SUVr frame definition?
         if acq_type == 'static':
-            msrs_class.append({
+            msrs_dscr.append({
                     'acq': [acq_type],
                     'time': (t_starts[0], t_stops[-1]),
                     'timings': t_frms,
@@ -394,7 +403,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
                     'suvr':{}})
 
             if find_suvr:
-                suvr_inf(t_frms, msrs_class, t_starts, t_stops)
+                suvr_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, suvr_win_def=suvr_win_def, tracer=tracer)
         
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
@@ -403,7 +412,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
             frm_0 = t_starts.index(t0_dyn)
             frm_1 = t_stops.index(t1_dyn)
 
-            msrs_class.append({
+            msrs_dscr.append({
                                           #'inpath':impath,
                 'acq': [acq_type],
                 'time': (t0_dyn, t1_dyn),
@@ -418,7 +427,7 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
             frm_0 = t_starts.index(t0_dyn)
             frm_1 = t_stops.index(t1_dyn)
 
-            msrs_class.append({
+            msrs_dscr.append({
                 'acq': [acq_type],
                 'time': (t0_dyn, t1_dyn),
                 'timings': t_frms,
@@ -427,10 +436,10 @@ def explore_indicom(input_fldr, tracer=None, suvr_win_def=None,
                 'suvr':{}})
 
             if find_suvr:
-                suvr_inf(t_frms, msrs_class, t_starts, t_stops)
+                suvr_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, suvr_win_def=suvr_win_def, tracer=tracer)
 
 
-    return {'series': msrs_t, 'descr': msrs_class, 'outpath': amyout, 'tracer': tracer}
+    return {'series': msrs_t, 'descr': msrs_dscr, 'outpath': amyout, 'tracer': tracer}
 
 
 

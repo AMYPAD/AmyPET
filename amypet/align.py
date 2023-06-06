@@ -22,7 +22,6 @@ from niftypet import nimpa
 from .utils import get_atlas
 from .suvr_tools import preproc_suvr
 from .preproc import id_acq
-from .preproc import tracer_names
 
 # > tracer in different radionuclide group
 f18group = ['fbb', 'fbp', 'flute']

@@ -3,7 +3,18 @@ __author__ = "Pawel J. Markiewicz"
 __copyright__ = "Copyright 2023"
 
 
+
+
 Cnt = dict(
+    pttrn_t1 = ['mprage', 't1', 't1w', 'spgr'],
+
+    tracer_names = {
+        'pib': ['pib'],
+        'flute': ['flt', 'flut', 'flute', 'flutemetamol'],
+        'fbb': ['fbb', 'florbetaben'],
+        'fbp': ['fbp', 'florbetapir']
+    },
+
     # > registration parameters in the centiloid pipeline
     regpars=dict(
 
@@ -46,4 +57,26 @@ Cnt = dict(
 
         # > metric threshold for applying registration
         reg_thrshld=2.0,),
+
+    timings=dict(
+        # > SUVr time window post injection and duration for amyloid tracers
+        suvr_twindow = {
+            'pib': [90 * 60, 110 * 60, 1200],
+            'flute': [90 * 60, 110 * 60, 1200],
+            'fbb': [90 * 60, 110 * 60, 1200],
+            'fbp': [50 * 60, 60 * 60, 600]},
+                
+        # > break time for coffee break protocol (target)
+        break_time = 1800,
+
+        # > time margin for the 1st coffee break acquisition
+        breakdyn_t = (1200, 2400),
+
+        # > minimum time for the full dynamic acquisition
+        fulldyn_time = 3600,
+
+        # > margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+        margin = 0.1,
+        ),
+        
     )
