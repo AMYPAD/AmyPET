@@ -17,7 +17,11 @@ from itertools import combinations
 import dcm2niix
 import numpy as np
 import spm12
+from miutil.imio import nii
+from miutil import hasext
 from niftypet import nimpa
+
+
 
 from .utils import get_atlas
 from .suvr_tools import preproc_suvr
@@ -30,7 +34,41 @@ c11group = ['pib']
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 
+#--------------------------------------------------------------------
+def save4dnii(lfrm, fnii, descrip='AmyPET generated', retarr=True):
+    '''
+    Save 4D NIfTI image from a list of files of consecutive 
+    frames `lfrm` to file path `fnii`.
+    '''
 
+    # > number of frames for the whole study
+    nfrm4d = len(lfrm)
+    tmp = nimpa.getnii(lfrm[0], output='all')
+    niia = np.zeros((nfrm4d,)+tmp['shape'], dtype=np.float32)
+    for i, frm in enumerate(lfrm):
+        im_ = nimpa.getnii(frm)
+        # > remove NaNs if any
+        im_[np.isnan(im_)] = 0
+        niia[i, ...] = im_
+
+    # > save aligned frames
+    nimpa.array2nii(
+        niia,
+        tmp['affine'],
+        fnii,
+        descrip=descrip,
+        trnsp=(tmp['transpose'].index(0),
+               tmp['transpose'].index(1),
+               tmp['transpose'].index(2)),
+        flip=tmp['flip'])
+
+    if retarr:
+        return niia
+    else:
+        return None
+
+
+#--------------------------------------------------------------------
 def align_frames(
     fniis,
     times,
@@ -197,9 +235,9 @@ def align_frames(
     # > register the mashed frames to the reference (SUVr frame by default)
     for mi, mfrm in enumerate(mfrms_out):
 
-        # > make sure the images are not compressed, i.e., ending with .nii
-        if not mfrm.name.endswith('.nii'):
-            raise ValueError('The mashed frame files should be uncompressed NIfTI')
+        # # > make sure the images are not compressed, i.e., ending with .nii
+        # if not mfrm.name.endswith('.nii'):
+        #     raise ValueError('The mashed frame files should be uncompressed NIfTI')
 
         # > register mashed frames to the reference
         spm_res = nimpa.coreg_spm(fref, mfrm, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
@@ -253,25 +291,7 @@ def align_frames(
         else:
             falign_nii = opth/'aligned_via_mashing_using_ref_4D.nii.gz'
 
-        # > number of frames for the whole study
-        nfrm4d = len(faligned)
-        tmp = nimpa.getnii(faligned[0], output='all')
-        niia = np.zeros((nfrm4d,)+tmp['shape'], dtype=np.float32)
-        for i, frm in enumerate(faligned):
-            im_ = nimpa.getnii(frm)
-            # > remove NaNs if any
-            im_[np.isnan(im_)] = 0
-            niia[i, ...] = im_
-
-        # > save aligned frames
-        nimpa.array2nii(
-            niia,
-            tmp['affine'],
-            falign_nii,
-            descrip='AmyPET: aligned dynamic frames',
-            trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
-                   tmp['transpose'].index(2)),
-            flip=tmp['flip'])
+        niia = save4dnii(faligned, falign_nii, descrip='AmyPET-aligned frames', retarr=True)
 
         outdct['f4d'] = falign_nii
         outdct['im4d'] = niia
@@ -314,7 +334,7 @@ def align(niidat,
         stat_tdata,
         Cnt,
         outpath=opth,
-        use_stored=True)
+        use_stored=use_stored)
 
 
     # > align for all dynamic frames (if any remaining)
@@ -322,7 +342,7 @@ def align(niidat,
         niidat,
         aligned_suvr,
         Cnt,
-        use_stored=True)
+        use_stored=use_stored)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     return aligned_dyn
@@ -362,7 +382,11 @@ def align_suvr(
 
 
     # > number of PET frames in series with static/SUVr data
-    nsfrm = len(stat_tdata['descr']['frms'])
+    nfrm = len(stat_tdata['descr']['frms'])
+
+    # > Nnumber of frames for uptake ratio image (SUVr)
+    nsfrm = len(stat_tdata['descr']['suvr']['frms'])
+
 
     # > NIfTI output folder
     niidir = align_out / 'NIfTI_aligned'
@@ -374,13 +398,19 @@ def align_suvr(
     rsmpl_opth = niidir / 'SPM-aligned'
     nimpa.create_dir(rsmpl_opth)
 
-    tstudy = stat_tdata[stat_tdata['descr']['frms'][0]]['tstudy']
+    tmp = stat_tdata[stat_tdata['descr']['frms'][0]]
+    if 'tstudy' in tmp:
+        t_ = 'study-'+tmp['tstudy']
+    elif 'tacq' in tmp:
+        t_ = 'acq-'+tmp['tacq']
+    else:
+        t_ = ''
 
     # > re-aligned output file names and output dictionary
     faligned   = f'SUVr-aligned_{nsfrm}-frames_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     faligned_c = f'SUVr-aligned_{nsfrm}-frames_CoM_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    faligned_s = f'Aligned-{nsfrm}-frames-to-SUVr_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    falign_dct = f'Aligned-{nsfrm}-frames-to-SUVr_study-{tstudy}_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series'])+'.npy'
+    faligned_s = f'Aligned-{nfrm}-frames-to-SUVr_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    falign_dct = f'Aligned-{nfrm}-frames-to-SUVr_{t_}_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series'])+'.npy'
     faligned = niidir_i/faligned
     faligned_s = niidir_i / faligned_s
     faligned_c = niidir_i / faligned_c
@@ -492,7 +522,10 @@ def align_suvr(
             fnii_aligned.append(frsmpl)
 
             niiim[ifrm, ...] = nimpa.getnii(frsmpl)
+        
+        # > remove NaNs
         niiim[np.isnan(niiim)] = 0
+        
         # > save aligned SUVr frames
         nimpa.array2nii(
             niiim, niiref['affine'], faligned, descrip='AmyPET: aligned SUVr frames',
@@ -557,16 +590,43 @@ def align_suvr(
         # The remaining frames of static or fully dynamic PET
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+        # # > indices of non-suvr frames
+        # idx_r = [not f in stat_tdata['descr']['suvr']['frms'] for f in stat_tdata['descr']['frms']]
+
+        # falign = np.array([stat_tdata[f]['fnii'] for f in stat_tdata['descr']['frms']])
+        # falign = list(falign[idx_r])
+
+        # ts = np.array(stat_tdata['descr']['timings'])
+        # ts = ts[idx_r]
+
+        # import pdb; pdb.set_trace()
+
+        # aligned_frms = align_frames(
+        #     falign,
+        #     ts,
+        #     fref,
+        #     frm_lsize=60,
+        #     reg_thrshld=2.0,
+        #     save4d=False,
+        #     f4d=None,
+        #     reg_fwhm=8,
+        #     reg_costfun='nmi',
+        #     outpath=niidir)
+
+        # #aligned_frms = align_frames(falign, ts, fref, frm_lsize=240, reg_thrshld=2.0, save4d=False, f4d=None, reg_fwhm=8, reg_costfun='nmi', outpath=niidir)
+
+
+
         # > output files for affines
-        S_ = [None for _ in range(nsfrm)]
+        S_ = [None for _ in range(nfrm)]
 
         # > motion metric for any remaining frames
-        R_ = np.zeros(nsfrm)
+        R_ = np.zeros(nfrm)
 
         # > output paths of aligned images for the static part
-        fnii_aligned_ = [None for _ in range(nsfrm)]
+        fnii_aligned_ = [None for _ in range(nfrm)]
 
-        niiim_ = np.zeros((nsfrm,) + niiref['shape'], dtype=np.float32)
+        niiim_ = np.zeros((nfrm,) + niiref['shape'], dtype=np.float32)
 
         # > index/counter for SUVr frames
         fsi = 0
@@ -737,7 +797,7 @@ def align_break(
     #----------------------------------
     aligned = align_frames(
         fniis, ts,
-        aligned_suvr['suvr']['fsuvr'],
+        fref,
         frm_lsize=frame_min_dur,
         save4d=False,
         outpath=niidat['outpath'])

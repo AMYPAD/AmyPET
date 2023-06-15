@@ -349,3 +349,95 @@ def proc_vois(
 
     return dict(dt=dt, voi=rvoi, atlas_gm=atlgm, outpath=opth)
 
+
+
+
+# ========================================================================================
+def iinorm(
+    cldct,
+    fpet=None,
+    refvoi=None,
+    atlas='hammers',
+    fcomment=None,
+    outpath=None,
+    output_masks=True,
+    apply_gmmask=True):
+
+    '''
+    Image intensity normalise, `iinorm`.
+    Arguments:
+    - cldct:    CL dictionary with registration and spatial normalisation output
+    - fpet:     The file path of PET image to be intensity normalised; if None
+                the centre-of-mass corrected PET will be used from CL output.
+    - refvoi:   the indexes of the reference region as defined in the atlas;
+                if None, the default cerebellum reference region from Hammers
+                atlas will be used.
+    - apply_gmmask: if True (default), applies the GM mask to refine the atlas
+                and create more accurate reference VOI.
+    '''
+
+    # > decipher the CL dictionary
+    if len(cldct)==1:
+        cl_dct = cldct[next(iter(cldct))]
+    elif 'norm' in cldct:
+        cl_dct = cldct
+    else:
+        raise ValueError('unrecognised CL dictionary')
+
+
+    # > output path
+    if outpath is None:
+        if Path(fpet).is_file():
+            opth = fpet.parent
+
+
+    # > reference VOI, if non use cerebellum for Hammers atlas
+    if refvoi is None:
+        refidx = [17,18]
+
+
+    # > PET modified for centre of mass
+    fpetc = cl_dct[next(iter(cl_dct))]['petc']['fim']
+    
+    if not fpet:
+        fpet = fpetc
+
+
+    # > get the atlas in MNI space
+    datl = get_atlas(atlas='hammers')
+
+    # > atlas and GM probabilistic mask in the native PET space
+    atlgm = atl2pet(fpetc, datl['fatlas'], cl_dct, outpath=opth)
+
+
+    # > get the cerebellum GM VOI to act as a reference region
+    rvoi = extract_vois(
+        fpetc,
+        atlgm['fatlpet'],
+        dict(cerebellum=refidx),
+        atlas_mask=atlgm['fgmpet'],
+        outpath=opth/'masks',
+        output_masks=output_masks,
+        apply_gmmask=apply_gmmask)
+
+    dpet = nimpa.getnii(fpet, output='all')
+    pet = dpet['im']
+
+    # > intensity normalised PET (to be saved)
+    ipet = petc/rvoi['cerebellum']['avg']
+
+    if fcomment is None:
+        fout = opth/(Path(fpetc).name.split('.nii')[0]+'_intensity_normalised.nii.gz')
+    else:
+        fout = opth/(Path(fpetc).name.split('.nii')[0]+'_'+fcomment+'.nii.gz')
+
+    # > save new normalised PET
+    nimpa.array2nii(
+        ipet,
+        dpet['affine'],
+        fout,
+        trnsp=dpet['transpose'],
+        flip=dpet['flip'])
+
+
+    return fout
