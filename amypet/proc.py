@@ -394,11 +394,16 @@ def iinorm(
     # > reference VOI, if non use cerebellum for Hammers atlas
     if refvoi is None:
         refidx = [17,18]
+    elif isinstance(refvoi, list):
+        refidx = refvoi
+    else:
+        raise ValueError('Unrecognised definition of reference region indexes')
 
 
     # > PET modified for centre of mass
-    fpetc = cl_dct[next(iter(cl_dct))]['petc']['fim']
+    fpetc = cl_dct['petc']['fim']
     
+    # > PET to be intensity normalised
     if not fpet:
         fpet = fpetc
 
@@ -409,22 +414,26 @@ def iinorm(
     # > atlas and GM probabilistic mask in the native PET space
     atlgm = atl2pet(fpetc, datl['fatlas'], cl_dct, outpath=opth)
 
+    if apply_gmmask:
+        gmmsk = atlgm['fgmpet']
+    else:
+        gmmsk = None
+
 
     # > get the cerebellum GM VOI to act as a reference region
     rvoi = extract_vois(
         fpetc,
         atlgm['fatlpet'],
         dict(cerebellum=refidx),
-        atlas_mask=atlgm['fgmpet'],
+        atlas_mask=gmmsk,
         outpath=opth/'masks',
-        output_masks=output_masks,
-        apply_gmmask=apply_gmmask)
+        output_masks=output_masks)
 
     dpet = nimpa.getnii(fpet, output='all')
     pet = dpet['im']
 
     # > intensity normalised PET (to be saved)
-    ipet = petc/rvoi['cerebellum']['avg']
+    ipet = pet/rvoi['cerebellum']['avg']
 
     if fcomment is None:
         fout = opth/(Path(fpetc).name.split('.nii')[0]+'_intensity_normalised.nii.gz')
