@@ -152,8 +152,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                 saved.
       csv_metrics: output metrics saved to csv:
             - for SUVr (all reference regions) and CLwc only,`csv_metrics`='short'
-            - for SUV, SUVr, corresponding SUVr PiB and
-            SUVr transformations and CL ,`csv_metrics`='long'
+            - for SUV, SUVr, corresponding SUVr PiB, SUVr transformations
+            and CL ,`csv_metrics`='long'
     """
 
     # > the processing stage must be one of registration 'r',
