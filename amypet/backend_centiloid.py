@@ -16,7 +16,7 @@ __author__ = ("Pawel J Markiewicz", "Casper da Costa-Luis")
 __copyright__ = "Copyright 2022"
 
 import logging
-import os
+import os, csv
 import pickle
 from pathlib import Path
 from typing import Optional
@@ -114,13 +114,14 @@ def sort_input(fpets, fmris, flip_pet=None):
 
 def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         cmass_corr_pet=True, stage='f', voxsz: int = 2, outpath=None, use_stored=False,
-        climage=True, cl_anchor_path: Optional[Path] = None):
+        climage=True, cl_anchor_path: Optional[Path] = None,
+        csv_metrics='short'):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
     Args:
       outpath: path to the output folder
-      bias_corr: bias filed correction for the MR image (True/False)
+      bias_corr: if True, applies bias field correction to the MR image
       tracer: specifies what tracer is being used and so the right
               transformation is used; by default it is PiB.  Currently
               [18F]flutemetamol, 'flute', and [18F]florbetaben, 'fbb'
@@ -149,6 +150,10 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
       climage: outputs the CL-converted PET image in the MNI space
       cl_anchor_path: The path where optional CL anchor dictionary is
                 saved.
+      csv_metrics: output metrics saved to csv:
+            - for SUVr (all reference regions) and CLwc only,`csv_metrics`='short'
+            - for SUV, SUVr, corresponding SUVr PiB and
+            SUVr transformations and CL ,`csv_metrics`='long'
     """
 
     # > the processing stage must be one of registration 'r',
@@ -391,6 +396,30 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
             out[onm]['cl'] = cl = {
                 fmsk: 100 * (suvr[fmsk] - CLA[fmsk][0]) / (CLA[fmsk][1] - CLA[fmsk][0])
                 for fmsk in fmasks if fmsk != 'ctx'}
+
+
+        # ---------------------------------
+        # > save csv with suvr and cl outputs
+        if csv_metrics == 'short':
+            csv_dict = {'path_outputs': out[onm]['opth'],
+                        **{f'suvr_{key}': value for key, value in out[onm]['suvr'].items()},
+                        **{f'cl_{key}': value for key, value in out[onm]['cl'].items() if key == 'wc'}}
+
+        if csv_metrics == 'long':
+            csv_dict = {'path_outputs': out[onm]['opth'],
+                        **{f'suv_{key}': value for key, value in out[onm]['avgvoi'].items()},
+                        **{f'suvr_{key}': value for key, value in out[onm]['suvr'].items()},
+                        **{f'suvr_pib_calc_{key}': value for key, value in
+                           out[onm]['suvr_pib_calc'].items()},
+                        **{f'suvr_pib_calc_transf_{key}': value for key, value in
+                           out[onm]['suvr_pib_calc_transf'].items()},
+                        **{f'cl_{key}': value for key, value in out[onm]['cl'].items()}}
+
+        with open(os.path.join(outpath, 'amypet_outputs.csv'), 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
+            writer.writeheader()
+            writer.writerow(csv_dict)
+        # ---------------------------------
 
         # **************************************************************
 
