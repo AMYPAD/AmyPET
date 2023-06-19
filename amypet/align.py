@@ -31,6 +31,9 @@ from .preproc import id_acq
 f18group = ['fbb', 'fbp', 'flute']
 c11group = ['pib']
 
+# > list of registration/motion metrics for alignment
+reg_metric_list = ['rss', 'adst']
+
 log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
 
 
@@ -73,12 +76,10 @@ def align_frames(
     fniis,
     times,
     fref,
-    frm_lsize=60,
-    reg_thrshld=2.0,
+    Cnt,
+    reg_tool='spm',
     save4d=True,
     f4d=None,
-    reg_fwhm=8,
-    reg_costfun='nmi',
     outpath=None):
     '''
     Align frames by mashing the short ones as defined by the threshold.
@@ -88,11 +89,8 @@ def align_frames(
                 a 1D time duration list/array.
     fref:       the NIfTI file of a reference frame to which registration/
                 alignment is performed.
-    frm_lsize:  the shortest acceptable frame for registration purposes,
-                default is 60 seconds
-    reg_thrshld:the threshold above which registration transformation
-                is deemed to represent motion (not noise); based on a metric
-                of combined rotations and translations (rigid body)
+    reg_tool:   the software used for registration/alignment, by default
+                it is SPM ('spm'), alternatively it can be DIPY ('dipy').
     saved4d:    if True, saves aligned frames into a one 4D NIfTI file.
     f4d:        the file name of the 4D output NIfTI file.
     reg_fwhm:   FWHM of the smoothing used for reference and floating 
@@ -101,6 +99,27 @@ def align_frames(
                 mutual information, 'nmi'.
 
     '''
+
+
+    # > the FWHM of the Gaussian kernel used for smoothing the images before registration and only for registration purposes.
+    reg_fwhm = Cnt['align']['reg_fwhm']
+    # > the threshold above which registration transformation is deemed to represent motion (not noise); based on a metric
+    # > of combined rotations and translations or average distance (rigid body).
+    reg_thrshld = Cnt['align']['reg_thrshld']
+    reg_costfun = Cnt['align']['reg_costfun']
+    # > the shortest PET frame to be used for registration in the alignment process.
+    frm_lsize = Cnt['align']['frame_min_dur']
+    reg_metric = Cnt['align']['reg_metric']
+
+
+    if reg_metric not in reg_metric_list:
+        raise ValueError('Unrecognised registration metric.')
+
+
+    if reg_tool=='dipy':
+        if reg_metric=='rss':
+            log.warning('`rss` is not supported option for DIPY registration - switching to `adst`')
+            reg_metric='adst'
 
 
     # > number of frames
@@ -219,6 +238,9 @@ def align_frames(
     # > initialise the array for metric of registration result (sum of angles+translations)
     R = np.zeros(len(mfrms_out))
 
+    # > similar metric but uses a sampled average distance imposed by the affine transformation
+    D = np.zeros(len(mfrms_out))
+
     # > full rotations and translations for mashed and full frames
     RT = np.zeros((len(mfrms_out), 6), dtype=np.float32)
     RTf= np.zeros((nfrm, 6), )
@@ -239,18 +261,42 @@ def align_frames(
         # if not mfrm.name.endswith('.nii'):
         #     raise ValueError('The mashed frame files should be uncompressed NIfTI')
 
-        # > register mashed frames to the reference
-        spm_res = nimpa.coreg_spm(fref, mfrm, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                  fwhm=[13, 13], costfun=reg_costfun,
-                                  fcomment=f'_mashed_ref-mfrm', outpath=mniidir,
-                                  visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
+        # > pick the reference point as the centre of mass of the floating imaging (used in `D`)
+        _, com_ = nimpa.centre_mass_rel(mfrm)
 
-        S[mi] = (spm_res['faff'])
+        if reg_tool=='spm':
+            # > register mashed frames to the reference
+            spm_res = nimpa.coreg_spm(fref, mfrm, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
+                                      fwhm=[13, 13], costfun=reg_costfun,
+                                      fcomment=f'_mashed_ref-mfrm', outpath=mniidir,
+                                      visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
 
-        RT[mi,:] = np.concatenate((spm_res['rotations'], spm_res['translations']), axis=0)
-        rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-        trn_ss = np.sum(spm_res['translations']**2)**.5
-        R[mi] = rot_ss + trn_ss
+            S[mi] = (spm_res['faff'])
+
+            RT[mi,:] = np.concatenate((spm_res['rotations'], spm_res['translations']), axis=0)
+            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+            trn_ss = np.sum(spm_res['translations']**2)**.5
+            R[mi] = rot_ss + trn_ss
+
+            # > average distance due to transformation/motion
+            D[mi] = nimpa.aff_dist(spm_res['affine'], com_)
+
+        elif reg_tool=='dipy':
+            # > register mashed frames to the reference using DIPY
+            dipy_res = nimpa.affine_dipy(
+                fref,
+                mfrm,
+                metric='MI',
+                outpath=mniidir,
+                fcomment=f'_mashed_ref-mfrm',
+                rfwhm=reg_fwhm,
+                ffwhm=reg_fwhm)
+
+            S[mi] = (dipy_res['faff'])
+
+            # > average distance due to transformation/motion
+            D[mi] = nimpa.aff_dist(dipy_res['affine'], com_)
+            
 
         # > align each frame through resampling 
         for i in mfrms[mi]:
@@ -258,29 +304,43 @@ def align_frames(
             # > get the rotation and translation parameters for each frame
             RTf[i,:] = RT[mi,:]
 
-            if R[mi]>reg_thrshld:
+            if (R[mi]>reg_thrshld) * (reg_metric=='rss') or (D[mi]>reg_thrshld) * (reg_metric=='adst'):
                 # > resample images for alignment
-                faligned[fi] = nimpa.resample_spm(
-                    fref,
-                    fniis[i],
-                    S[mi],
-                    intrp=1.,
-                    outpath=rsmpl_opth,
-                    pickname='flo',
-                    del_ref_uncmpr=True,
-                    del_flo_uncmpr=True,
-                    del_out_uncmpr=True,
-                )
+
+                if reg_tool=='spm':
+                    faligned[fi] = nimpa.resample_spm(
+                        fref,
+                        fniis[i],
+                        S[mi],
+                        intrp=1.,
+                        outpath=rsmpl_opth,
+                        pickname='flo',
+                        del_ref_uncmpr=True,
+                        del_flo_uncmpr=True,
+                        del_out_uncmpr=True,
+                    )
+                elif reg_tool=='dipy':
+
+                    rsmpld = nimpa.resample_dipy(
+                        fref,
+                        fniis[i],
+                        faff=S[mi],
+                        outpath=rsmpl_opth,
+                        pickname='flo',
+                        intrp=1)
+
+                    faligned[fi] = rsmpld['fnii']
 
             else:
-                faligned[fi] = rsmpl_opth/fniis[mfrms[mi][i]].name
-                shutil.copyfile(fniis[mfrms[mi][i]].name, faligned[fi])
+                faligned[fi] = rsmpl_opth/fniis[i].name
+                shutil.copyfile(fniis[i], faligned[fi])
 
             fi += 1
 
 
     outdct['affines'] = S
     outdct['metric'] = R
+    outdct['metric2'] = D
     # > for every frame:
     outdct['rot_trans'] = RTf
     outdct['faligned'] = faligned
@@ -302,6 +362,8 @@ def align_frames(
 # =====================================================================
 def align(niidat,
           Cnt,
+          reg_tool='spm',
+          com_correction=True,
           outpath=None,
           use_stored=True):
 
@@ -333,6 +395,8 @@ def align(niidat,
     aligned_suvr = align_suvr(
         stat_tdata,
         Cnt,
+        reg_tool=reg_tool,
+        com_correction=com_correction,
         outpath=opth,
         use_stored=use_stored)
 
@@ -342,6 +406,7 @@ def align(niidat,
         niidat,
         aligned_suvr,
         Cnt,
+        reg_tool=reg_tool,
         use_stored=use_stored)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -353,8 +418,9 @@ def align(niidat,
 def align_suvr(
     stat_tdata,
     Cnt,
+    reg_tool='spm',
     outpath=None,
-    not_aligned=True,
+    save_not_aligned=True,
     use_stored=False,
     com_correction=True,
     save_params=False,
@@ -366,14 +432,32 @@ def align_suvr(
     - com_correction: centre-of-mass correction - moves the coordinate system to the 
                 centre of the spatial image intensity distribution.
     - save_params:  save all the rotations and translations into a 3D matrix
+    - reg_tool:     the registration tool/method; SPM by default ('spm'), DIPY as
+                    an alternative ('dipy')
+    - reg_metric:   metric used in evaluating the amount motion when deciding
+                    motion correction. reg_tool='adst' does average sampled distance;
+                    the other option is the summed root sum square of
+                    translations and rotations, 'rss', available only for SPM.
 
     '''
 
     # > the FWHM of the Gaussian kernel used for smoothing the images before registration and only for registration purposes.
     reg_fwhm = Cnt['align']['reg_fwhm']
-    # > the threshold for the registration metric (combined trans. and rots) when deciding to apply the transformation
+    # > the metric and threshold for the registration/motion when deciding to apply the transformation
+    reg_metric  = Cnt['align']['reg_metric']
     reg_thrshld = Cnt['align']['reg_thrshld']
     reg_costfun = Cnt['align']['reg_costfun']
+    
+
+    if reg_metric not in reg_metric_list:
+        raise ValueError('Unrecognised registration metric.')
+
+
+    if reg_tool=='dipy':
+        if reg_metric=='rss':
+            log.warning('`rss` is not supported option for DIPY registration - switching to `adst`')
+            reg_metric='adst'
+
 
     if outpath is None:
         align_out = stat_tdata[stat_tdata['descr']['frms'][0]]['fnii'].parent.parent
@@ -408,11 +492,11 @@ def align_suvr(
 
     # > re-aligned output file names and output dictionary
     faligned   = f'SUVr-aligned_{nsfrm}-frames_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    faligned_c = f'SUVr-aligned_{nsfrm}-frames_CoM_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
+    faligned_c = f'SUVr-aligned_{nsfrm}-frames_' + com_correction*('CoM_') + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     faligned_s = f'Aligned-{nfrm}-frames-to-SUVr_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     falign_dct = f'Aligned-{nfrm}-frames-to-SUVr_{t_}_' + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series'])+'.npy'
     faligned = niidir_i/faligned
-    faligned_s = niidir_i / faligned_s
+    faligned_s = niidir / faligned_s
     faligned_c = niidir_i / faligned_c
     falign_dct = niidir / falign_dct
 
@@ -440,9 +524,8 @@ def align_suvr(
 
         # > frame-based motion metric (rotations+translation)
         R = np.zeros((len(nii_frms), len(nii_frms)), dtype=np.float32)
-
-        # > save all rotations and translations if requested
-        #R_ = np.zeros((len(nii_frms), len(nii_frms), 6), dtype=np.float32)
+        # > average sampled distance alternative metric
+        D = np.zeros((len(nii_frms), len(nii_frms)), dtype=np.float32)
 
         # > paths to the affine files
         S = [[None for _ in range(len(nii_frms))] for _ in range(len(nii_frms))]
@@ -455,41 +538,115 @@ def align_suvr(
             fnii0 = nii_frms[frm0]
             fnii1 = nii_frms[frm1]
 
-            log.info(f'registration of frame #{frm0} and frame #{frm1}')
+            log.info(f'2-way registration of frame #{frm0} and frame #{frm1}')
 
-            # > one way registration
-            spm_res = nimpa.coreg_spm(fnii0, fnii1, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                      fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_combi_{frm0}-{frm1}', outpath=niidir,
-                                      visual=0, save_arr=False, del_uncmpr=True)
+            if reg_tool=='spm':
+                #....................................................
+                # > one way registration (1)
+                spm_res = nimpa.coreg_spm(
+                                fnii0,
+                                fnii1,
+                                fwhm_ref=reg_fwhm,
+                                fwhm_flo=reg_fwhm,
+                                fwhm=[13, 13],
+                                costfun=reg_costfun,
+                                fcomment=f'_combi_{frm0}-{frm1}',
+                                outpath=niidir,
+                                visual=0,
+                                save_arr=False,
+                                del_uncmpr=True)
 
-            S[frm0][frm1] = spm_res['faff']
+                rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+                trn_ss = np.sum(spm_res['translations']**2)**.5
+                R[frm0, frm1] = rot_ss + trn_ss
 
-            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-            trn_ss = np.sum(spm_res['translations']**2)**.5
-            R[frm0, frm1] = rot_ss + trn_ss
+                # > pick the reference point as the centre of mass of the floating imaging (used in `D`)
+                _, com_ = nimpa.centre_mass_rel(fnii1)
+                # > average distance due to transformation/motion
+                D[frm0, frm1] = nimpa.aff_dist(spm_res['affine'], com_)
 
-            # > the other way registration
-            spm_res = nimpa.coreg_spm(fnii1, fnii0, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                      fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_combi_{frm1}-{frm0}', outpath=niidir,
-                                      visual=0, save_arr=False, del_uncmpr=True)
+                S[frm0][frm1] = spm_res['faff']
 
-            S[frm1][frm0] = spm_res['faff']
 
-            rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-            trn_ss = np.sum(spm_res['translations']**2)**.5
-            R[frm1, frm0] = rot_ss + trn_ss
-            #R_[frm1, frm0, :] = numpy.concatenate((spm_res['rotations'], spm_res['translations'], ...), axis=0)  
+                # > the other way registration
+                spm_res = nimpa.coreg_spm(
+                                fnii1,
+                                fnii0,
+                                fwhm_ref=reg_fwhm,
+                                fwhm_flo=reg_fwhm,
+                                fwhm=[13, 13],
+                                costfun=reg_costfun,
+                                fcomment=f'_combi_{frm1}-{frm0}',
+                                outpath=niidir,
+                                visual=0,
+                                save_arr=False,
+                                del_uncmpr=True)
 
+                rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
+                trn_ss = np.sum(spm_res['translations']**2)**.5
+                R[frm1, frm0] = rot_ss + trn_ss
+                
+                # > pick the reference point as the centre of mass of the floating imaging (used in `D`)
+                _, com_ = nimpa.centre_mass_rel(fnii0)
+                # > average distance due to transformation/motion
+                D[frm1, frm0] = nimpa.aff_dist(spm_res['affine'], com_)
+
+                S[frm1][frm0] = spm_res['faff']
+                #....................................................
+
+            
+
+            elif reg_tool=='dipy':
+                #....................................................
+                # > 1st way of registration using DIPY
+                dipy_res = nimpa.affine_dipy(
+                                fnii0,
+                                fnii1,
+                                rfwhm=reg_fwhm,
+                                ffwhm=reg_fwhm,
+                                outpath=niidir,
+                                fcomment=f'_combi_{frm0}-{frm1}')
+
+                S[frm0][frm1] = (dipy_res['faff'])
+
+                # > average distance due to transformation/motion
+                _, com_ = nimpa.centre_mass_rel(fnii1)
+                D[frm0, frm1] = nimpa.aff_dist(dipy_res['affine'], com_)
+
+
+                # > 2nd way of registration using DIPY
+                dipy_res = nimpa.affine_dipy(
+                                fnii1,
+                                fnii0,
+                                rfwhm=reg_fwhm,
+                                ffwhm=reg_fwhm,
+                                outpath=niidir,
+                                fcomment=f'_combi_{frm1}-{frm0}')
+
+                S[frm1][frm0] = (dipy_res['faff'])
+
+                # > average distance due to transformation/motion
+                _, com_ = nimpa.centre_mass_rel(fnii0)
+                D[frm1, frm0] = nimpa.aff_dist(dipy_res['affine'], com_)
+                #....................................................
+
+
+
+        # > FIND THE REFERENCE FRAME
         # > sum frames along floating frames
         fsum = np.sum(R, axis=0)
+        fsumd= np.sum(D, axis=0)
 
         # > sum frames along reference frames
         rsum = np.sum(R, axis=1)
+        rsumd= np.sum(D, axis=1)
 
         # > reference frame for SUVr composite frame
         rfrm = np.argmin(fsum + rsum)
+        rfrmd= np.argmin(fsumd + rsumd)
+
+        print('reference frame using rss', rfrm)
+        print('reference frame using adst', rfrmd)
 
         niiref = nimpa.getnii(nii_frms[rfrm], output='all')
 
@@ -503,25 +660,47 @@ def align_suvr(
         fnii_aligned = [nii_frms[rfrm]]
 
         for ifrm in range(len(nii_frms)):
+            
+            # > ignore the reference frame already dealt with
             if ifrm == rfrm:
                 continue
 
-            # > resample images for alignment
-            frsmpl = nimpa.resample_spm(
-                nii_frms[rfrm],
-                nii_frms[ifrm],
-                S[rfrm][ifrm],
-                intrp=1.,
-                outpath=rsmpl_opth,
-                pickname='flo',
-                del_ref_uncmpr=True,
-                del_flo_uncmpr=True,
-                del_out_uncmpr=True,
-            )
+            # > check if the motion for this frame is large enough to warren correction
+            if (R[rfrm, ifrm]>reg_thrshld) * (reg_metric=='rss') or (D[rfrm, ifrm]>reg_thrshld) * (reg_metric=='adst'):
 
-            fnii_aligned.append(frsmpl)
+                # > resample images for alignment
+                if reg_tool=='spm':
+                    frsmpl = nimpa.resample_spm(
+                        nii_frms[rfrm],
+                        nii_frms[ifrm],
+                        S[rfrm][ifrm],
+                        intrp=1.,
+                        outpath=rsmpl_opth,
+                        pickname='flo',
+                        del_ref_uncmpr=True,
+                        del_flo_uncmpr=True,
+                        del_out_uncmpr=True,
+                    )
+                
+                elif reg_tool=='dipy':
+                    rsmpld = nimpa.resample_dipy(
+                        nii_frms[rfrm],
+                        nii_frms[ifrm],
+                        faff=S[rfrm][ifrm],
+                        outpath=rsmpl_opth,
+                        pickname='flo',
+                        intrp=1)
 
-            niiim[ifrm, ...] = nimpa.getnii(frsmpl)
+                    frsmpl = rsmpld['fnii']
+
+
+                fnii_aligned.append(frsmpl)
+                niiim[ifrm, ...] = nimpa.getnii(frsmpl)
+
+            else:
+                fnii_aligned.append(nii_frms[ifrm])
+                niiim[ifrm, ...] = nimpa.getnii(nii_frms[ifrm])
+        
         
         # > remove NaNs
         niiim[np.isnan(niiim)] = 0
@@ -537,7 +716,7 @@ def align_suvr(
         # SINGLE SUVR FRAME  &  CoM CORRECTION
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single SUVr frame
-        suvr_frm = preproc_suvr(faligned, outpath=niidir, com_correction=True)
+        suvr_frm = preproc_suvr(faligned, outpath=niidir, com_correction=com_correction)
         fref = suvr_frm['fcom']
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -552,7 +731,7 @@ def align_suvr(
         # > save aligned SUVr frames
         tmp = nimpa.getnii(fref, output='all')
         nimpa.array2nii(
-            niiim, tmp['affine'], faligned_c, descrip='AmyPET: aligned SUVr frames, CoM-modified',
+            niiim, tmp['affine'], faligned_c, descrip='AmyPET: aligned SUVr frames' + com_correction*(', CoM-modified'),
             trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
                    tmp['transpose'].index(2)), flip=tmp['flip'])
         # -----------------------------------------------
@@ -569,7 +748,7 @@ def align_suvr(
             'faff': S}
 
         # > save static image which is not aligned
-        if not_aligned:
+        if save_not_aligned:
             nii_noalign = np.zeros(niiim.shape, dtype=np.float32)
             for k, fnf in enumerate(nii_frms):
                 nii_noalign[k, ...] = nimpa.getnii(fnf)
@@ -584,94 +763,54 @@ def align_suvr(
 
 
 
-
-
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # The remaining frames of static or fully dynamic PET
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-        # # > indices of non-suvr frames
-        # idx_r = [not f in stat_tdata['descr']['suvr']['frms'] for f in stat_tdata['descr']['frms']]
+        # > indices of non-suvr frames
+        idx_r = [not f in stat_tdata['descr']['suvr']['frms'] for f in stat_tdata['descr']['frms']]
 
-        # falign = np.array([stat_tdata[f]['fnii'] for f in stat_tdata['descr']['frms']])
-        # falign = list(falign[idx_r])
+        falign = np.array([stat_tdata[f]['fnii'] for f in stat_tdata['descr']['frms']])
+        ts = np.array(stat_tdata['descr']['timings'])
 
-        # ts = np.array(stat_tdata['descr']['timings'])
-        # ts = ts[idx_r]
-
-        # import pdb; pdb.set_trace()
-
-        # aligned_frms = align_frames(
-        #     falign,
-        #     ts,
-        #     fref,
-        #     frm_lsize=60,
-        #     reg_thrshld=2.0,
-        #     save4d=False,
-        #     f4d=None,
-        #     reg_fwhm=8,
-        #     reg_costfun='nmi',
-        #     outpath=niidir)
-
-        # #aligned_frms = align_frames(falign, ts, fref, frm_lsize=240, reg_thrshld=2.0, save4d=False, f4d=None, reg_fwhm=8, reg_costfun='nmi', outpath=niidir)
-
+        aligned_wide = align_frames(
+            list(falign[idx_r]),
+            ts[idx_r],
+            fref,
+            Cnt,
+            save4d=False, f4d=None,
+            outpath=niidir)
 
 
         # > output files for affines
-        S_ = [None for _ in range(nfrm)]
+        S_w = [None for _ in range(nfrm)]
 
-        # > motion metric for any remaining frames
-        R_ = np.zeros(nfrm)
+        # > motion metrics for any remaining frames
+        R_w = np.zeros(nfrm)
+        D_w = np.zeros(nfrm)
 
         # > output paths of aligned images for the static part
-        fnii_aligned_ = [None for _ in range(nfrm)]
+        fnii_aligned_w = [None for _ in range(nfrm)]
 
         niiim_ = np.zeros((nfrm,) + niiref['shape'], dtype=np.float32)
 
-        # > index/counter for SUVr frames
+        # > index/counter for UR/SUVr frames and wide frames
         fsi = 0
+        fwi = 0
 
-        for fi, frm in enumerate(stat_tdata['descr']['frms']):
-            if not frm in stat_tdata['descr']['suvr']['frms']:
-
-                fnii = stat_tdata[frm]['fnii']
-                # > register frame to the reference
-                spm_res = nimpa.coreg_spm(fref, fnii, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
-                                          fwhm=[13, 13], costfun=reg_costfun,
-                                          fcomment=f'_ref-static', outpath=niidir,
-                                          visual=0, save_arr=False, del_uncmpr=True, pickname='flo')
-
-                S_[fi] = spm_res['faff']
-
-                rot_ss = np.sum((180 * spm_res['rotations'] / np.pi)**2)**.5
-                trn_ss = np.sum(spm_res['translations']**2)**.5
-                R_[fi] = rot_ss + trn_ss
-
-                # > align each frame through resampling 
-                if R_[fi]>reg_thrshld:
-                    # > resample images for alignment
-                    fnii_aligned_[fi] = nimpa.resample_spm(
-                        fref,
-                        fnii,
-                        S_[fi],
-                        intrp=1.,
-                        outpath=rsmpl_opth,
-                        pickname='flo',
-                        del_ref_uncmpr=True,
-                        del_flo_uncmpr=True,
-                        del_out_uncmpr=True,
-                    )
-                else:
-                    fnii_aligned_[fi] = rsmpl_opth/fnii.name
-                    shutil.copyfile(fnii, fnii_aligned_[fi])
-
-                niiim_[fi, ...] = nimpa.getnii(fnii_aligned_[fi])
-            
+        for fi, frm in enumerate(falign):
+            if idx_r[fi]:
+                S_w[fi] = aligned_wide['affines'][fwi]
+                R_w[fi] = aligned_wide['metric'][fwi]
+                D_w[fi] = aligned_wide['metric2'][fwi]
+                fnii_aligned_w[fi] = aligned_wide['faligned'][fwi]
+                niiim_[fi, ...] = nimpa.getnii(fnii_aligned_w[fi])
+                fwi += 1
             else:
                 # > already aligned as part of SUVr
-                fnii_aligned_[fi] = Path(outdct['suvr']['fpeti'][fsi])
-                S_[fi] = S[rfrm][fsi]
-                R_[fi] = R[rfrm][fsi]
+                fnii_aligned_w[fi] = Path(outdct['suvr']['fpeti'][fsi])
+                S_w[fi] = S[rfrm][fsi]
+                R_w[fi] = R[rfrm][fsi]
                 niiim_[fi, ...] = niiim[fsi,...]
                 fsi += 1
 
@@ -683,10 +822,10 @@ def align_suvr(
 
         outdct['wide'] = {
             'fpet': faligned_s,
-            'fpeti':fnii_aligned_,
+            'fpeti':fnii_aligned_w,
             'outpath': niidir,
-            'Metric': R_,
-            'faff': S_}
+            'Metric': R_w,
+            'faff': S_w}
 
         np.save(falign_dct, outdct)
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -705,6 +844,7 @@ def align_break(
     niidat,
     aligned_suvr,
     Cnt,
+    reg_tool='spm',
     use_stored=False,
     ):
     
@@ -713,6 +853,9 @@ def align_break(
         Arguments:
         - niidat:   dictionary of all input NIfTI series.
         - aligned_suvr: dictionary of the alignment output for SUVr frames
+        - reg_tool: the method of registration used in aligning PET frames,
+                    by default it is SPM ('spm') with the alternative of
+                    DIPY ('dipy')
         - frame_min_dur: 
         - decay_corr: 
     '''
@@ -723,7 +866,7 @@ def align_break(
     # > registration cost function
     reg_costfun = Cnt['align']['reg_costfun']
     # > the shortest PET frame to be used for registration in the alignment process.
-    frame_min_dur=Cnt['align']['frame_min_dur']
+    # frame_min_dur=Cnt['align']['frame_min_dur']
     # > correct for decay between different series relative to the earliest one
     decay_corr=Cnt['align']['decay_corr'],
 
@@ -764,11 +907,11 @@ def align_break(
     #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 
 
-    # > output folder for mashed frames for registration/alignment
-    mniidir = niidat['outpath']/'mashed_break'
-    rsmpl_opth = mniidir/'aligned'
-    nimpa.create_dir(mniidir)
-    nimpa.create_dir(rsmpl_opth)
+    # # > output folder for mashed frames for registration/alignment
+    # mniidir = niidat['outpath']/'mashed_break'
+    # rsmpl_opth = mniidir/'aligned'
+    # nimpa.create_dir(mniidir)
+    # nimpa.create_dir(rsmpl_opth)
 
 
     tstudy = bdyn_tdata[bdyn_tdata['descr']['frms'][0]]['tstudy']
@@ -796,9 +939,11 @@ def align_break(
 
     #----------------------------------
     aligned = align_frames(
-        fniis, ts,
+        fniis,
+        ts,
         fref,
-        frm_lsize=frame_min_dur,
+        Cnt,
+        reg_tool=reg_tool,
         save4d=False,
         outpath=niidat['outpath'])
     #----------------------------------
