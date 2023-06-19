@@ -35,7 +35,7 @@ Cnt = dict(
     endfov_corr=dict(
 
         # > frame range for which the correction is applied
-        frm_rng=(0,10),
+        frm_rng=range(0,10),
 
         # > the axial (z) voxel margin where performing correction at the ends of FOV
         z_margin=10),
@@ -56,7 +56,14 @@ Cnt = dict(
         reg_fwhm=8,
 
         # > metric threshold for applying registration
-        reg_thrshld=2.0,),
+        reg_thrshld=1.0,
+
+        # > metric used in evaluating the amount motion when deciding
+        # > motion correction. `adst` is the average sampled distance
+        # > with the alternative being the summed root sum square of
+        # > translations and rotations `rss`.
+        reg_metric = 'adst',
+        ),
 
     timings=dict(
         # > SUVr time window post injection and duration for amyloid tracers
