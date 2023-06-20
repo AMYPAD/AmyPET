@@ -405,7 +405,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                         **{f'suvr_{key}': value for key, value in out[onm]['suvr'].items()},
                         **{f'cl_{key}': value for key, value in out[onm]['cl'].items() if key == 'wc'}}
 
-        if csv_metrics == 'long':
+        elif csv_metrics == 'long':
             csv_dict = {'path_outputs': out[onm]['opth'],
                         **{f'suv_{key}': value for key, value in out[onm]['avgvoi'].items()},
                         **{f'suvr_{key}': value for key, value in out[onm]['suvr'].items()},
