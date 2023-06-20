@@ -414,7 +414,10 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                         **{f'suvr_pib_calc_transf_{key}': value for key, value in
                            out[onm]['suvr_pib_calc_transf'].items()},
                         **{f'cl_{key}': value for key, value in out[onm]['cl'].items()}}
+        elif csv_metrics:
+            raise KeyError(f"`csv_metrics`: unknown value ({csv_metrics})")
 
+        if csv_dict:
         with open(os.path.join(outpath, 'amypet_outputs.csv'), 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
             writer.writeheader()
