@@ -277,22 +277,25 @@ def get_main_parser(gui_mode=True, argparser=MyParser):
         Options:
           --dst PATH           : Output file/folder (default: input folder)
             [default: FileChooser]
-          --model MODEL        : model [default: srtmb_basis]
+          --models MODEL       : model [default: srtmb_basis]
           --params FILE        : config file hint (relative to `src` input).
             Default: search for {config,params}.{yaml,json}.
+          --input_interp_method METHOD  : [default: linear]
           --w W                : (default: None)
-          --r1 R1              : [default: 0.905:float]
+          --r1 R1              : [default: 1:float]
           --k2p K2P            : [default: 0.000250:float]
           --beta_lim BETA_LIM  : (default: None)
           --n_beta N_BETA      : [default: 40:int]
           --linear_phase_start LINEAR_PHASE_START  : [default: 500:int]
           --linear_phase_end LINEAR_PHASE_END      : (default: None)
           --km_outputs KM_OUTPUTS                  : (default: None)
-          --thr THR                                : [default: 0.1:float]
-        """, version=niftypad.__version__, python_deps=["niftypad>=1.1.1"], argparser=argparser)
+          --mask MASK          : (default: None) [default: FileChooser]
+          --thr THR            : [default: 0.1:float]
+        """, version=niftypad.__version__, python_deps=["niftypad>=2.0.0"], argparser=argparser)
     opts = kinetic_model.parser._get_optional_actions()
-    model = next(i for i in opts if i.dest == "model")
-    model.choices = niftypad.models.NAMES
+    models = next(i for i in opts if i.dest == "models")
+    models.choices = niftypad.models.NAMES
+    models.nargs = '+'
 
     # example of how to wrap any CLI command using an `argopt`-style docstring
     Cmd([sys.executable, "-m", "miutil.cuinfo"], miutil.cuinfo.__doc__, version=miutil.__version__,
