@@ -418,12 +418,10 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
             raise KeyError(f"`csv_metrics`: unknown value ({csv_metrics})")
 
         if csv_dict:
-        with open(os.path.join(outpath, 'amypet_outputs.csv'), 'w', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
-            writer.writeheader()
-            writer.writerow(csv_dict)
-        # ---------------------------------
-
+            with open(os.path.join(outpath, 'amypet_outputs.csv'), 'w', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
+                writer.writeheader()
+                writer.writerow(csv_dict)
         # **************************************************************
 
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
