@@ -9,7 +9,7 @@ Amyloid imaging to prevent Alzheimer's Disease.
 Install
 -------
 
-Requires Python 3.6 or greater.
+Requires Python 3.7 or greater.
 
 .. code:: sh
 
