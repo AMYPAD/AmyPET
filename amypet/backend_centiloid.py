@@ -35,7 +35,7 @@ log = logging.getLogger(__name__)
 # ----------------------------------------------------------------------
 def load_masks(mskpath, voxsz: int = 2):
     ''' Load the Centiloid PET masks for calculating
-        the SUVr to then convert it to Centiloid.
+        the uptake ratio (UR, aka SUVr) to then convert it to Centiloid.
 
         Return the paths to the masks and the masks themselves
         Options:
@@ -115,7 +115,7 @@ def sort_input(fpets, fmris, flip_pet=None):
 def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         cmass_corr_pet=True, stage='f', voxsz: int = 2, outpath=None, use_stored=False,
         climage=True, cl_anchor_path: Optional[Path] = None,
-        csv_metrics='short'):
+        csv_metrics='short', fcsv=None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -151,8 +151,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
       cl_anchor_path: The path where optional CL anchor dictionary is
                 saved.
       csv_metrics: output metrics saved to csv:
-            - for SUVr (all reference regions) and CLwc only,`csv_metrics`='short'
-            - for SUV, SUVr, corresponding SUVr PiB, SUVr transformations
+            - for UR (all reference regions) and CLwc only,`csv_metrics`='short'
+            - for SUV, UR, corresponding UR PiB, UR transformations
             and CL ,`csv_metrics`='long'
     """
 
@@ -211,7 +211,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         opthr = spth / 'registration'
         opthn = spth / 'normalisation'
         optho = spth / 'normalised'
-        opths = spth / 'suvr'
+        opths = spth / 'results'
         opthi = spth / 'cl-image'
 
         # > find if the normalised PET is already there
@@ -327,9 +327,9 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
 
         # npet[npet<0] = 0
 
-        # > extract mean values and SUVr
+        # > extract mean values and UR
         out[onm]['avgvoi'] = avgvoi = {fmsk: np.mean(npet[masks[fmsk] > 0]) for fmsk in fmasks}
-        out[onm]['suvr'] = suvr = {
+        out[onm]['ur'] = ur = {
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
@@ -366,9 +366,9 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
 
         # ---------------------------------
         # > centiloid transformation for PiB
-        # > check if SUVr transformation is needed for F-18 tracers
+        # > check if UR transformation is needed for F-18 tracers
         if tracer in f18_tracers:
-            pth = cl_fldr / f'suvr_{tracer}_to_suvr_pib__transform.pkl'
+            pth = cl_fldr / f'ur_{tracer}_to_ur_pib__transform.pkl'
 
             if not os.path.isfile(pth):
                 log.warning(
@@ -376,52 +376,63 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
             else:
                 with open(pth, 'rb') as f:
                     CNV = pickle.load(f)
-                print('loaded SUVr transformations for tracer:', tracer)
+                print('loaded UR (aka SUVr) transformations for tracer:', tracer)
 
-                # > save the PiB converted SUVrs
-                out[onm]['suvr_pib_calc'] = suvr_pib_calc = {
-                    fmsk: (suvr[fmsk] - CNV[fmsk]['b_std']) / CNV[fmsk]['m_std']
+                # > save the PiB converted URs
+                out[onm]['ur_pib_calc'] = ur_pib_calc = {
+                    fmsk: (ur[fmsk] - CNV[fmsk]['b_std']) / CNV[fmsk]['m_std']
                     for fmsk in fmasks if fmsk != 'ctx'}
 
                 # > save the linear transformation parameters
-                out[onm]['suvr_pib_calc_transf'] = {
+                out[onm]['ur_pib_calc_transf'] = {
                     fmsk: (CNV[fmsk]['m_std'], CNV[fmsk]['b_std'])
                     for fmsk in fmasks if fmsk != 'ctx'}
 
-            # > used now the new PiB converted SUVrs
-            suvr = suvr_pib_calc
+            # > used now the new PiB converted URs
+            ur = ur_pib_calc
         # ---------------------------------
 
         if tracer != 'new':
             out[onm]['cl'] = cl = {
-                fmsk: 100 * (suvr[fmsk] - CLA[fmsk][0]) / (CLA[fmsk][1] - CLA[fmsk][0])
+                fmsk: 100 * (ur[fmsk] - CLA[fmsk][0]) / (CLA[fmsk][1] - CLA[fmsk][0])
                 for fmsk in fmasks if fmsk != 'ctx'}
 
 
         # ---------------------------------
-        # > save csv with suvr and cl outputs
+        # > save CSV with UR and CL outputs
         if csv_metrics == 'short':
             csv_dict = {'path_outputs': out[onm]['opth'],
-                        **{f'suvr_{key}': value for key, value in out[onm]['suvr'].items()},
+                        **{f'ur_{key}': value for key, value in out[onm]['ur'].items()},
                         **{f'cl_{key}': value for key, value in out[onm]['cl'].items() if key == 'wc'}}
 
         elif csv_metrics == 'long':
             csv_dict = {'path_outputs': out[onm]['opth'],
                         **{f'suv_{key}': value for key, value in out[onm]['avgvoi'].items()},
-                        **{f'suvr_{key}': value for key, value in out[onm]['suvr'].items()},
-                        **{f'suvr_pib_calc_{key}': value for key, value in
-                           out[onm]['suvr_pib_calc'].items()},
-                        **{f'suvr_pib_calc_transf_{key}': value for key, value in
-                           out[onm]['suvr_pib_calc_transf'].items()},
+                        **{f'ur_{key}': value for key, value in out[onm]['ur'].items()},
+                        **{f'ur_pib_calc_{key}': value for key, value in
+                           out[onm]['ur_pib_calc'].items()},
+                        **{f'ur_pib_calc_transf_{key}': value for key, value in
+                           out[onm]['ur_pib_calc_transf'].items()},
                         **{f'cl_{key}': value for key, value in out[onm]['cl'].items()}}
         elif csv_metrics:
             raise KeyError(f"`csv_metrics`: unknown value ({csv_metrics})")
 
         if csv_dict:
-        with open(os.path.join(outpath, 'amypet_outputs.csv'), 'w', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
-            writer.writeheader()
-            writer.writerow(csv_dict)
+            if fcsv is not None:
+                fcsv = Path(fcsv)
+            else:
+                fcsv = opth/'amypet_outputs.csv'
+            
+            if fcsv.is_file():
+                with open(fcsv, 'a', newline='') as csvfile:
+                    writer.writerow(csv_dict)
+            else:
+                with open(fcsv, 'w', newline='') as csvfile:
+                    writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
+                    writer.writeheader()
+                    writer.writerow(csv_dict)
+
+            out[onm]['fcsv'] = fcsv
         # ---------------------------------
 
         # **************************************************************
@@ -436,15 +447,15 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
 
                 refavg = out[onm]['avgvoi'][refvoi]
 
-                # > obtain the SUVr image for the given reference VOI
-                npet_suvr = npet / refavg
+                # > obtain the UR image for the given reference VOI
+                npet_ur = npet / refavg
 
                 # > convert to PiB scale if it is an F18 tracer
                 if tracer in f18_tracers:
-                    npet_suvr = (npet_suvr - CNV[refvoi]['b_std']) / CNV[refvoi]['m_std']
+                    npet_ur = (npet_ur - CNV[refvoi]['b_std']) / CNV[refvoi]['m_std']
 
-                # > convert the (PiB) SUVr image to CL scale
-                npet_cl = 100 * (npet_suvr - CLA[refvoi][0]) / (CLA[refvoi][1] - CLA[refvoi][0])
+                # > convert the (PiB) uptake ratio (UR) image to CL scale
+                npet_cl = 100 * (npet_ur - CLA[refvoi][0]) / (CLA[refvoi][1] - CLA[refvoi][0])
 
                 # > get the CL global value by applying the CTX mask
                 cl_ = np.mean(npet_cl[masks['ctx'].astype(bool)])
@@ -547,10 +558,10 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         ax[1].set_axis_off()
         ax[1].set_title(f'{onm} sagittal centiloid sampling')
 
-        suvrstr = ",   ".join([
-            f"PiB transformed: $SUVR_{{WC}}=${suvr['wc']:.3f}", f"$SUVR_{{GMC}}=${suvr['cg']:.3f}",
-            f"$SUVR_{{CBS}}=${suvr['wcb']:.3f}", f"$SUVR_{{PNS}}=${suvr['pns']:.3f}"])
-        ax[1].text(0, 190, suvrstr, fontsize=12)
+        urstr = ",   ".join([
+            f"PiB transformed: $UR_{{WC}}=${ur['wc']:.3f}", f"$UR_{{GMC}}=${ur['cg']:.3f}",
+            f"$UR_{{CBS}}=${ur['wcb']:.3f}", f"$UR_{{PNS}}=${ur['pns']:.3f}"])
+        ax[1].text(0, 190, urstr, fontsize=12)
 
         if tracer != 'new':
             clstr = ",   ".join([
@@ -561,7 +572,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         plt.tight_layout()
         fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.1, wspace=0.1)
 
-        fqcpng = opths / f'{onm}_CL-SUVr_mask_PET_sampling.png'
+        fqcpng = opths / f'{onm}_CL-UR-mask_PET_sampling.png'
         plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
         out[onm]['_amypet_imscroll'] = fig
         plt.close('all')

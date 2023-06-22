@@ -178,8 +178,8 @@ outf = out_fe
 
 cal = amypet.calib_tracer(outp, outf)
 
-# > save the transformations from SUVr to SUVr_PiB_Calc
-Tsuvr = amypet.save_suvr2pib(cal, 'fbp')
+# > save the transformations from UR to UR_PiB_Calc
+ur = amypet.save_ur2pib(cal, 'fbp')
 
 # TEST
 out_t = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth / 'output_test_pib')
@@ -202,22 +202,22 @@ dat = info['Sheet1']
 istart = 2
 
 pid = [i.value for i in dat['A'][istart:]]
-suvr_wc_fbp = np.array([i.value for i in dat['D'][istart:]])
-suvr_wc_pib = [i.value for i in dat['E'][istart:]]
-suvr_wc_cnv = [i.value for i in dat['G'][istart:]]
+ur_wc_fbp = np.array([i.value for i in dat['D'][istart:]])
+ur_wc_pib = [i.value for i in dat['E'][istart:]]
+ur_wc_cnv = [i.value for i in dat['G'][istart:]]
 cl_wc_fbp = np.array([i.value for i in dat['I'][istart:]])
 cl_wc_pib = [i.value for i in dat['J'][istart:]]
 
 # > index conversion from the xlsx file to the AmyPET indexes (sorted)
 idxs = [pid.index(int(i)) for i in cal['wc']['sbj']]
-suvrf_avid = suvr_wc_fbp[idxs]
-suvrf_amyp = cal['wc']['calib']['cl_suvr'][:, 2]
+urf_avid = ur_wc_fbp[idxs]
+urf_amyp = cal['wc']['calib']['cl_ur'][:, 2]
 
 clf_avid = cl_wc_fbp[idxs]
 
 plt.figure()
-plt.plot(suvrf_avid, suvrf_amyp, '.')
+plt.plot(urf_avid, urf_amyp, '.')
 
 fig, ax = plt.subplots()
-ax.scatter(cal[rvoi]['calib']['cl_suvr'][:, 1], cal[rvoi]['calib']['cl_suvr'][:, 2], c='black')
+ax.scatter(cal[rvoi]['calib']['cl_ur'][:, 1], cal[rvoi]['calib']['cl_ur'][:, 2], c='black')
 amypet.utils.identity_line(ax=ax, ls='--', c='b')

@@ -18,8 +18,8 @@ Cnt = amypet.init()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ignore_derived = False
 
-# > SUVr window def
-suvr_win_def=[5400,6600]
+# > UR window def
+ur_win_def=[5400,6600]
 
 tracer = 'fbb' # 'pib', 'flute', 'fbp'
 
@@ -44,13 +44,13 @@ if ft1w is None:
 #------------------------------
 
 #------------------------------
-# > processed the PET input data and classify it (e.g., automatically identify SUVr frames)
+# > processed the PET input data and classify it (e.g., automatically identify UR frames)
 indat = amypet.explore_indicom(
     input_fldr,
     Cnt,
     tracer=tracer,
-    find_suvr=True,
-    suvr_win_def=suvr_win_def,
+    find_ur=True,
+    ur_win_def=ur_win_def,
     outpath=outpath/'DICOMs')
 
 # > convert to NIfTIs
@@ -81,7 +81,7 @@ aligned = amypet.align(
 # CL QUANTIFICATION
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 out_cl = centiloid.run(
-    aligned['suvr']['fsuvr'],
+    aligned['ur']['fur'],
     ft1w,
     Cnt,
     stage='f',
