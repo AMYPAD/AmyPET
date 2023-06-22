@@ -93,6 +93,6 @@ jobs:
       run: |
         changelog=$(git log --pretty='format:%d%n- %s%n%b---' $(git tag --sort=v:refname | tail -n2 | head -n1)..HEAD)
         tag="${GITHUB_REF#refs/tags/}"
-        gh release create --title "amypet $tag alpha" --draft --notes "$changelog" "$tag" dist/${{ steps.dist.outputs.whl }} dist/${{ steps.dist.outputs.whl_asc }}
+        gh release create --title "AmyPET $tag alpha" --draft --notes "$changelog" "$tag" dist/${{ steps.dist.outputs.whl }} dist/${{ steps.dist.outputs.whl_asc }}
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
