@@ -76,8 +76,8 @@ outf = out_fa
 
 cal = amypet.calib_tracer(outp, outf)
 
-# > save the transformations from SUVr to SUVr_PiB_Calc
-Tsuvr = amypet.save_suvr2pib(cal, 'flute')
+# > save the transformations from UR to UR_PiB_Calc
+Tur = amypet.save_ur2pib(cal, 'flute')
 
 # TEST
 out_t = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth / 'output_test_pib')

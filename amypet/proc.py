@@ -256,9 +256,7 @@ def proc_vois(
     Process and prepare the VOI dynamic data for kinetic analysis.
     Arguments:
     niidat:     dictionary with NIfTI file paths and properties with time.
-    aligned_suvr: dictionary of aligned static frames with the SUVr
-                and properties.
-    aligned_brk:dictionary of aligned early frames, with properties
+    aligned:    dictionary of aligned frames, with properties
     cl_dct:     dictionary of centiloid (CL) processing outputs - used
                 for inverse transformation to native image spaces.
     atlas:      choice of atlas; default is the Hammers atlas (atlas='hammers'');
@@ -329,9 +327,7 @@ def proc_vois(
 
 
     # > get the atlas and GM probability mask in PET space using CL inverse pipeline
-    atlgm = atl2pet(aligned['suvr']['fsuvr'], fatl, cl_dct, outpath=opth)
-
-    # > TO DO: the dynamic image can be in aligned_suvr
+    atlgm = atl2pet(aligned['ur']['fur'], fatl, cl_dct, outpath=opth)
 
     if apply_gmmask:
         gmmsk = atlgm['fgmpet']

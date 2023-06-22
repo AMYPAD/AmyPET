@@ -26,24 +26,24 @@ dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
 
 # ========================================================================================
-def preproc_suvr(
+def preproc_ur(
     pet_path,
     frames=None,
     outpath=None,
     fname=None,
     com_correction=True,
     force=True):
-    ''' Prepare the PET image for SUVr analysis.
+    ''' Prepare the PET image for UR (aka SUVr) analysis.
         Arguments:
         - pet_path: path to the folder of DICOM images, or to the NIfTI file
         - outpath:  output folder path; if not given will assume the parent
                     folder of the input image
-        - fname:    core name of the static (SUVr) NIfTI file
-        - frames:   list of frames to be used for SUVr processing
+        - fname:    core name of the static (UR) NIfTI file
+        - frames:   list of frames to be used for UR processing
         - com_correction: centre-of-mass correction - moves the coordinate
                     system to the centre of the spatial image intensity
                     distribution.
-        - force:    forces the generation of the SUVr image even if it
+        - force:    forces the generation of the UR image even if it
                     exists.
 
     '''
@@ -91,9 +91,9 @@ def preproc_suvr(
             fpet_nii = list(petout.glob(pet_path.name.replace(' ', '_') + '*.nii*'))
 
         if not fpet_nii:
-            raise ValueError('No SUVr NIfTI files found')
+            raise ValueError('No static UR NIfTI files found')
         elif len(fpet_nii) > 1:
-            raise ValueError('Too many SUVr NIfTI files found')
+            raise ValueError('Too many static UR NIfTI files found')
         else:
             fpet_nii = fpet_nii[0]
 
@@ -115,7 +115,7 @@ def preproc_suvr(
     # > static image file path
     fstat = petout / fname
 
-    # > check if the static (for SUVr) file already exists
+    # > check if the static (for UR) file already exists
     if not fstat.is_file() or force==True:
 
         if nfrm > 1:
@@ -128,15 +128,15 @@ def preproc_suvr(
             trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
                    imdct['transpose'].index(2)), flip=imdct['flip'])
 
-        log.info(f'Saved SUVr file image to: {fstat}')
+        log.info(f'Saved uptake ratio (UR) file image to: {fstat}')
 
         if com_correction:
-            fsuvr_com = nimpa.centre_mass_corr(fstat, outpath=petout)
-            log.info(f'Centre-of-mass corrected SUVr image has been saved to: {fsuvr_com}')
+            fur_com = nimpa.centre_mass_corr(fstat, outpath=petout)
+            log.info(f'Centre-of-mass corrected uptake ratio (UR) image has been saved to: {fur_com}')
         
     # ------------------------------------------
 
-    return {'fpet_nii': fpet_nii, 'fsuvr': fstat, 'fcom':fsuvr_com['fim'], 'com':fsuvr_com['com_abs']}
+    return {'fpet_nii': fpet_nii, 'fur': fstat, 'fcom':fur_com['fim'], 'com':fur_com['com_abs']}
 
 
 
@@ -146,7 +146,7 @@ def preproc_suvr(
 
 
 # ========================================================================================
-# Extract VOI values for SUVr analysis (main function)
+# Extract VOI values for uptake ratio (UR) analysis
 # ========================================================================================
 
 def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None, fname=None,
@@ -162,7 +162,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         - t1wpth:   path to the T1w MRI NIfTI image for registration
         - voi_dct:  dictionary of VOI definitions
         - ref_voi:  if given and in `voi_dct` it is used as reference region
-                    for calculating SUVr
+                    for calculating UR
         - frames:   select the frames if multi-frame image given;
                     by default selects all frames
         - fname:    the core file name for resulting images
@@ -209,16 +209,16 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     if ref_voi is not None and not all([r in voi_dct for r in ref_voi]):
         raise ValueError('Not all VOIs listed as reference are in the VOI definition dictionary.')
 
-    # > static (SUVr) image preprocessing
-    suvr_preproc = preproc_suvr(petpth, frames=frames,
-                                outpath=outpath / (petpth.name.split('.')[0] + '_suvr'),
+    # > static (UR) image preprocessing
+    ur_preproc = preproc_ur(petpth, frames=frames,
+                                outpath=outpath / (petpth.name.split('.')[0] + '_ur'),
                                 fname=fname)
 
-    out.update(suvr_preproc)
+    out.update(ur_preproc)
 
     if t1_bias_corr:
         out['n4'] = nimpa.bias_field_correction(t1wpth, executable='sitk',
-                                                outpath=suvr_preproc['fstat'].parent.parent)
+                                                outpath=ur_preproc['fstat'].parent.parent)
         fmri = out['n4']['fim']
     else:
         fmri = t1wpth
@@ -227,7 +227,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
-    trmout = r_trimup(suvr_preproc['fstat'], lblpth, store_img_intrmd=True)
+    trmout = r_trimup(ur_preproc['fstat'], lblpth, store_img_intrmd=True)
 
     # > trimmed folder
     trmdir = trmout['trmdir']
@@ -240,7 +240,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     # > - - - - - - - - - - - - - - - - - - - - - - - -
     # > parcellations in PET space
     fplbl = trmdir / '{}_Parcellation_in-upsampled-PET.nii.gz'.format(
-        suvr_preproc['fstat'].name.split('.nii')[0])
+        ur_preproc['fstat'].name.split('.nii')[0])
 
     if not fplbl.is_file() or reg_fresh:
 
@@ -278,36 +278,36 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     voival = extract_vois(trmout['im'], plbl_dct, voi_dct, outpath=mask_dir,
                           output_masks=output_masks)
 
-    # > calculate SUVr if reference regions is given
-    suvrtxt = None
+    # > calculate UR if reference regions is given
+    urtxt = None
     if ref_voi is not None:
 
-        suvr = {}
+        ur = {}
 
-        suvrtxt = ' '
+        urtxt = ' '
         for rvoi in ref_voi:
             ref = voival[rvoi]['avg']
-            suvr[rvoi] = {}
+            ur[rvoi] = {}
             for voi in voi_dct:
-                suvr[rvoi][voi] = voival[voi]['avg'] / ref
+                ur[rvoi][voi] = voival[voi]['avg'] / ref
 
             # > get the static trimmed image:
-            imsuvr = nimpa.getnii(out['ftrm'], output='all')
+            imur = nimpa.getnii(out['ftrm'], output='all')
 
-            fsuvr = trmdir / 'SUVr_ref-{}_{}'.format(rvoi, suvr_preproc['fstat'].name)
-            # > save SUVr image
+            fur = trmdir / 'UR_ref-{}_{}'.format(rvoi, ur_preproc['fstat'].name)
+            # > save UR image
             nimpa.array2nii(
-                imsuvr['im'] / ref, imsuvr['affine'], fsuvr,
-                trnsp=(imsuvr['transpose'].index(0), imsuvr['transpose'].index(1),
-                       imsuvr['transpose'].index(2)), flip=imsuvr['flip'])
+                imur['im'] / ref, imur['affine'], fur,
+                trnsp=(imur['transpose'].index(0), imur['transpose'].index(1),
+                       imur['transpose'].index(2)), flip=imur['flip'])
 
-            suvr[rvoi]['fsuvr'] = fsuvr
+            ur[rvoi]['fur'] = fur
 
-            if 'suvr' in voi_dct:
-                suvrval = suvr[rvoi]['suvr']
-                suvrtxt += f'$SUVR_\\mathrm{{{rvoi}}}=${suvrval:.3f}; '
+            if 'ur' in voi_dct:
+                urval = ur[rvoi]['ur']
+                urtxt += f'$UR_\\mathrm{{{rvoi}}}=${urval:.3f}; '
 
-        out['suvr'] = suvr
+        out['ur'] = ur
 
     out['vois'] = voival
 
@@ -360,7 +360,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
             ax[1][ai].xaxis.set_visible(False)
             ax[1][ai].yaxis.set_visible(False)
 
-        ax[0, 1].text(0, trmout['im'].shape[1] + 10, suvrtxt, fontsize=12)
+        ax[0, 1].text(0, trmout['im'].shape[1] + 10, urtxt, fontsize=12)
 
         plt.tight_layout()
 

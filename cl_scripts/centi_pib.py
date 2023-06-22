@@ -67,7 +67,7 @@ with open(str(opth / 'output_pib_ad.pkl'), 'rb') as f:
 
 refs = amypet.get_clref(opth / 'SupplementaryTable1.xlsx')
 
-diff = amypet.check_suvrs(out_yc, out_ad, refs)
+diff = amypet.check_urs(out_yc, out_ad, refs)
 
 diff = amypet.check_cls(out_yc, out_ad, diff, refs)
 
@@ -82,8 +82,8 @@ cla = amypet.get_cl_anchors(cl_fldr.parent)
 tracer = 'flute'
 tracer = 'fbb'
 tracer = 'fbp'
-clc = amypet.get_suvr2pib(tracer, path=cl_fldr)
-clc = amypet.get_suvr2pib(tracer, path=cl_fldr.parent)
+clc = amypet.get_ur2pib(tracer, path=cl_fldr)
+clc = amypet.get_ur2pib(tracer, path=cl_fldr.parent)
 
 
 # ----------------------------------------------------------------------

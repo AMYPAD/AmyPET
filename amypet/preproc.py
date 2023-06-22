@@ -159,70 +159,70 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
 
 
 
-# =========================== SUVr =============================
-def suvr_inf(srs_dscr, t_frms, srs, Cnt, suvr_win_def=None, tracer=None):
-    ''' find SUVr frames among the static/dynamic frames
+# =========================== UPTAKE RATIO (UR) =============================
+def ur_inf(srs_dscr, t_frms, srs, Cnt, ur_win_def=None, tracer=None):
+    ''' find uptake ratio frames among the static/dynamic frames
     '''
 
     # ------------------------------------------------
-    # > SUVr time window post injection and duration
-    suvr_twindow = Cnt['timings']['suvr_twindow']
+    # > UR time window post injection and duration
+    ur_twindow = Cnt['timings']['ur_twindow']
 
-    # > margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+    # > margin used for accepting UR time windows (0.1 corresponds to 10%)
     margin = Cnt['timings']['margin']
     # ------------------------------------------------
 
 
     # -----------------------------------------------
-    # > try to establish the SUVr window even if not provided
-    if suvr_win_def is None and not tracer:
+    # > try to establish the UR window even if not provided
+    if ur_win_def is None and not tracer:
         raise ValueError(
-            'Impossible to figure out tracer and SUVr time window - please specify them!')
-    elif suvr_win_def is None and tracer:
-        suvr_win = suvr_twindow[tracer][:2]
+            'Impossible to figure out tracer and UR time window - please specify them!')
+    elif ur_win_def is None and tracer:
+        ur_win = ur_twindow[tracer][:2]
     else:
-        suvr_win = suvr_win_def
+        ur_win = ur_win_def
     # -----------------------------------------------
 
     t_starts = [t[0] for t in t_frms]
     t_stops = [t[1] for t in t_frms]
 
 
-    # > SUVr window margins, relative to the frame time and the duration
+    # > UR window margins, relative to the frame time and the duration
     tmn = t_frms[0][0]
     tmx = t_frms[-1][-1]
 
-    suvr_dur = suvr_win[1]-suvr_win[0]
-    mrgn_start_mx = int(suvr_win[0] + margin*suvr_dur)
-    mrgn_start_mn = int(suvr_win[0] - margin*suvr_dur)
-    mrgn_stop_mx = int(suvr_win[1] + margin*suvr_dur)
-    mrgn_stop_mn = int(suvr_win[1] - margin*suvr_dur)
+    ur_dur = ur_win[1]-ur_win[0]
+    mrgn_start_mx = int(ur_win[0] + margin*ur_dur)
+    mrgn_start_mn = int(ur_win[0] - margin*ur_dur)
+    mrgn_stop_mx = int(ur_win[1] + margin*ur_dur)
+    mrgn_stop_mn = int(ur_win[1] - margin*ur_dur)
 
     diff_start = min(tmx, mrgn_start_mx) - max(tmn, mrgn_start_mn)
     diff_stop  = min(tmx, mrgn_stop_mx)  - max(tmn, mrgn_stop_mn)
 
     if diff_start>=0 and diff_stop>=0:
 
-        t0_suvr = min(t_starts, key=lambda x: abs(x - suvr_win[0]))
-        t1_suvr = min(t_stops, key=lambda x: abs(x - suvr_win[1]))
+        t0_ur = min(t_starts, key=lambda x: abs(x - ur_win[0]))
+        t1_ur = min(t_stops, key=lambda x: abs(x - ur_win[1]))
 
-        frm_0 = t_starts.index(t0_suvr)
-        frm_1 = t_stops.index(t1_suvr)
+        frm_0 = t_starts.index(t0_ur)
+        frm_1 = t_stops.index(t1_ur)
 
-        # > SUVr frame range
-        suvr_frm_range = range(frm_0, frm_1 + 1)
+        # > UR frame range
+        ur_frm_range = range(frm_0, frm_1 + 1)
 
-        # > indicate which frames were selected for SUVr relative to all static/dynamic frames
-        frms_sel = [i in suvr_frm_range for i, s in enumerate(srs)]
+        # > indicate which frames were selected for UR relative to all static/dynamic frames
+        frms_sel = [i in ur_frm_range for i, s in enumerate(srs)]
 
-        srs_dscr['acq'].append('suvr')
-        if not 'suvr' in srs_dscr:
-            srs_dscr['suvr'] = {}
-        srs_dscr['suvr'].update({
-            'time': (t0_suvr, t1_suvr),
+        srs_dscr['acq'].append('ur')
+        if not 'ur' in srs_dscr:
+            srs_dscr['ur'] = {}
+        srs_dscr['ur'].update({
+            'time': (t0_ur, t1_ur),
             'timings': [t_frms[f] for f in range(frm_0, frm_1 + 1)],
             'idxs': (frm_0, frm_1),
-            'frms': [s for i, s in enumerate(srs) if i in suvr_frm_range],
+            'frms': [s for i, s in enumerate(srs) if i in ur_frm_range],
             'frms_sel': frms_sel})
     else:
         log.warning('The acquisition does not cover the requested time frame!')
@@ -232,8 +232,8 @@ def suvr_inf(srs_dscr, t_frms, srs, Cnt, suvr_win_def=None, tracer=None):
 
 
 # =====================================================================
-def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
-                    outpath=None, find_suvr=False, grouping='a+t+d'):
+def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None,
+                    outpath=None, find_ur=False, grouping='a+t+d'):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -246,14 +246,14 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
 
     Arguments:
     - tracer:   The name of one of the three tracers: 'flute', 'fbb', 'fbp'
-    - suvr_win_def: The definition of SUVr time frame (SUVr/CL is always calculated)
+    - ur_win_def: The definition of UR time frame (UR/CL is always calculated)
                 as a two-element list [t_start, t_stop] in seconds.  If the
                 window is not defined the function will attempt to get the
                 information from the tracer info and use the default (as
                 defined in`defs.py`)
     - outpath:  output path where all the intermediate and final results are
                 stored.
-    - find_suvr:if True, finds the possible SUVr frame window
+    - find_ur:if True, finds the possible UR frame window
     - grouping: defines how DICOMs are grouped, default is 'a+t+d', which is
                 by acquisition and series times plus series description;
                 see nimpa.dcmsort() for details.
@@ -263,8 +263,8 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
     # DEFINITIONS:
     pttrn_t1 = Cnt['pttrn_t1']
 
-    # > SUVr time window post injection and duration
-    suvr_twindow = Cnt['timings']['suvr_twindow']
+    # > UR time window post injection and duration
+    ur_twindow = Cnt['timings']['ur_twindow']
     tracer_names = Cnt['tracer_names']
 
     # > break time for coffee break protocol (target)
@@ -276,7 +276,7 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
     # > minimum time for the full dynamic acquisition
     fulldyn_time = Cnt['timings']['fulldyn_time']
     
-    # > margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+    # > margin used for accepting UR time windows (0.1 corresponds to 10%)
     margin = Cnt['timings']['margin']
     # ------------------------------------------------
 
@@ -380,9 +380,9 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
             if acq_type == 'static' and not tracer:
 
                 # > assuming the first of the following tracers then
-                for t in suvr_twindow:
-                    dur = suvr_twindow[t][2]
-                    if (acq_dur > dur * (1-margin)) and (t_frms[0][0] < suvr_twindow[t][0] *
+                for t in ur_twindow:
+                    dur = ur_twindow[t][2]
+                    if (acq_dur > dur * (1-margin)) and (t_frms[0][0] < ur_twindow[t][0] *
                                                          (1+margin)):
                         tracer = t
                         break
@@ -392,7 +392,7 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
                 tracer = np.array(list(tracer_names.keys()))[tracer_grp][0]
         # -----------------------------------------------
 
-        # > is the static acquisition covering the provided SUVr frame definition?
+        # > is the static acquisition covering the provided UR frame definition?
         if acq_type == 'static':
             msrs_dscr.append({
                     'acq': [acq_type],
@@ -400,10 +400,10 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
                     'timings': t_frms,
                     'idxs': (0, len(t_frms) - 1),
                     'frms': [s for i, s in enumerate(srs_t)],
-                    'suvr':{}})
+                    'ur':{}})
 
-            if find_suvr:
-                suvr_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, suvr_win_def=suvr_win_def, tracer=tracer)
+            if find_ur:
+                ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
         
         elif acq_type == 'breakdyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
@@ -433,10 +433,10 @@ def explore_indicom(input_fldr, Cnt, tracer=None, suvr_win_def=None,
                 'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)],
-                'suvr':{}})
+                'ur':{}})
 
-            if find_suvr:
-                suvr_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, suvr_win_def=suvr_win_def, tracer=tracer)
+            if find_ur:
+                ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
 
 
     return {'series': msrs_t, 'descr': msrs_dscr, 'outpath': amyout, 'tracer': tracer}
@@ -511,37 +511,37 @@ def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
 
 
 # ========================================================================================
-def id_acq(dctdat, acq_type='suvr', output_series_id=False):
+def id_acq(dctdat, acq_type='ur', output_series_id=False):
     '''
-    Identify acquisition type such as SUVr or coffee break data 
+    Identify acquisition type such as uptake ratio UR or coffee break data 
     in the dictionary of classified DICOM/NIfTI series.
     Arguments:
     - dctdat:       the dictionary with all DICOM/NIfTI series 
                     (e.g., as the output of explore_input).
-    - acq_type:     can be 'suvr' or 'break'/'breakdyn' or 'dyn'/'fulldyn'.
+    - acq_type:     can be 'ur', 'break'/'breakdyn' or 'dyn'/'fulldyn'.
     '''
 
     if acq_type in ['break', 'breakdyn']:
         acq = 'breakdyn'
     elif acq_type in ['dyn', 'fulldyn']:
         acq = 'fulldyn'
-    elif acq_type in ['suvr']:
-        acq = 'suvr'
+    elif acq_type in ['ur']:
+        acq = 'ur'
     else:
         raise ValueError('unrecognised acquisition type!')
 
-    # > find the SUVr-compatible acquisition and its index
+    # > find the UR-compatible acquisition and its index
     acq_find = [(i,a) for i,a in enumerate(dctdat['descr']) if acq in a['acq']]
 
     if len(acq_find)>1:
-        raise ValueError('too many SUVr/static DICOM series detected: only one is accepted')
+        raise ValueError('too many UR/static DICOM series detected: only one is accepted')
     elif len(acq_find)==0:
         log.info('no fully dynamic data found.')
         return None
     else:
         acq_find = acq_find[0]
 
-        # > time-sorted data for SUVr
+        # > time-sorted data for UR
         tdata = dctdat['series'][acq_find[0]]
 
         # > data description with classification

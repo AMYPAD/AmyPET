@@ -66,8 +66,8 @@ Cnt = dict(
         ),
 
     timings=dict(
-        # > SUVr time window post injection and duration for amyloid tracers
-        suvr_twindow = {
+        # > uptake ratio (UR) time window post injection and duration for amyloid tracers
+        ur_twindow = {
             'pib': [90 * 60, 110 * 60, 1200],
             'flute': [90 * 60, 110 * 60, 1200],
             'fbb': [90 * 60, 110 * 60, 1200],
@@ -82,7 +82,7 @@ Cnt = dict(
         # > minimum time for the full dynamic acquisition
         fulldyn_time = 3600,
 
-        # > margin used for accepting SUVr time windows (0.1 corresponds to 10%)
+        # > margin used for accepting UR time windows (0.1 corresponds to 10%)
         margin = 0.1,
         ),
         
