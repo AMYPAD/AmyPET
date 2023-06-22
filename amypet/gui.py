@@ -11,7 +11,6 @@ from weakref import WeakSet
 
 import shtab
 from argopt import argopt
-from pkg_resources import resource_filename
 from .utils import is_one_or_more
 
 try:

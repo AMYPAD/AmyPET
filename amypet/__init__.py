@@ -1,7 +1,3 @@
-from pathlib import Path
-
-from pkg_resources import DistributionNotFound, get_distribution
-
 # version detector. Precedence: installed dist, git, 'UNKNOWN'
 try:
     from ._dist_ver import __version__
@@ -13,13 +9,7 @@ except ImportError:
     except (ImportError, LookupError):
         __version__ = "UNKNOWN"
 
-try:
-    __licence__ = get_distribution("amypet").get_metadata("LICENCE.md")
-except (DistributionNotFound, FileNotFoundError):
-    try:
-        __licence__ = (Path(__file__).parent.parent / "LICENCE.md").read_text()
-    except FileNotFoundError:
-        __licence__ = "MPL-2.0"
+__licence__ = "MPL-2.0"
 
 from .preproc import *
 from .suvr_tools import *

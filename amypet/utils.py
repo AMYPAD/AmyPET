@@ -9,10 +9,14 @@ import tarfile
 import matplotlib.pyplot as plt
 import numpy as np
 from niftypet import nimpa
-from pkg_resources import resource_filename
 from scipy.stats import linregress
 
 from .amypet_config import *
+
+try:          # py<3.9
+    import importlib_resources as resources
+except ImportError:
+    from importlib import resources
 
 try:
     from os import cpu_count
@@ -29,9 +33,9 @@ except ImportError:
 rvois = ['wc', 'cg', 'wcb', 'pns']
 
 # > folder name with the default conversion tables after calibration
-cl_anchor_fldr = Path(resource_filename(__name__, 'data/cl_anchor_tables'))
-cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
-atlas_fldr = Path(resource_filename(__name__, 'data/atlas'))
+cl_anchor_fldr = resources.files('amypet').resolve() / 'data' / 'cl_anchor_tables'
+cl_masks_fldr = cl_anchor_fldr.parent / 'CL_masks'
+atlas_fldr = cl_anchor_fldr.parent / 'atlas'
 amypet_dir = Path.home() / '.amypet'
 
 # > region full name strings for plots

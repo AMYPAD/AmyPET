@@ -23,14 +23,18 @@ from os import fspath
 from pathlib import Path
 
 from miutil.imio import nii
-from pkg_resources import resource_filename
 from spm12 import ensure_spm
 from tqdm.auto import tqdm
 from tqdm.contrib import tmap, tzip
 
+try:          # py<3.9
+    import importlib_resources as resources
+except ImportError:
+    from importlib import resources
+
 __all__ = ["run"]
 log = logging.getLogger(__name__)
-PATH_M = resource_filename(__name__, "")
+PATH_M = resources.files(__name__)
 
 
 @lru_cache()
