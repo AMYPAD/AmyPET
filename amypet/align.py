@@ -761,8 +761,6 @@ def align_ur(
 
             outdct['ur']['fpet_notaligned'] = fnotaligned
 
-
-
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # The remaining frames of static or fully dynamic PET
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
