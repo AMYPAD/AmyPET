@@ -1,6 +1,102 @@
 [build-system]
 requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 write_to = "amypet/_dist_ver.py"
 write_to_template = "__version__ = '{version}'\n"
+
+[tool.setuptools.packages.find]
+exclude = ["tests"]
+
+[project.urls]
+documentation = "https://github.com/AMYPAD/AmyPET/#AmyPET"
+repository = "https://github.com/AMYPAD/AmyPET"
+changelog = "https://github.com/AMYPAD/AmyPET/releases"
+
+[project]
+name = "amypet"
+dynamic = ["version"]
+maintainers = [{name = "Casper da Costa-Luis", email = "casper.dcl@physics.org"}]
+description = "Amyloid imaging to prevent Alzheimer's Disease"
+readme = "README.rst"
+requires-python = ">=3.7"
+keywords = ["PET", "Alzheimers"]
+license = {text = "MPL-2.0"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Other Scripting Engines",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: User Interfaces",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: Utilities"]
+dependencies = [
+    "argopt",
+    "miutil[cuda,nii]>=0.9.0",
+    "mpld3",
+    "niftypad>=2.0.0",
+    "nimpa[dcm2niix]>=2.6.0",
+    "setuptools",
+    "shtab>1.3.2",
+    "spm12>=2.1.0",
+    "streamlit>=0.85.2",
+    "tqdm"]
+
+[project.optional-dependencies]
+dev = ["pytest>=6", "pytest-cov", "pytest-timeout", "pytest-xdist"]
+gui = ["Gooey>=1.0.8"]
+web = []
+niftypet = ["niftypet>=0.0.1"]
+
+[project.scripts]
+amypet = "amypet.web:main"
+amypet-cli = "amypet.cli:main"
+amypet-gui = "amypet.gui:main"
+amypet-web = "amypet.web:main"
+
+[tool.flake8]
+max_line_length = 99
+extend_ignore = ["E261", "P1"]
+exclude = [".git", "__pycache__", "build", "dist", ".eggs"]
+
+[tool.yapf]
+spaces_before_comment = [15, 20]
+arithmetic_precedence_indication = true
+allow_split_before_dict_value = false
+coalesce_brackets = true
+column_limit = 99
+each_dict_entry_on_separate_line = false
+space_between_ending_comma_and_closing_bracket = false
+split_before_named_assigns = false
+split_before_closing_bracket = false
+blank_line_before_nested_class_or_def = false
+
+[tool.isort]
+profile = "black"
+line_length = 99
+known_first_party = ["amypet", "tests"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+timeout = 10
+log_level = "INFO"
+python_files = ["tests/test_*.py"]
+testpaths = ["tests"]
+addopts = "-v --tb=short -rxs -W=error -n=auto --durations=0 --durations-min=1 --cov=amypet --cov-report=term-missing --cov-report=xml"
+filterwarnings = ["ignore:numpy.ufunc size changed.*:RuntimeWarning"]
