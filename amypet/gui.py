@@ -12,6 +12,7 @@ from weakref import WeakSet
 import shtab
 from argopt import argopt
 from pkg_resources import resource_filename
+from .utils import is_one_or_more
 
 try:
     from . import __licence__, __version__
@@ -46,7 +47,7 @@ def patch_argument_kwargs(kwargs, gooey=True):
         typ = kwargs.get("type", None)
         if typ == open:
             nargs = kwargs.get("nargs", 1)
-            if nargs and (nargs > 1 if isinstance(nargs, int) else nargs in "+*"):
+            if is_one_or_more(nargs):
                 kwargs['widget'] = "MultiFileChooser"
             else:
                 kwargs['widget'] = "FileChooser"

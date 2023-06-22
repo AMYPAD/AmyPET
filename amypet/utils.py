@@ -45,6 +45,10 @@ def init():
     return res.Cnt
 
 
+def is_one_or_more(nargs):
+    return nargs and (nargs > 1 if isinstance(nargs, int) else nargs in "+*")
+
+
 # ----------------------------------------------------------------------
 def get_atlas(atlas='aal', res=1):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
