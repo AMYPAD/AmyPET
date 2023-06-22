@@ -1,0 +1,38 @@
+pttrn_t1 = ["mprage", "t1", "t1w", "spgr"]
+
+[tracer_names]
+pib = ["pib"]
+flute = ["flt", "flut", "flute", "flutemetamol"]
+fbb = ["fbb", "florbetaben"]
+fbp = ["fbp", "florbetapir"]
+
+[regpars]
+fwhm_t1_mni = 3
+fwhm_t1 = 3
+fwhm_pet = 6
+costfun = "nmi"
+visual = false
+
+[endfov_corr]
+frm_rng = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+z_margin = 10
+
+[align]
+frame_min_dur = 60
+decay_corr = false
+reg_costfun = "nmi"
+reg_fwhm = 8
+reg_thrshld = 1.0
+reg_metric = "adst"
+
+[timings]
+break_time = 1800
+breakdyn_t = [1200, 2400]
+fulldyn_time = 3600
+margin = 0.1
+
+[timings.ur_twindow]
+pib = [5400, 6600, 1200]
+flute = [5400, 6600, 1200]
+fbb = [5400, 6600, 1200]
+fbp = [3000, 3600, 600]

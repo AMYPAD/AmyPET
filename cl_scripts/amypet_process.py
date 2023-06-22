@@ -10,8 +10,7 @@ from niftypet import nimpa
 import spm12
 import amypet
 from amypet import backend_centiloid as centiloid
-
-Cnt = amypet.init()
+from amypet import params
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # INPUT
@@ -37,7 +36,7 @@ outpath = input_fldr.parent/('q_amypet_output_'+input_fldr.name)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------
 # > structural/T1w image
-ft1w = amypet.get_t1(input_fldr, Cnt)
+ft1w = amypet.get_t1(input_fldr, params)
 
 if ft1w is None:
     raise ValueError('Could not find the necessary T1w DICOM or NIfTI images')
@@ -47,7 +46,7 @@ if ft1w is None:
 # > processed the PET input data and classify it (e.g., automatically identify UR frames)
 indat = amypet.explore_indicom(
     input_fldr,
-    Cnt,
+    params,
     tracer=tracer,
     find_ur=True,
     ur_win_def=ur_win_def,
@@ -62,7 +61,7 @@ niidat = amypet.convert2nii(indat, use_stored=True)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # REMOVE ARTEFACTS AT THE END OF FOV
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-niidat = amypet.rem_artefacts(niidat, Cnt, artefact='endfov')
+niidat = amypet.rem_artefacts(niidat, params, artefact='endfov')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -71,7 +70,7 @@ niidat = amypet.rem_artefacts(niidat, Cnt, artefact='endfov')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 aligned = amypet.align(
     niidat,
-    Cnt,
+    params,
     use_stored=True)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -83,7 +82,7 @@ aligned = amypet.align(
 out_cl = centiloid.run(
     aligned['ur']['fur'],
     ft1w,
-    Cnt,
+    params,
     stage='f',
     voxsz=2,
     bias_corr=True,

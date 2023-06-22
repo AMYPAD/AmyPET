@@ -8,10 +8,9 @@ import tarfile
 
 import matplotlib.pyplot as plt
 import numpy as np
+import toml
 from niftypet import nimpa
 from scipy.stats import linregress
-
-from .amypet_config import *
 
 try:          # py<3.9
     import importlib_resources as resources
@@ -28,6 +27,8 @@ except ImportError:
         def cpu_count():
             return 4
 
+params_path = resources.files('amypet').resolve() / 'params.toml'
+params = toml.load(params_path)
 
 # > regions used in CL project
 rvois = ['wc', 'cg', 'wcb', 'pns']
@@ -36,17 +37,11 @@ rvois = ['wc', 'cg', 'wcb', 'pns']
 cl_anchor_fldr = resources.files('amypet').resolve() / 'data' / 'cl_anchor_tables'
 cl_masks_fldr = cl_anchor_fldr.parent / 'CL_masks'
 atlas_fldr = cl_anchor_fldr.parent / 'atlas'
-amypet_dir = Path.home() / '.amypet'
 
 # > region full name strings for plots
 rvoi_str = {
     'wc': 'WHOLE CEREBELLUM', 'cg': 'CEREBELLUM GM', 'wcb': 'WHOLE CEREBELLUM + BRAIN STEM',
     'pns': 'PONS'}
-
-
-def init():
-    res = get_params()
-    return res.Cnt
 
 
 def is_one_or_more(nargs):

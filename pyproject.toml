@@ -57,6 +57,7 @@ dependencies = [
     "shtab>1.3.2",
     "spm12>=2.1.0",
     "streamlit>=0.85.2",
+    "toml",
     "tqdm"]
 
 [project.optional-dependencies]

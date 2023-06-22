@@ -17,4 +17,3 @@ from .utils import *
 from .align import *
 from .dyn_tools import *
 from .proc import *
-from .amypet_config import *
