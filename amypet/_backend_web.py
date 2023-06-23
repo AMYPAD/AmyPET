@@ -174,7 +174,9 @@ def main():
         st.write("**Command**")
     with right:
         prefix = st.checkbox("Prefix", platform.system() == "Windows")
-    cmd = [Path(sys.executable).resolve().name, "-m", parser.prog]
+    cmd = [
+        Path(sys.executable).resolve().name, "-m",
+        parser.prog.replace('-', '.' if prefix else '-')]
     for k, v in opts.items():
         flag = f"--{k.replace('_', '-')}"
         if v is True:
