@@ -364,11 +364,18 @@ def align(niidat,
           Cnt,
           reg_tool='spm',
           com_correction=True,
+          ur_fwhm=0,
           outpath=None,
           use_stored=True):
 
     ''' align all the frames in static, dynamic or coffee-break
         acquisitions.
+
+        Arguments:
+        - com_correction: centre-of-mass correction - moves the coordinate system to the 
+                    centre of the spatial image intensity distribution.
+        - ur_fwhm:  FWHM smoothing parameter (in mm) for the Gaussian smoothing of
+                    the uptake ratio (UR) image (static part).
     '''
 
     if outpath is None and 'outpath' not in niidat:
@@ -397,6 +404,7 @@ def align(niidat,
         Cnt,
         reg_tool=reg_tool,
         com_correction=com_correction,
+        ur_fwhm=ur_fwhm,
         outpath=opth,
         use_stored=use_stored)
 
@@ -423,6 +431,7 @@ def align_ur(
     save_not_aligned=True,
     use_stored=False,
     com_correction=True,
+    ur_fwhm=0,
     save_params=False,
 ):
     '''
@@ -438,6 +447,8 @@ def align_ur(
                     motion correction. reg_tool='adst' does average sampled distance;
                     the other option is the summed root sum square of
                     translations and rotations, 'rss', available only for SPM.
+    - ur_fwhm:      FWHM smoothing parameter (in mm) for the Gaussian smoothing of
+                    the uptake ratio (UR) image.
 
     '''
 
@@ -716,8 +727,11 @@ def align_ur(
         # SINGLE UR FRAME  &  CoM CORRECTION
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single UR frame
-        ur_frm = preproc_ur(faligned, outpath=niidir, com_correction=com_correction)
-        fref = ur_frm['fcom']
+        ur_frm = preproc_ur(faligned, outpath=niidir, com_correction=com_correction, fwhm=ur_fwhm)
+        if ur_fwhm>0:
+            fref = ur_frm['fcom_smo']
+        else:
+            fref = ur_frm['fcom']
         #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         # > saved frames aligned and CoM-modified
