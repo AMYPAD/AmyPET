@@ -80,6 +80,9 @@ def st_output(res):
         data = res.pop('_amypet_imscroll')
         if isinstance(data, (str, PurePath)):
             st.image(fspath(data))
+        elif isinstance(data, (tuple, list, set)):
+            for d in data:
+                st_output({'_amypet_imscroll': d})
         else:
             if isinstance(data, FigureBase):
                 fig = data
@@ -90,7 +93,8 @@ def st_output(res):
             htm = mpld3.fig_to_html(fig)
             w, h = fig.get_size_inches()
             st_components.html(htm, width=int(w * 100) + 50, height=int(h * 100) + 50)
-    return st.write(res)
+    if res:
+        return st.write(res)
 
 
 def main():

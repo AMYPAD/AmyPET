@@ -46,22 +46,19 @@ def get_t1(input_fldr, Cnt, ignore_derived=False, rem_prev_conv=True):
     for f in input_fldr.iterdir():
         if f.is_file() and f.name.endswith(('.nii','.nii.gz')) and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
             fniit1 = f
-            break
-        if f.is_dir() and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
+        elif f.is_dir() and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
             t1dcm = nimpa.dcmsort(f)
             if not t1dcm:
                 niilist = list(f.glob('*.nii*'))
                 if len(niilist)>1:
-                    log.warning('found more than one potential T1w image - confused and aborting')
+                    raise FileExistsError("found more than one potential T1w image - confused and aborting")
                 elif len(niilist)==1:
                     fniit1 = niilist[0]
-                    break
                 else:
-                    log.warning('could not find a potential T1w image ')
+                    raise FileNotFoundError("could not find a potential T1w image")
             else:
                 dt1dcm = f
                 fniit1 = dicom2nifti(dt1dcm, outpath=dt1dcm, ignore_derived=ignore_derived, remove_previous=rem_prev_conv)
-                break
 
     return fniit1
 
