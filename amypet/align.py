@@ -6,7 +6,7 @@ __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
 import copy
-import logging as log
+import logging
 import os
 import shutil
 from datetime import datetime
@@ -17,7 +17,7 @@ from subprocess import run
 import dcm2niix
 import numpy as np
 import spm12
-from miutil import hasext
+from miutil.fdio import hasext
 from miutil.imio import nii
 from niftypet import nimpa
 
@@ -32,10 +32,9 @@ c11group = ['pib']
 # > list of registration/motion metrics for alignment
 reg_metric_list = ['rss', 'adst']
 
-log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
+log = logging.getLogger(__name__)
 
 
-#--------------------------------------------------------------------
 def save4dnii(lfrm, fnii, descrip='AmyPET generated', retarr=True):
     '''
     Save 4D NIfTI image from a list of files of consecutive
@@ -64,9 +63,8 @@ def save4dnii(lfrm, fnii, descrip='AmyPET generated', retarr=True):
         return None
 
 
-#--------------------------------------------------------------------
 def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None, outpath=None):
-    '''
+    """
     Align frames by mashing the short ones as defined by the threshold.
     Arguments:
     fniis:      list of PET frames for alignment
@@ -82,13 +80,14 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
                 images in registration.
     reg_costfun:the registration cost function, by default the normalised
                 mutual information, 'nmi'.
+    """
 
-    '''
-
-    # > the FWHM of the Gaussian kernel used for smoothing the images before registration and only for registration purposes.
+    # > the FWHM of the Gaussian kernel used for smoothing the images before registration
+    # and only for registration purposes.
     reg_fwhm = Cnt['align']['reg_fwhm']
-    # > the threshold above which registration transformation is deemed to represent motion (not noise); based on a metric
-    # > of combined rotations and translations or average distance (rigid body).
+    # > the threshold above which registration transformation is deemed to
+    # represent motion (not noise); based on a metric
+    # of combined rotations and translations or average distance (rigid body).
     reg_thrshld = Cnt['align']['reg_thrshld']
     reg_costfun = Cnt['align']['reg_costfun']
     # > the shortest PET frame to be used for registration in the alignment process.
@@ -122,9 +121,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     else:
         raise ValueError('unrecognised frame times')
 
-    #----------------------------------
-    # > output dictionary
-    outdct = {}
+    outdct = {}    # > output dictionary
 
     if outpath is None:
         opth = Path(fniis[0]).parent
@@ -135,7 +132,6 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     rsmpl_opth = mniidir / 'aligned'
     nimpa.create_dir(mniidir)
     nimpa.create_dir(rsmpl_opth)
-    #----------------------------------
 
     # > short frame size for registration (in seconds)
     frms_l = dur < frm_lsize
@@ -143,7 +139,8 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     # > number of frames to be mashed for registration
     nmfrm = np.sum(frms_l)
 
-    # > number of resulting mashed frame sets, e.g., the consecutive frames can be mashed into one or more frames
+    # > number of resulting mashed frame sets, e.g., the consecutive frames
+    # can be mashed into one or more frames
     nset = int(np.floor(np.sum(dur[frms_l]) / frm_lsize))
 
     # > overall list of mashed frames and normal frames which are longer than `frm_lsize`
@@ -165,22 +162,17 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
         nmfrm_chck += len(ifrm)
 
     # >> CHECKS >>
-    #---------------------
     if nmfrm_chck != nmfrm:
         raise ValueError(
             'Mashing frames inconsistent: number of frames to be mashed incorrectly established.')
-    #---------------------
     # > add the normal length (not mashed) frames
     for i, frm in enumerate(~frms_l):
         if frm:
             mfrms.append([i])
             nmfrm_chck += 1
-    #---------------------
     if nmfrm_chck != nfrm:
-        raise ValueError(
-            'Mashing frames inconsistency: number of overall frames, including mashed, is incorrectly established.'
-        )
-    #---------------------
+        raise ValueError('Mashing frames inconsistency: number of overall frames'
+                         ' (including mashed) is incorrectly established')
     # << <<
 
     # > the output file paths of mashed frames
@@ -236,7 +228,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     for mi, mfrm in enumerate(mfrms_out):
 
         # # > make sure the images are not compressed, i.e., ending with .nii
-        # if not mfrm.name.endswith('.nii'):
+        # if not hasext(mfrm, 'nii'):
         #     raise ValueError('The mashed frame files should be uncompressed NIfTI')
 
         # > pick the reference point as the centre of mass of the floating imaging (used in `D`)
@@ -246,7 +238,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
             # > register mashed frames to the reference
             spm_res = nimpa.coreg_spm(fref, mfrm, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
                                       fwhm=[13, 13], costfun=reg_costfun,
-                                      fcomment=f'_mashed_ref-mfrm', outpath=mniidir, visual=0,
+                                      fcomment='_mashed_ref-mfrm', outpath=mniidir, visual=0,
                                       save_arr=False, del_uncmpr=True, pickname='flo')
 
             S[mi] = (spm_res['faff'])
@@ -262,7 +254,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
         elif reg_tool == 'dipy':
             # > register mashed frames to the reference using DIPY
             dipy_res = nimpa.affine_dipy(fref, mfrm, metric='MI', outpath=mniidir,
-                                         fcomment=f'_mashed_ref-mfrm', rfwhm=reg_fwhm,
+                                         fcomment='_mashed_ref-mfrm', rfwhm=reg_fwhm,
                                          ffwhm=reg_fwhm)
 
             S[mi] = (dipy_res['faff'])
@@ -326,12 +318,8 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     return outdct
 
 
-# =====================================================================
 def align(niidat, Cnt, reg_tool='spm', com_correction=True, outpath=None, use_stored=True):
-    ''' align all the frames in static, dynamic or coffee-break
-        acquisitions.
-    '''
-
+    """align all the frames in static, dynamic or coffee-break acquisitions"""
     if outpath is None and 'outpath' not in niidat:
         k = niidat['descr'][0]['frms'][0]
         opth = niidat['series'][0][k]['fnii'].parent
@@ -341,27 +329,20 @@ def align(niidat, Cnt, reg_tool='spm', com_correction=True, outpath=None, use_st
     elif 'outpath' in niidat:
         opth = Path(niidat['outpath'])
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # IDENTIFY UR/STATIC SERIES DATA
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     stat_tdata = id_acq(niidat, acq_type='ur')
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ALIGN PET FRAMES FOR STATIC/DYNAMIC IMAGING
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # > align the PET frames around the equilibrium static scan/uptake ration (UR)
     aligned_ur = align_ur(stat_tdata, Cnt, reg_tool=reg_tool, com_correction=com_correction,
                           outpath=opth, use_stored=use_stored)
 
     # > align for all dynamic frames (if any remaining)
     aligned_dyn = align_break(niidat, aligned_ur, Cnt, reg_tool=reg_tool, use_stored=use_stored)
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     return aligned_dyn
 
 
-# =====================================================================
 def align_ur(
     stat_tdata,
     Cnt,
@@ -372,25 +353,26 @@ def align_ur(
     com_correction=True,
     save_params=False,
 ):
-    '''
+    """
     Align uptake ration (UR, aka SUVr) frames after conversion to NIfTI format.
 
     Arguments:
     - com_correction: centre-of-mass correction - moves the coordinate system to the
-                centre of the spatial image intensity distribution.
+                      centre of the spatial image intensity distribution.
     - save_params:  save all the rotations and translations into a 3D matrix
-    - reg_tool:     the registration tool/method; SPM by default ('spm'), DIPY as
-                    an alternative ('dipy')
-    - reg_metric:   metric used in evaluating the amount motion when deciding
-                    motion correction. reg_tool='adst' does average sampled distance;
-                    the other option is the summed root sum square of
-                    translations and rotations, 'rss', available only for SPM.
+    - reg_tool:   the registration tool/method; SPM by default ('spm'), DIPY as
+                  an alternative ('dipy')
+    - reg_metric: metric used in evaluating the amount motion when deciding
+                  motion correction. reg_tool='adst' does average sampled distance;
+                  the other option is the summed root sum square of
+                  translations and rotations, 'rss', available only for SPM.
+    """
 
-    '''
-
-    # > the FWHM of the Gaussian kernel used for smoothing the images before registration and only for registration purposes.
+    # > the FWHM of the Gaussian kernel used for smoothing the images before registration
+    # and only for registration purposes.
     reg_fwhm = Cnt['align']['reg_fwhm']
-    # > the metric and threshold for the registration/motion when deciding to apply the transformation
+    # > the metric and threshold for the registration/motion when
+    # deciding to apply the transformation
     reg_metric = Cnt['align']['reg_metric']
     reg_thrshld = Cnt['align']['reg_thrshld']
     reg_costfun = Cnt['align']['reg_costfun']
@@ -460,14 +442,11 @@ def align_ur(
     # > check if the file exists
     if not use_stored or not falign_dct.is_file():
 
-        # -----------------------------------------------
         # > list all NIfTI files
         nii_frms = []
         for k in stat_tdata['descr']['ur']['frms']:
             nii_frms.append(stat_tdata[k]['fnii'])
-        # -----------------------------------------------
 
-        # -----------------------------------------------
         # > CORE ALIGNMENT OF UR (SUVr) FRAMES:
 
         # > frame-based motion metric (rotations+translation)
@@ -489,7 +468,6 @@ def align_ur(
             log.info(f'2-way registration of frame #{frm0} and frame #{frm1}')
 
             if reg_tool == 'spm':
-                #....................................................
                 # > one way registration (1)
                 spm_res = nimpa.coreg_spm(fnii0, fnii1, fwhm_ref=reg_fwhm, fwhm_flo=reg_fwhm,
                                           fwhm=[13, 13], costfun=reg_costfun,
@@ -500,7 +478,8 @@ def align_ur(
                 trn_ss = np.sum(spm_res['translations']**2)**.5
                 R[frm0, frm1] = rot_ss + trn_ss
 
-                # > pick the reference point as the centre of mass of the floating imaging (used in `D`)
+                # > pick the reference point as the centre of mass of the floating imaging
+                # (used in `D`)
                 _, com_ = nimpa.centre_mass_rel(fnii1)
                 # > average distance due to transformation/motion
                 D[frm0, frm1] = nimpa.aff_dist(spm_res['affine'], com_)
@@ -517,16 +496,15 @@ def align_ur(
                 trn_ss = np.sum(spm_res['translations']**2)**.5
                 R[frm1, frm0] = rot_ss + trn_ss
 
-                # > pick the reference point as the centre of mass of the floating imaging (used in `D`)
+                # > pick the reference point as the centre of mass of the floating imaging
+                # (used in `D`)
                 _, com_ = nimpa.centre_mass_rel(fnii0)
                 # > average distance due to transformation/motion
                 D[frm1, frm0] = nimpa.aff_dist(spm_res['affine'], com_)
 
                 S[frm1][frm0] = spm_res['faff']
-                #....................................................
 
             elif reg_tool == 'dipy':
-                #....................................................
                 # > 1st way of registration using DIPY
                 dipy_res = nimpa.affine_dipy(fnii0, fnii1, rfwhm=reg_fwhm, ffwhm=reg_fwhm,
                                              outpath=niidir, fcomment=f'_combi_{frm0}-{frm1}')
@@ -546,7 +524,6 @@ def align_ur(
                 # > average distance due to transformation/motion
                 _, com_ = nimpa.centre_mass_rel(fnii0)
                 D[frm1, frm0] = nimpa.aff_dist(dipy_res['affine'], com_)
-                #....................................................
 
         # > FIND THE REFERENCE FRAME
         # > sum frames along floating frames
@@ -622,13 +599,10 @@ def align_ur(
             trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
                    niiref['transpose'].index(2)), flip=niiref['flip'])
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # SINGLE UR FRAME  &  CoM CORRECTION
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > preprocess the aligned PET into a single UR frame
         ur_frm = preproc_ur(faligned, outpath=niidir, com_correction=com_correction)
         fref = ur_frm['fcom']
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         # > saved frames aligned and CoM-modified
         fniic_aligned = []
@@ -645,14 +619,12 @@ def align_ur(
             descrip='AmyPET: aligned UR frames' + com_correction * (', CoM-modified'),
             trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
                    tmp['transpose'].index(2)), flip=tmp['flip'])
-        # -----------------------------------------------
 
         # > output dictionary
-        outdct = dict(ur={}, wide={})
-
-        outdct['ur'] = {
-            'fpet': faligned_c, 'fur': fref, 'fpeti': fniic_aligned, 'outpath': niidir,
-            'Metric': R, 'faff': S}
+        outdct = {
+            'ur': {
+                'fpet': faligned_c, 'fur': fref, 'fpeti': fniic_aligned, 'outpath': niidir,
+                'Metric': R, 'faff': S}, 'wide': {}}
 
         # > save static image which is not aligned
         if save_not_aligned:
@@ -667,12 +639,10 @@ def align_ur(
 
             outdct['ur']['fpet_notaligned'] = fnotaligned
 
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
         # The remaining frames of static or fully dynamic PET
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
         # > indices of non-UR frames
-        idx_r = [not f in stat_tdata['descr']['ur']['frms'] for f in stat_tdata['descr']['frms']]
+        idx_r = [f not in stat_tdata['descr']['ur']['frms'] for f in stat_tdata['descr']['frms']]
 
         falign = np.array([stat_tdata[f]['fnii'] for f in stat_tdata['descr']['frms']])
         ts = np.array(stat_tdata['descr']['timings'])
@@ -723,7 +693,6 @@ def align_ur(
             'faff': S_w}
 
         np.save(falign_dct, outdct)
-        #+++++++++++++++++++++++++++++++++++++++++++++++++++++
     else:
         outdct = np.load(falign_dct, allow_pickle=True)
         outdct = outdct.item()
@@ -731,10 +700,6 @@ def align_ur(
     return outdct
 
 
-# =====================================================================
-
-
-# ========================================================================================
 def align_break(
     niidat,
     aligned_ur,
@@ -742,20 +707,21 @@ def align_break(
     reg_tool='spm',
     use_stored=False,
 ):
-    ''' Align the Coffee-Break protocol data to Static/UR (SUVr) data
-        to form one consistent dynamic 4D NIfTI image
-        Arguments:
-        - niidat:   dictionary of all input NIfTI series.
-        - aligned_ur: dictionary of the alignment output for UR frames
-        - reg_tool: the method of registration used in aligning PET frames,
-                    by default it is SPM ('spm') with the alternative of
-                    DIPY ('dipy')
-        - frame_min_dur:
-        - decay_corr:
-    '''
-
+    """
+    Align the Coffee-Break protocol data to Static/UR (SUVr) data
+    to form one consistent dynamic 4D NIfTI image
+    Arguments:
+      niidat:     dictionary of all input NIfTI series.
+      aligned_ur: dictionary of the alignment output for UR frames
+      reg_tool:   the method of registration used in aligning PET frames,
+                  by default it is SPM ('spm') with the alternative of
+                  DIPY ('dipy')
+      frame_min_dur:
+      decay_corr:
+    """
     reg_fwhm = Cnt['align']['reg_fwhm']
-    # > the threshold for the registration metric (combined trans. and rots) when deciding to apply the transformation
+    # > the threshold for the registration metric (combined trans. and rots)
+    # when deciding to apply the transformation
     reg_thrshld = Cnt['align']['reg_thrshld']
     # > registration cost function
     reg_costfun = Cnt['align']['reg_costfun']
@@ -771,7 +737,6 @@ def align_break(
         log.info('no coffee-break protocol data detected.')
         return aligned_ur
 
-    #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
     if decay_corr:
         # > DECAY CORRECTION
         # > get the start time of each series for decay correction if requested
@@ -799,7 +764,6 @@ def align_break(
         dcycrr = 1 / np.exp(-lmbd * td)
     else:
         dcycrr = 1.
-    #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 
     # # > output folder for mashed frames for registration/alignment
     # mniidir = niidat['outpath']/'mashed_break'
@@ -828,12 +792,9 @@ def align_break(
     # > timings of the frames
     ts = np.array(bdyn_tdata['descr']['timings'])
 
-    #----------------------------------
     aligned = align_frames(fniis, ts, fref, Cnt, reg_tool=reg_tool, save4d=False,
                            outpath=niidat['outpath'])
-    #----------------------------------
 
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     # > number of frames for the whole study
     fall = aligned['faligned'] + faligned_stat
     nfrma = len(fall)
@@ -853,8 +814,8 @@ def align_break(
 
     nfrm = niia.shape[0]
     # > output file
-    falign_nii = niidat[
-        'outpath'] / 'NIfTI_aligned' / f'Dynamic-{nfrm}-frames_study-{tstudy}_aligned-to-UR-ref.nii.gz'
+    falign_nii = (niidat['outpath'] / 'NIfTI_aligned' /
+                  f'Dynamic-{nfrm}-frames_study-{tstudy}_aligned-to-UR-ref.nii.gz')
 
     # > save aligned frames
     nimpa.array2nii(
@@ -862,13 +823,8 @@ def align_break(
         trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1), tmp['transpose'].index(2)),
         flip=tmp['flip'])
 
-    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    outdct = dict(fpet=falign_nii, fpeti=fall, alignment=aligned)
+    outdct = {'fpet': falign_nii, 'fpeti': fall, 'alignment': aligned}
     outdct.update(aligned_ur)
     np.save(falign_dct, outdct)
 
     return outdct
-
-
-# ========================================================================================

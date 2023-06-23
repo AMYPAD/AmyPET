@@ -5,23 +5,24 @@ Static frames processing tools for AmyPET
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
-import logging as log
+import logging
 import os
-from itertools import combinations
-from pathlib import Path, PurePath
+from pathlib import Path
 from subprocess import run
 
 import dcm2niix
 import numpy as np
 from matplotlib import pyplot as plt
+from miutil.fdio import hasext
 from niftypet import nimpa
 
 from .preproc import r_trimup
+from .proc import extract_vois
 
-log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
+log = logging.getLogger(__name__)
 
-nifti_ext = ('.nii', '.nii.gz')
-dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
+nifti_ext = '.nii', '.nii.gz'
+dicom_ext = 'dcm', 'img', 'ima'
 
 
 # ========================================================================================
@@ -58,18 +59,18 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
 
     if fname is None:
         fname = nimpa.rem_chars(pet_path.name.split('.')[0]) + '_static.nii.gz'
-    elif not str(fname).endswith(nifti_ext[1]):
+    elif not hasext(fname, nifti_ext[1]):
         fname += '.nii.gz'
     # --------------------------------------
 
     # > NIfTI case
-    if pet_path.is_file() and str(pet_path).endswith(nifti_ext):
+    if pet_path.is_file() and hasext(pet_path, nifti_ext):
         log.info('PET path exists and it is a NIfTI file')
 
         fpet_nii = pet_path
 
     # > DICOM case (if any file inside the folder is DICOM)
-    elif pet_path.is_dir() and any([f.suffix in dicom_ext for f in pet_path.glob('*')]):
+    elif pet_path.is_dir() and any(hasext(f, dicom_ext) for f in pet_path.glob('*')):
 
         # > get the NIfTi images from previous processing
         fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
@@ -109,7 +110,7 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
     fstat = petout / fname
 
     # > check if the static (for UR) file already exists
-    if not fstat.is_file() or force == True:
+    if not fstat.is_file() or force:
 
         if nfrm > 1:
             imstat = np.sum(imdct['im'][frames, ...], axis=0)
@@ -195,7 +196,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         lbl = nimpa.getnii(lblpth)
         voi_dct = {int(lab): [int(lab)] for lab in np.unique(lbl)}
 
-    if ref_voi is not None and not all([r in voi_dct for r in ref_voi]):
+    if ref_voi is not None and not all(r in voi_dct for r in ref_voi):
         raise ValueError('Not all VOIs listed as reference are in the VOI definition dictionary.')
 
     # > static (UR) image preprocessing

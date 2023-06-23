@@ -59,7 +59,6 @@ def load_masks(mskpath, voxsz: int = 2):
     return fmasks, masks
 
 
-#--------------------------------------------------------------------
 def sort_input(fpets, fmris, flip_pet=None):
     ''' Classify input data of PET and MRI and optionally flip PET
         if needed.
@@ -112,9 +111,6 @@ def sort_input(fpets, fmris, flip_pet=None):
     return pet_mr_list, flips
 
 
-#--------------------------------------------------------------------
-
-
 def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_corr_pet=True,
         stage='f', voxsz: int = 2, outpath=None, use_stored=False, climage=True, urimage=True,
         cl_anchor_path: Optional[Path] = None, csv_metrics='short', fcsv=None):
@@ -160,7 +156,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
     # > the processing stage must be one of registration 'r',
     # > normalisation 'n', CL scaling 'c' or full 'f':
-    if not stage in ['r', 'n', 'c', 'f']:
+    if stage not in ('r', 'n', 'c', 'f'):
         raise ValueError('unrecognised processing stage')
 
     # > output dictionary file name
@@ -240,18 +236,18 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             tmp = nimpa.getnii(fpet, output='all')
             try:
                 dscr = tmp['hdr']['descrip'].item().decode()
-            except:
+            except Exception:
                 dscr = None
             if isinstance(dscr, str) and 'CoM-modified' in dscr:
-                out[onm]['petc'] = petc = dict(fim=fpet)
+                out[onm]['petc'] = petc = {'fim': fpet}
                 log.info('the PET data is already modified for the centre of mass.')
             elif dscr is None and 'com-modified' in fpet.name:
-                out[onm]['petc'] = petc = dict(fim=fpet)
+                out[onm]['petc'] = petc = {'fim': fpet}
                 log.info('the PET data is already modified for the centre of mass.')
             else:
                 out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
         else:
-            out[onm]['petc'] = petc = dict(fim=fpet)
+            out[onm]['petc'] = petc = {'fim': fpet}
             log.info('PET image has NOT been corrected for the centre of mass.')
 
         # > centre of mass correction for the MR part

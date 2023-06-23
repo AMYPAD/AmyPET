@@ -21,8 +21,6 @@ __copyright__ = "Copyright 2022-23"
 import logging
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
 from .align import align
 from .backend_centiloid import run as centiloid_run
 from .dyn_tools import km_img, km_voi

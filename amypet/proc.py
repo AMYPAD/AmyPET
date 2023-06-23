@@ -5,22 +5,22 @@ Processing of PET images for AmyPET
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
-import logging as log
+import logging
 import os
 import shutil
 from pathlib import Path, PurePath
 
 import numpy as np
 import spm12
+from miutil.fdio import hasext
 from niftypet import nimpa
 
 from .dyn_tools import timing_dyn
 from .utils import get_atlas
 
-log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
+log = logging.getLogger(__name__)
 
 
-# ========================================================================================
 def atl2pet(frefpet, fatl, cldct, outpath=None):
     '''
     Atlas and GM from the centiloid (CL) pipeline to the reference
@@ -33,7 +33,7 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
 
     # > output path
     if outpath is None:
-        opth = Path(cl_dct['opth']).parent.parent
+        opth = Path(cldct['opth']).parent.parent
     else:
         opth = Path(outpath)
     nimpa.create_dir(opth)
@@ -91,7 +91,9 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
     gm = nimpa.getnii(fgmpet)
     gm[np.isnan(gm)] = 0
 
-    return dict(fatlpet=finvatl, fgmpet=fgmpet, atlpet=atl, gmpet=gm, outpath=opth, bbox=bbox)
+    return {
+        'fatlpet': finvatl, 'fgmpet': fgmpet, 'atlpet': atl, 'gmpet': gm, 'outpath': opth,
+        'bbox': bbox}
 
 
 # ========================================================================================
@@ -176,15 +178,12 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
             raise ValueError('Incorrectly provided atlas mask')
     else:
         amsk = 1
-    # ----------------------------------------------
 
-    # ----------------------------------------------
     # > output dictionary
     out = {}
 
     log.debug('Extracting volumes of interest (VOIs):')
-    for k, voi in enumerate(voi_dct):
-
+    for voi in voi_dct:
         log.info(f'  VOI: {voi}')
 
         # > ROI mask
@@ -202,7 +201,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
         if outpath is not None and not isinstance(atlas, np.ndarray):
             nimpa.create_dir(outpath)
-            fvoi = Path(outpath) / (str(voi) + '_mask.nii.gz')
+            fvoi = Path(outpath) / f'{voi}_mask.nii.gz'
             nimpa.array2nii(msk2, affine, fvoi,
                             trnsp=(trnsp.index(0), trnsp.index(1), trnsp.index(2)), flip=flip)
         else:
@@ -226,8 +225,6 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
         if output_masks:
             out[voi]['roimsk'] = msk2
-
-    # ----------------------------------------------
 
     return out
 
@@ -262,7 +259,7 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
     nimpa.create_dir(opth)
 
     # > get the atlas
-    if isinstance(atlas, (str, PurePath)) and Path(atlas).name.endswith(('.nii', '.nii.gz')):
+    if isinstance(atlas, (str, PurePath)) and hasext(atlas, ('nii', 'nii.gz')):
         fatl = atlas
     elif isinstance(atlas, str) and atlas in ['hammers', 'aal']:
         datl = get_atlas(atlas=atlas, res=res)
@@ -273,32 +270,28 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
     else:
         if atlas == 'aal':
             # > New AAL3 codes!
-            dvoi = dict(
-                cerebellum=list(range(95, 120)), frontal=list(range(1, 25)) + [73, 74],
-                parietal=list(range(61, 72)), occipital=list(range(47, 59)),
-                temporal=[59, 60] + list(range(83, 95)), insula=[33, 34], precuneus=[71, 72],
-                antmidcingulate=list(range(151, 157)) + [37, 38], postcingulate=[39, 40],
-                hippocampus=[41, 42], caudate=[75, 76], putamen=[77, 78],
-                thalamus=list(range(121,
-                                    151)), composite=list(range(3, 29)) + list(range(31, 37)) +
-                list(range(59, 69)) + list(range(63, 72)) + list(range(85, 91)))
+            dvoi = {
+                'cerebellum': list(range(95, 120)), 'frontal': list(range(1, 25)) + [73, 74],
+                'parietal': list(range(61, 72)), 'occipital': list(range(47, 59)),
+                'temporal': [59, 60] + list(range(83, 95)), 'insula': [33, 34],
+                'precuneus': [71, 72], 'antmidcingulate': list(range(151, 157)) + [37, 38],
+                'postcingulate': [39, 40], 'hippocampus': [41, 42], 'caudate': [75, 76],
+                'putamen': [77, 78], 'thalamus': list(range(121, 151)),
+                'composite': list(range(3, 29)) + list(range(31, 37)) + list(range(59, 69)) +
+                list(range(63, 72)) + list(range(85, 91))}
         elif atlas == 'hammers':
-            dvoi = dict(
-                cerebellum=[17, 18],
-                frontal=[28, 29] + list(range(50, 60)) + list(range(68, 74)) + list(range(76, 82)),
-                parietal=[32, 33, 60, 61, 62, 63, 84, 85],
-                occipital=[22, 23, 64, 65, 66, 67],
-                temporal=list(range(5, 17)) + [82, 83],
-                insula=[20, 21] + list(range(86, 96)),
-                antecingulate=[24, 25],
-                postcingulate=[26, 27],
-                hippocampus=[1, 2],
-                caudate=[34, 35],
-                putamen=[38, 39],
-                thalamus=[40, 41],
-                composite=[28, 29] + list(range(52, 60)) + list(range(76, 82)) +
-                list(range(86, 96)) + [32, 33, 62, 63, 84, 85],
-            )
+            dvoi = {
+                'cerebellum': [17, 18], 'frontal': [28, 29] + list(range(50, 60)) +
+                list(range(68, 74)) + list(range(76, 82)),
+                'parietal': [32, 33, 60, 61, 62, 63, 84,
+                             85], 'occipital': [22, 23, 64, 65, 66,
+                                                67], 'temporal': list(range(5, 17)) + [82, 83],
+                'insula': [20, 21] + list(range(86, 96)), 'antecingulate': [24, 25],
+                'postcingulate': [26, 27], 'hippocampus': [1, 2], 'caudate': [34, 35],
+                'putamen': [38,
+                            39], 'thalamus': [40,
+                                              41], 'composite': [28, 29] + list(range(52, 60)) +
+                list(range(76, 82)) + list(range(86, 96)) + [32, 33, 62, 63, 84, 85]}
         else:
             raise ValueError('unrecognised atlas name!')
 
@@ -319,7 +312,7 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
     # > frame time definitions for NiftyPAD
     dt = tdct['niftypad']
 
-    return dict(dt=dt, voi=rvoi, atlas_gm=atlgm, outpath=opth)
+    return {'dt': dt, 'voi': rvoi, 'atlas_gm': atlgm, 'outpath': opth}
 
 
 # ========================================================================================
@@ -378,7 +371,7 @@ def iinorm(cldct, fpet=None, refvoi=None, atlas='hammers', fcomment=None, outpat
         gmmsk = None
 
     # > get the cerebellum GM VOI to act as a reference region
-    rvoi = extract_vois(fpetc, atlgm['fatlpet'], dict(cerebellum=refidx), atlas_mask=gmmsk,
+    rvoi = extract_vois(fpetc, atlgm['fatlpet'], {'cerebellum': refidx}, atlas_mask=gmmsk,
                         outpath=opth / 'masks', output_masks=output_masks)
 
     dpet = nimpa.getnii(fpet, output='all')

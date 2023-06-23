@@ -6,21 +6,23 @@ __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022"
 
 import copy
-import logging as log
+import logging
 import os
 import shutil
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePath
 from subprocess import run
 
 import dcm2niix
 import numpy as np
 import spm12
+from miutil.fdio import hasext
 from niftypet import nimpa
 
 from .utils import get_atlas
 
-log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
+log = logging.getLogger(__name__)
+EYE4 = np.eye(4)
 
 
 # =======================================================================================
@@ -44,8 +46,8 @@ def get_t1(input_fldr, Cnt, ignore_derived=False, rem_prev_conv=True):
     input_fldr = Path(input_fldr)
 
     for f in input_fldr.iterdir():
-        if f.is_file() and f.name.endswith(
-            ('.nii', '.nii.gz')) and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
+        if f.is_file() and hasext(f, ('nii', 'nii.gz')) and any([
+                p in f.name.lower() for p in Cnt['pttrn_t1']]):
             fniit1 = f
         elif f.is_dir() and any([p in f.name.lower() for p in Cnt['pttrn_t1']]):
             t1dcm = nimpa.dcmsort(f)
@@ -88,12 +90,12 @@ def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False
 
     # > remove previously converted files
     if remove_previous:
-        files = [f for f in opth.iterdir() if f.suffix in ['.gz', '.nii', '.json']]
-        for f in files:
-            if f.is_file():
-                os.remove(f)
-            else:
-                shutil.rmtree(f)
+        for f in opth.iterdir():
+            if hasext(f, ('gz', 'nii', 'json')):
+                if f.is_file():
+                    os.remove(f)
+                else:
+                    shutil.rmtree(f)
 
     run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', str(opth), '-f', '%f_%s', str(inpath)])
 
@@ -207,7 +209,7 @@ def ur_inf(srs_dscr, t_frms, srs, Cnt, ur_win_def=None, tracer=None):
         frms_sel = [i in ur_frm_range for i, s in enumerate(srs)]
 
         srs_dscr['acq'].append('ur')
-        if not 'ur' in srs_dscr:
+        if 'ur' not in srs_dscr:
             srs_dscr['ur'] = {}
         srs_dscr['ur'].update({
             'time': (t0_ur, t1_ur), 'timings': [t_frms[f] for f in range(frm_0, frm_1 + 1)],
@@ -309,7 +311,7 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
         # > for each folder do the following:
 
         # > time sorted series according to acquisition time
-        srs_t = {k: v for k, v in sorted(m.items(), key=lambda item: item[1]['tacq'])}
+        srs_t = dict(sorted(m.items(), key=lambda item: item[1]['tacq']))
 
         msrs_t.append(srs_t)
 
@@ -330,8 +332,9 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
                 '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - srs_t[k]['radio_start_time']
             t_frms.append((t0.seconds, t1.seconds))
 
-        # > if not PET frame timings found, continue
-        if not t_frms: continue
+        # if PET frame timings not found, skip
+        if not t_frms:
+            continue
 
         t_starts = [t[0] for t in t_frms]
         t_stops = [t[1] for t in t_frms]
@@ -396,12 +399,10 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
             frm_1 = t_stops.index(t1_dyn)
 
             msrs_dscr.append({
-                                          #'inpath':impath,
-                'acq': [acq_type],
-                'time': (t0_dyn, t1_dyn),
-                'timings': t_frms,
+                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
                 'idxs': (frm_0, frm_1),
                 'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
+            # 'inpath':impath
 
         elif acq_type == 'fulldyn':
             t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
@@ -571,7 +572,7 @@ def rem_artefacts(niidat, Cnt, artefact='endfov'):
                 ztop = np.max(zprf[:zmrg])
                 zbtm = np.max(zprf[-zmrg:])
                 zmid = np.max(zprf[zmrg:-zmrg])
-                #print(k, ztop, zbtm, zmid, ztop>zmid, zbtm>zmid)
+                # print(k, ztop, zbtm, zmid, ztop>zmid, zbtm>zmid)
 
                 # > remove the artefacts from top and bottom
                 if zbtm > zmid or ztop > zmid:
@@ -703,9 +704,8 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
 # =====================================================================
 
 
-def vr_proc(fpet, fmri, pet_affine=np.eye(4), mri_affine=np.eye(4), intrp=1.0, activity=None,
-            weight=None, ref_voxsize=1.0, ref_imsize=256, fref=None, outfref=None, outpath=None,
-            fcomment=''):
+def vr_proc(fpet, fmri, pet_affine=EYE4, mri_affine=EYE4, intrp=1.0, activity=None, weight=None,
+            ref_voxsize=1.0, ref_imsize=256, fref=None, outfref=None, outpath=None, fcomment=''):
     '''
     Generate PET and the accompanying MRI images for amyloid visual
     reads aligned (rigidly) to the MNI space.
@@ -737,25 +737,19 @@ def vr_proc(fpet, fmri, pet_affine=np.eye(4), mri_affine=np.eye(4), intrp=1.0, a
     else:
         raise ValueError('Incorrect PET and/or MRI file paths!')
 
-    if not isinstance(pet_affine, np.ndarray) and not isinstance(pet_affine,
-                                                                 (str, pathlib.PurePath)):
+    if not isinstance(pet_affine, np.ndarray) and not isinstance(pet_affine, (str, PurePath)):
         raise ValueError('Incorrect PET affine input')
 
-    if not isinstance(mri_affine, np.ndarray) and not isinstance(mri_affine,
-                                                                 (str, pathlib.PurePath)):
+    if not isinstance(mri_affine, np.ndarray) and not isinstance(mri_affine, (str, PurePath)):
         raise ValueError('Incorrect MRI affine input')
 
-    #----------------------------------
-    # > sort out output
     if outpath is None:
         opth = fpet.parent / 'VR_output'
     else:
         opth = outpath
     nimpa.create_dir(opth)
-
     if outfref is None:
         outfref = opth
-    #----------------------------------
 
     if fref is None:
         SZ_VX = ref_voxsize
@@ -789,7 +783,7 @@ def vr_proc(fpet, fmri, pet_affine=np.eye(4), mri_affine=np.eye(4), intrp=1.0, a
                                fimout=opth / f'MRI_{SZ_IM}_{vxstr}{fcomment}.nii.gz',
                                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
 
-    out = dict(fpet=Path(fpetr), fmri=Path(fmrir), fref=fref)
+    out = {'fpet': Path(fpetr), 'fmri': Path(fmrir), 'fref': fref}
 
     if activity is not None and weight is not None:
         # > correct the weight to grams

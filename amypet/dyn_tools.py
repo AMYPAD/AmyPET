@@ -5,32 +5,22 @@ Static frames processing tools for AmyPET
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
-import logging as log
-import os
-import shutil
-from pathlib import Path, PurePath
-from subprocess import run
+import logging
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
-import spm12
-
-#--- NiftyPAD ---
 from niftypad import basis
-from niftypad.image_process.parametric_image import image_to_parametric
 from niftypad.kt import dt2mft, dt2tdur, dt_fill_gaps
 from niftypad.models import get_model_inputs
 from niftypad.tac import TAC, Ref
 from niftypet import nimpa
 from tqdm import trange
 
-#---
-
-log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
+log = logging.getLogger(__name__)
 
 
-# =====================================================================
 def timing_dyn(niidat):
     '''
     Get the frame timings from the NIfTI series
@@ -46,13 +36,13 @@ def timing_dyn(niidat):
     # > convert the timings to NiftyPAD format
     dt = np.array(t).T
 
-    return dict(timings=t, niftypad=dt, t_mid_points=tm)
+    return {'timings': t, 'niftypad': dt, 't_mid_points': tm}
 
 
 # =====================================================================
 def km_voi(dynvois, voi=None, dynamic_break=False, model='srtmb_basis', beta_lim=None, n_beta=100,
            k2p=None, weights='dur', outpath=None):
-    '''
+    """
     Run kinetic modelling (KM) using NiftyPAD
     Arguments:
     dynvois:    dictionary of dynamic VOIs based on the chosen atlas;
@@ -67,17 +57,13 @@ def km_voi(dynvois, voi=None, dynamic_break=False, model='srtmb_basis', beta_lim
     weights:    KM weights for each dynamic frame; if set to 'dur'
                 the duration of each frame will be used for setting up
                 the weights; if set to None, no weights are used.
+    """
 
-    '''
-
-    #----------------------------------
-    # > sorting output folder
     if outpath is None:
         opth = dynvois['outpath']
     else:
         opth = Path(outpath)
         nimpa.create_dir(opth)
-    #----------------------------------
 
     # > start/stop times for each frame
     dt = dynvois['dt']
@@ -89,7 +75,7 @@ def km_voi(dynvois, voi=None, dynamic_break=False, model='srtmb_basis', beta_lim
     # > target TAC of selected VOI
     tac = TAC(dynvois['voi'][voi]['avg'], dt)
 
-    #----- KM parameters -----
+    # ----- KM parameters -----
     if beta_lim is None:
         beta_lim = [0.01 / 60, 0.5 / 60]
 
@@ -100,7 +86,7 @@ def km_voi(dynvois, voi=None, dynamic_break=False, model='srtmb_basis', beta_lim
         w = w / np.amax(w)
     else:
         raise ValueError('currently unrecognised weights for dynamic frames')
-    #-------------------------
+    # -------------------------
 
     b = basis.make_basis(ref.inputf1cubic, dt, beta_lim=beta_lim, n_beta=n_beta, w=w, k2p=k2p)
     user_inputs = {
@@ -150,13 +136,13 @@ def km_voi(dynvois, voi=None, dynamic_break=False, model='srtmb_basis', beta_lim
     fpng = opth / f'{model}_fitting.png'
     plt.savefig(fpng, dpi=150, facecolor='auto', edgecolor='auto')
 
-    return dict(r1=r1, k2=k2, bp=bp, TAC=tac, fig=fpng)
+    return {'r1': r1, 'k2': k2, 'bp': bp, 'TAC': tac, 'fig': fpng}
 
 
 # =====================================================================
 def km_img(fpet, rvoi, dt, dynamic_break=False, model='srtmb_basis', beta_lim=None, n_beta=100,
            k2p=None, thrshld=0.005, weights='dur', outpath=None):
-    '''
+    """
     Run voxel-wise (image) kinetic modelling (KM) using NiftyPAD
     Arguments:
     fpet:       input NifTI file for dynamic PET image
@@ -174,29 +160,24 @@ def km_img(fpet, rvoi, dt, dynamic_break=False, model='srtmb_basis', beta_lim=No
                 the duration of each frame will be used for setting up
                 the weights; if set to None, no weights are used.
 
-    '''
-
-    #----------------------------------
+    """
     if not Path(fpet).is_file():
         raise IOError('the input PET file does not exist')
     else:
         petnii = nib.load(fpet)
         pet = petnii.get_fdata()
-    #----------------------------------
 
-    #----------------------------------
     if outpath is None:
         opth = fpet.parent
     else:
         opth = Path(outpath)
         nimpa.create_dir(opth)
-    #----------------------------------
 
     # > reference region VOI, with interpolation
     ref = Ref(rvoi, dt)
     ref.interp_1cubic()
 
-    #----- KM parameters -----
+    # ----- KM parameters -----
     if beta_lim is None:
         beta_lim = [0.01 / 60, 0.5 / 60]
 
@@ -211,7 +192,7 @@ def km_img(fpet, rvoi, dt, dynamic_break=False, model='srtmb_basis', beta_lim=No
         w = w / np.amax(w)
     else:
         raise ValueError('currently unrecognised weights for dynamic frames')
-    #-------------------------
+    # -------------------------
 
     b = basis.make_basis(ref.inputf1cubic, dt, beta_lim=beta_lim, n_beta=n_beta, w=w, k2p=k2p)
     user_inputs = {
@@ -230,7 +211,7 @@ def km_img(fpet, rvoi, dt, dynamic_break=False, model='srtmb_basis', beta_lim=No
 
     # > loop through dims to iteratively go over each voxel
     for zi in trange(petnii.shape[2], desc='image z-slice'):
-        #print("z-slice #:", str(zi))
+        # print("z-slice #:", str(zi))
         for yi in range(petnii.shape[1]):
             for xi in range(petnii.shape[0]):
                 # > array of voxel TAC
@@ -253,4 +234,4 @@ def km_img(fpet, rvoi, dt, dynamic_break=False, model='srtmb_basis', beta_lim=No
     nib.save(nib.Nifti1Image(imk2, petnii.affine), fk2)
     nib.save(nib.Nifti1Image(imbp, petnii.affine), fbp)
 
-    return dict(fr1=fr1, fk2=fk2, fbp=fbp)
+    return {'fr1': fr1, 'fk2': fk2, 'fbp': fbp}
