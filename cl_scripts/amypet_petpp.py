@@ -10,8 +10,7 @@ from niftypet import nimpa
 import spm12
 import amypet
 from amypet import backend_centiloid as centiloid
-
-Cnt = amypet.init()
+from amypet import params
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # INPUT
@@ -22,7 +21,7 @@ outpath = input_fldr/'amypet_processed_t'
 
 #------------------------------
 # > structural/T1w image
-ft1w = amypet.get_t1(input_fldr, Cnt)
+ft1w = amypet.get_t1(input_fldr, params)
 
 if ft1w is None:
     raise ValueError('Could not find the necessary T1w DICOM or NIfTI images')
@@ -39,7 +38,7 @@ fpet = amypet.dicom2nifti(petin, outpath=outpath/'petnii', remove_previous=True)
 out_cl = centiloid.run(
     fpet,
     ft1w,
-    Cnt,
+    params,
     stage='n',
     voxsz=2,
     bias_corr=True,
@@ -61,5 +60,3 @@ fipet = amypet.iinorm(
     output_masks=True,
     apply_gmmask=True)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-

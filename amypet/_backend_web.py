@@ -1,4 +1,5 @@
 import logging
+import platform
 import re
 import shlex
 import sys
@@ -17,14 +18,17 @@ import matplotlib.pyplot as plt
 import mpld3
 import streamlit as st
 import streamlit.components.v1 as st_components
+
 try:
     from matplotlib.figure import FigureBase
 except ImportError:
     from matplotlib.figure import Figure as FigureBase
+
 from packaging.version import Version
 from streamlit.version import _get_installed_streamlit_version
 
 from amypet.gui import BaseParser, __licence__, __version__, get_main_parser, patch_argument_kwargs
+from amypet.utils import is_one_or_more
 
 NONE = ''
 PARSER = '==PARSER=='
@@ -138,9 +142,12 @@ def main():
                         st.error(f"Unknown: {opt.widget}")
                         val = dflt
                 elif opt.choices:
-                    choices = list(opt.choices)
-                    val = st.selectbox(opt.dest, index=choices.index(dflt), options=choices,
-                                       **kwargs)
+                    choices = tuple(opt.choices)
+                    if is_one_or_more(opt.nargs):
+                        val = st.multiselect(opt.dest, options=choices, default=dflt, **kwargs)
+                    else:
+                        val = st.selectbox(opt.dest, index=choices.index(dflt), options=choices,
+                                           **kwargs)
                 else:
                     val = st.text_input(opt.dest, value=dflt, **kwargs)
                 if val != dflt:
@@ -166,11 +173,16 @@ def main():
     with left:
         st.write("**Command**")
     with right:
-        prefix = st.checkbox("Prefix")
-    cmd = [Path(sys.executable).resolve().name, "-m", parser.prog] + [
-        (f"--{k.replace('_', '-')}"
-         if v is True else f"--{k.replace('_', '-')}={shlex.quote(str(v))}")
-        for k, v in opts.items()]
+        prefix = st.checkbox("Prefix", platform.system() == "Windows")
+    cmd = [Path(sys.executable).resolve().name, "-m", parser.prog]
+    for k, v in opts.items():
+        flag = f"--{k.replace('_', '-')}"
+        if v is True:
+            cmd += [flag]
+        elif isinstance(v, (list, tuple, set)):
+            cmd += [f"{flag}={i}" for i in v]
+        else:
+            cmd += [f"{flag}={shlex.quote(str(v))}"]
     st.code(" ".join(cmd if prefix else cmd[2:]), "shell")
     dry_run = not st.button("Run")
     if dry_run:

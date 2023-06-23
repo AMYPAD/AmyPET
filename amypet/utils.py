@@ -8,11 +8,14 @@ import tarfile
 
 import matplotlib.pyplot as plt
 import numpy as np
+import toml
 from niftypet import nimpa
-from pkg_resources import resource_filename
 from scipy.stats import linregress
 
-from .amypet_config import *
+try:          # py<3.9
+    import importlib_resources as resources
+except ImportError:
+    from importlib import resources
 
 try:
     from os import cpu_count
@@ -24,15 +27,16 @@ except ImportError:
         def cpu_count():
             return 4
 
+params_path = resources.files('amypet').resolve() / 'params.toml'
+params = toml.load(params_path)
 
 # > regions used in CL project
 rvois = ['wc', 'cg', 'wcb', 'pns']
 
 # > folder name with the default conversion tables after calibration
-cl_anchor_fldr = Path(resource_filename(__name__, 'data/cl_anchor_tables'))
-cl_masks_fldr = Path(resource_filename(__name__, 'data/CL_masks'))
-atlas_fldr = Path(resource_filename(__name__, 'data/atlas'))
-amypet_dir = Path.home() / '.amypet'
+cl_anchor_fldr = resources.files('amypet').resolve() / 'data' / 'cl_anchor_tables'
+cl_masks_fldr = cl_anchor_fldr.parent / 'CL_masks'
+atlas_fldr = cl_anchor_fldr.parent / 'atlas'
 
 # > region full name strings for plots
 rvoi_str = {
@@ -40,9 +44,8 @@ rvoi_str = {
     'pns': 'PONS'}
 
 
-def init():
-    res = get_params()
-    return res.Cnt
+def is_one_or_more(nargs):
+    return nargs and (nargs > 1 if isinstance(nargs, int) else nargs in "+*")
 
 
 # ----------------------------------------------------------------------

@@ -8,6 +8,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
     - name: set PYSHA
       run: echo "PYSHA=$(python -VV | sha256sum | cut -d' ' -f1)" >> $GITHUB_ENV
     - uses: actions/cache@v3
@@ -36,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.7, '3.10']
+        python: [3.7, 3.11]
     name: Test py${{ matrix.python }}
     steps:
     - uses: actions/checkout@v3
@@ -53,7 +55,7 @@ jobs:
     runs-on: [self-hosted, python, matlab, cuda]
     strategy:
       matrix:
-        python: [3.9]
+        python: [3.8]
     name: CUDA py${{ matrix.python }}
     steps:
     - uses: actions/checkout@v3
@@ -77,10 +79,11 @@ jobs:
       with:
         fetch-depth: 0
     - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
     - id: dist
       uses: casperdcl/deploy-pypi@v2
       with:
-        requirements: twine setuptools wheel setuptools_scm[toml]
         build: true
         gpg_key: ${{ secrets.GPG_KEY }}
         password: ${{ secrets.PYPI_TOKEN }}
@@ -90,6 +93,6 @@ jobs:
       run: |
         changelog=$(git log --pretty='format:%d%n- %s%n%b---' $(git tag --sort=v:refname | tail -n2 | head -n1)..HEAD)
         tag="${GITHUB_REF#refs/tags/}"
-        gh release create --title "amypet $tag alpha" --draft --notes "$changelog" "$tag" dist/${{ steps.dist.outputs.whl }} dist/${{ steps.dist.outputs.whl_asc }}
+        gh release create --title "AmyPET $tag alpha" --draft --notes "$changelog" "$tag" dist/${{ steps.dist.outputs.whl }} dist/${{ steps.dist.outputs.whl_asc }}
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
