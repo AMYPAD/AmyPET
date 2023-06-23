@@ -21,12 +21,13 @@ from .proc import extract_vois
 
 log = logging.getLogger(__name__)
 
-nifti_ext = '.nii', '.nii.gz'
+nifti_ext = 'nii', 'nii.gz'
 dicom_ext = 'dcm', 'img', 'ima'
 
 
 # ========================================================================================
-def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=True, force=True):
+def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=True, fwhm=0.,
+               force=True):
     ''' Prepare the PET image for UR (aka SUVr) analysis.
         Arguments:
         - pet_path: path to the folder of DICOM images, or to the NIfTI file
@@ -37,6 +38,7 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
         - com_correction: centre-of-mass correction - moves the coordinate
                     system to the centre of the spatial image intensity
                     distribution.
+        - fwhm:     smoothing parameter in mm (FWHM) for the Gaussian kernel
         - force:    forces the generation of the UR image even if it
                     exists.
 
@@ -109,6 +111,8 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
     # > static image file path
     fstat = petout / fname
 
+    outdct = {'fpet_framed': fpet_nii}
+
     # > check if the static (for UR) file already exists
     if not fstat.is_file() or force:
 
@@ -117,10 +121,25 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
         else:
             imstat = np.squeeze(imdct['im'])
 
+        # > apply smoothing when requested
+        if fwhm > 0:
+            fwhmstr = str(fwhm).replace('.', '-')
+            fur_smo = petout / (fname.split('.nii')[0] + f'_smo-{fwhmstr}.nii.gz')
+            imsmo = nimpa.imsmooth(imstat, fwhm=fwhm, voxsize=imdct['voxsize'])
+
+            nimpa.array2nii(
+                imsmo, imdct['affine'], fur_smo,
+                trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
+                       imdct['transpose'].index(2)), flip=imdct['flip'])
+
+            outdct['fur_smo'] = fur_smo
+
         nimpa.array2nii(
             imstat, imdct['affine'], fstat,
             trnsp=(imdct['transpose'].index(0), imdct['transpose'].index(1),
                    imdct['transpose'].index(2)), flip=imdct['flip'])
+
+        outdct['fur'] = fstat
 
         log.info(f'Saved uptake ratio (UR) file image to: {fstat}')
 
@@ -128,10 +147,18 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
             fur_com = nimpa.centre_mass_corr(fstat, outpath=petout)
             log.info(
                 f'Centre-of-mass corrected uptake ratio (UR) image has been saved to: {fur_com}')
+            outdct['fcom'] = fur_com['fim']
+            outdct['com'] = fur_com['com_abs']
+
+            # > the same for the smoothed
+            if fwhm > 0:
+                fur_smo_com = nimpa.centre_mass_corr(fur_smo, outpath=petout,
+                                                     com=fur_com['com_abs'])
+                outdct['fcom_smo'] = fur_smo_com['fim']
 
     # ------------------------------------------
 
-    return {'fpet_nii': fpet_nii, 'fur': fstat, 'fcom': fur_com['fim'], 'com': fur_com['com_abs']}
+    return outdct
 
 
 # ========================================================================================

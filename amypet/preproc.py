@@ -47,8 +47,8 @@ def get_t1(input_fldr, Cnt, ignore_derived=False, rem_prev_conv=True):
 
     for f in input_fldr.iterdir():
         fname = f.name.lower()
-        if f.is_file() and hasext(f, ('nii', 'nii.gz')) and any(
-                p in fname for p in Cnt['pttrn_t1']):
+        if f.is_file() and hasext(f,
+                                  ('nii', 'nii.gz')) and any(p in fname for p in Cnt['pttrn_t1']):
             fniit1 = f
         elif f.is_dir() and any(p in fname for p in Cnt['pttrn_t1']):
             t1dcm = nimpa.dcmsort(f)
