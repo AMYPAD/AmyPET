@@ -423,16 +423,14 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
             if fcsv is not None:
                 fcsv = Path(fcsv)
             else:
-                fcsv = opth/'amypet_outputs.csv'
-            
-            if fcsv.is_file():
-                with open(fcsv, 'a', newline='') as csvfile:
-                    writer.writerow(csv_dict)
-            else:
-                with open(fcsv, 'w', newline='') as csvfile:
-                    writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
+                fcsv = spth / 'amypet_outputs.csv'
+
+            append = fcsv.is_file()
+            with open(fcsv, 'a' if append else 'w', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=csv_dict.keys())
+                if not append:
                     writer.writeheader()
-                    writer.writerow(csv_dict)
+                writer.writerow(csv_dict)
 
             out[onm]['fcsv'] = fcsv
         # ---------------------------------
