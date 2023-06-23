@@ -1,5 +1,5 @@
 '''
-Static frames processing tools for AmyPET 
+Static frames processing tools for AmyPET
 '''
 
 __author__ = "Pawel Markiewicz"
@@ -7,12 +7,12 @@ __copyright__ = "Copyright 2022-3"
 
 import logging as log
 import os
+from itertools import combinations
 from pathlib import Path, PurePath
 from subprocess import run
 
 import dcm2niix
 import numpy as np
-from itertools import combinations
 from matplotlib import pyplot as plt
 from niftypet import nimpa
 
@@ -24,15 +24,8 @@ nifti_ext = ('.nii', '.nii.gz')
 dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
 
 
-
 # ========================================================================================
-def preproc_ur(
-    pet_path,
-    frames=None,
-    outpath=None,
-    fname=None,
-    com_correction=True,
-    force=True):
+def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=True, force=True):
     ''' Prepare the PET image for UR (aka SUVr) analysis.
         Arguments:
         - pet_path: path to the folder of DICOM images, or to the NIfTI file
@@ -116,7 +109,7 @@ def preproc_ur(
     fstat = petout / fname
 
     # > check if the static (for UR) file already exists
-    if not fstat.is_file() or force==True:
+    if not fstat.is_file() or force == True:
 
         if nfrm > 1:
             imstat = np.sum(imdct['im'][frames, ...], axis=0)
@@ -132,22 +125,18 @@ def preproc_ur(
 
         if com_correction:
             fur_com = nimpa.centre_mass_corr(fstat, outpath=petout)
-            log.info(f'Centre-of-mass corrected uptake ratio (UR) image has been saved to: {fur_com}')
-        
+            log.info(
+                f'Centre-of-mass corrected uptake ratio (UR) image has been saved to: {fur_com}')
+
     # ------------------------------------------
 
-    return {'fpet_nii': fpet_nii, 'fur': fstat, 'fcom':fur_com['fim'], 'com':fur_com['com_abs']}
-
-
-
-
-
-
+    return {'fpet_nii': fpet_nii, 'fur': fstat, 'fcom': fur_com['fim'], 'com': fur_com['com_abs']}
 
 
 # ========================================================================================
 # Extract VOI values for uptake ratio (UR) analysis
 # ========================================================================================
+
 
 def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None, fname=None,
                 t1_bias_corr=True, outpath=None, output_masks=True, save_voi_masks=False,
@@ -211,8 +200,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
 
     # > static (UR) image preprocessing
     ur_preproc = preproc_ur(petpth, frames=frames,
-                                outpath=outpath / (petpth.name.split('.')[0] + '_ur'),
-                                fname=fname)
+                            outpath=outpath / (petpth.name.split('.')[0] + '_ur'), fname=fname)
 
     out.update(ur_preproc)
 
@@ -245,7 +233,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     if not fplbl.is_file() or reg_fresh:
 
         log.info(f'registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm'
-                     ' for reference and floating images respectively')
+                 ' for reference and floating images respectively')
 
         spm_res = nimpa.coreg_spm(trmout['ftrm'], fmri, fwhm_ref=reg_fwhm_pet,
                                   fwhm_flo=reg_fwhm_mri, fwhm=[7, 7], costfun=reg_costfun,

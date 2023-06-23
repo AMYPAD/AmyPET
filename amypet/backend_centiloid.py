@@ -15,8 +15,9 @@ Options:
 __author__ = ("Pawel J Markiewicz", "Casper da Costa-Luis")
 __copyright__ = "Copyright 2022"
 
+import csv
 import logging
-import os, csv
+import os
 import pickle
 from pathlib import Path
 from typing import Optional
@@ -56,6 +57,7 @@ def load_masks(mskpath, voxsz: int = 2):
     masks = {fmsk: nimpa.getnii(fmasks[fmsk]) for fmsk in fmasks}
 
     return fmasks, masks
+
 
 #--------------------------------------------------------------------
 def sort_input(fpets, fmris, flip_pet=None):
@@ -108,14 +110,14 @@ def sort_input(fpets, fmris, flip_pet=None):
     # -------------------------------------------------------------
 
     return pet_mr_list, flips
+
+
 #--------------------------------------------------------------------
 
 
-
-def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
-        cmass_corr_pet=True, stage='f', voxsz: int = 2, outpath=None, use_stored=False,
-        climage=True, urimage=True, cl_anchor_path: Optional[Path] = None,
-        csv_metrics='short', fcsv=None):
+def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_corr_pet=True,
+        stage='f', voxsz: int = 2, outpath=None, use_stored=False, climage=True, urimage=True,
+        cl_anchor_path: Optional[Path] = None, csv_metrics='short', fcsv=None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
     images, `fpets` and `fmris` (must be in NIfTI format).
@@ -131,7 +133,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
       stage: processes the data up to:
              (1) registration - both PET and MRI are registered
              to MNI space, `stage`='r'
-             (2) normalisation - includes the non-linear MRI 
+             (2) normalisation - includes the non-linear MRI
              registration and segmentation, `stage`='n'
              (3) Centiloid process/scaling, `stage`='c'
              (4) Full with visualisation, `stage`='f' (default)
@@ -164,14 +166,13 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
     # > output dictionary file name
     # > if exists and requested, it will be loaded without computing.
     if outpath is not None:
-        fcldct = Path(outpath)/f'CL_output_stage-{stage}.npy'
+        fcldct = Path(outpath) / f'CL_output_stage-{stage}.npy'
         if use_stored and fcldct.is_file():
             out = np.load(fcldct, allow_pickle=True)
             out = out.item()
             return out
     else:
         fcldct = None
-
 
     # supported F-18 tracers
     f18_tracers = ['fbp', 'fbb', 'flute']
@@ -180,7 +181,6 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
 
     out = {}                                           # output dictionary
     tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
-
 
     pet_mr_list, flips = sort_input(fpets, fmris, flip_pet=None)
 
@@ -221,30 +221,29 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         else:
             fnpets = []
 
-
         # run bias field correction unless cancelled
         if bias_corr:
             log.info(f'subject {onm}: running MR bias field correction')
             out[onm]['n4'] = nimpa.bias_field_correction(fmri, executable='sitk', outpath=spth)
             fmri = out[onm]['n4']['fim']
 
-        
         # > check if flipping the PET is requested
         if flips[fi] is not None and any(flips[fi]):
             flip = flips[fi]
         else:
             flip = None
 
-
         if cmass_corr_pet:
             log.info(f'subject {onm}: centre of mass correction')
             # > modify for the centre of mass being at O(0,0,0)
             # > check first if PET is already modified
             tmp = nimpa.getnii(fpet, output='all')
-            try: dscr = tmp['hdr']['descrip'].item().decode()
-            except: dscr=None
+            try:
+                dscr = tmp['hdr']['descrip'].item().decode()
+            except:
+                dscr = None
             if isinstance(dscr, str) and 'CoM-modified' in dscr:
-                out[onm]['petc']  = petc = dict(fim=fpet)
+                out[onm]['petc'] = petc = dict(fim=fpet)
                 log.info('the PET data is already modified for the centre of mass.')
             elif dscr is None and 'com-modified' in fpet.name:
                 out[onm]['petc'] = petc = dict(fim=fpet)
@@ -254,7 +253,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         else:
             out[onm]['petc'] = petc = dict(fim=fpet)
             log.info('PET image has NOT been corrected for the centre of mass.')
-        
+
         # > centre of mass correction for the MR part
         out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
@@ -296,7 +295,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
             modify_nii=True,
         )
 
-        if stage=='r':
+        if stage == 'r':
             if fcldct is not None:
                 np.save(fcldct, out)
             return out
@@ -304,8 +303,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         log.info(f'subject {onm}: MR normalisation/segmentation...')
         out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
                                                 store_nat_gm=True, store_nat_wm=False,
-                                                store_nat_csf=True, store_fwd=True,
-                                                store_inv=True, visual=int(Cnt['regpars']['visual']))
+                                                store_nat_csf=True, store_fwd=True, store_inv=True,
+                                                visual=int(Cnt['regpars']['visual']))
         # > normalise
         list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
         out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
@@ -334,11 +333,10 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
-        if stage=='n':
+        if stage == 'n':
             if fcldct is not None:
                 np.save(fcldct, out)
             return out
-
 
         # **************************************************************
         # C E N T I L O I D   S C A L I N G
@@ -399,23 +397,29 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                 fmsk: 100 * (ur[fmsk] - CLA[fmsk][0]) / (CLA[fmsk][1] - CLA[fmsk][0])
                 for fmsk in fmasks if fmsk != 'ctx'}
 
-
         # ---------------------------------
         # > save CSV with UR and CL outputs
         if csv_metrics == 'short':
-            csv_dict = {'path_outputs': out[onm]['opth'],
-                        **{f'ur_{key}': value for key, value in out[onm]['ur'].items()},
-                        **{f'cl_{key}': value for key, value in out[onm]['cl'].items() if key == 'wc'}}
+            csv_dict = {
+                'path_outputs': out[onm]['opth'],
+                **{f'ur_{key}': value
+                   for key, value in out[onm]['ur'].items()},
+                **{f'cl_{key}': value
+                   for key, value in out[onm]['cl'].items() if key == 'wc'}}
 
         elif csv_metrics == 'long':
-            csv_dict = {'path_outputs': out[onm]['opth'],
-                        **{f'suv_{key}': value for key, value in out[onm]['avgvoi'].items()},
-                        **{f'ur_{key}': value for key, value in out[onm]['ur'].items()},
-                        **{f'ur_pib_calc_{key}': value for key, value in
-                           out[onm]['ur_pib_calc'].items()},
-                        **{f'ur_pib_calc_transf_{key}': value for key, value in
-                           out[onm]['ur_pib_calc_transf'].items()},
-                        **{f'cl_{key}': value for key, value in out[onm]['cl'].items()}}
+            csv_dict = {
+                'path_outputs': out[onm]['opth'],
+                **{f'suv_{key}': value
+                   for key, value in out[onm]['avgvoi'].items()},
+                **{f'ur_{key}': value
+                   for key, value in out[onm]['ur'].items()},
+                **{f'ur_pib_calc_{key}': value
+                   for key, value in out[onm]['ur_pib_calc'].items()}, **{
+                    f'ur_pib_calc_transf_{key}': value
+                    for key, value in out[onm]['ur_pib_calc_transf'].items()},
+                **{f'cl_{key}': value
+                   for key, value in out[onm]['cl'].items()}}
         elif csv_metrics:
             raise KeyError(f"`csv_metrics`: unknown value ({csv_metrics})")
 
@@ -453,12 +457,12 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                 if urimage:
                     # > save the UR image files
                     nimpa.create_dir(opthu)
-                    fout = opthu/('UR_image_ref-'+refvoi+fnpets[0].name.split('.nii')[0]+'.nii.gz')
+                    fout = opthu / ('UR_image_ref-' + refvoi + fnpets[0].name.split('.nii')[0] +
+                                    '.nii.gz')
                     nimpa.array2nii(
-                            npet_ur, npet_dct['affine'], fout,
-                            trnsp=(npet_dct['transpose'].index(0), npet_dct['transpose'].index(1),
-                                   npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
-
+                        npet_ur, npet_dct['affine'], fout,
+                        trnsp=(npet_dct['transpose'].index(0), npet_dct['transpose'].index(1),
+                               npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
 
                 # > convert to PiB scale if it is an F18 tracer
                 if tracer in f18_tracers:
@@ -478,21 +482,24 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                         # > save the CL-converted file
                         nimpa.create_dir(opthi)
 
-                        fout = opthi/('CL_image_ref-'+refvoi+fnpets[0].name.split('.nii')[0]+'.nii.gz')
+                        fout = opthi / ('CL_image_ref-' + refvoi +
+                                        fnpets[0].name.split('.nii')[0] + '.nii.gz')
                         nimpa.array2nii(
                             npet_cl, npet_dct['affine'], fout,
                             trnsp=(npet_dct['transpose'].index(0), npet_dct['transpose'].index(1),
                                    npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
 
                     elif tracer != 'new' and abs(cl_ - cl_refvoi) > 0.25:
-                        log.warning('The CL of CL-converted image is different to the calculated CL'
-                                    f' (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
+                        log.warning(
+                            'The CL of CL-converted image is different to the calculated CL'
+                            f' (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
                         log.warning('The CL image has not been generated!')
                     else:
-                        log.warning('The CL image has not been generated due to new tracer being used')
+                        log.warning(
+                            'The CL image has not been generated due to new tracer being used')
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
-        if not stage=='f':
+        if not stage == 'f':
             if fcldct is not None:
                 np.save(fcldct, out)
             return out

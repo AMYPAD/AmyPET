@@ -22,10 +22,11 @@ import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from .backend_centiloid import run as centiloid_run
+
 from .align import align
-from .dyn_tools import km_voi, km_img
-from .preproc import get_t1, explore_indicom, convert2nii, rem_artefacts
+from .backend_centiloid import run as centiloid_run
+from .dyn_tools import km_img, km_voi
+from .preproc import convert2nii, explore_indicom, get_t1, rem_artefacts
 from .proc import proc_vois
 from .utils import params
 
@@ -33,17 +34,18 @@ log = logging.getLogger(__name__)
 TRACERS = set(params['tracer_names'].keys())
 
 
-def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2,
-        bias_corr=True, outpath=None):
+def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2, bias_corr=True,
+        outpath=None):
     """Just a stub"""
     inpath = Path(inpath)
     outpath = Path(outpath) if outpath else inpath.parent / f'amypet_output_{inpath.name}'
     ur_win_def = [start, end] if start and end else None # [t0, t1] - default: None
 
-    ft1w = get_t1(inpath, params)  # structural/T1w image
+    ft1w = get_t1(inpath, params) # structural/T1w image
 
     # processed & classify input data (e.g. auto identify UR frames)
-    indat = explore_indicom(inpath, params, tracer=tracer, find_ur=True, ur_win_def=ur_win_def, outpath=outpath / 'DICOMs')
+    indat = explore_indicom(inpath, params, tracer=tracer, find_ur=True, ur_win_def=ur_win_def,
+                            outpath=outpath / 'DICOMs')
     niidat = convert2nii(indat, use_stored=True)
     # remove artefacts at the end of FoV
     niidat = rem_artefacts(niidat, params, artefact='endfov')
@@ -51,7 +53,9 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2
     aligned = align(niidat, params, use_stored=True)
 
     # calculate Centiloid (CL) quantification
-    out_cl = centiloid_run(aligned['ur']['fur'], ft1w, params, stage='f', voxsz=voxsz, bias_corr=bias_corr, tracer=tracer, outpath=outpath / 'CL', use_stored=True)
+    out_cl = centiloid_run(aligned['ur']['fur'], ft1w, params, stage='f', voxsz=voxsz,
+                           bias_corr=bias_corr, tracer=tracer, outpath=outpath / 'CL',
+                           use_stored=True)
 
     if False:
         # > Dynamic PET & kinetic analysis
@@ -61,14 +65,13 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2
         # get all the regional data with atlas and GM probabilistic mask
         dynvois = proc_vois(niidat, aligned, out_cl, outpath=niidat['outpath'].parent / 'DYN')
         # kinetic analysis for a chosen volume of interest (VOI), here the frontal lobe
-        dkm = km_voi(dynvois,  voi='frontal', dynamic_break=dynamic_break,  model='srtmb_basis', weights='dur')
+        dkm = km_voi(dynvois, voi='frontal', dynamic_break=dynamic_break, model='srtmb_basis',
+                     weights='dur')
 
         # TODO: voxel-wise kinetic analysis
-        dimkm = km_img(
-            aligned['fpet'], dynvois['voi']['cerebellum']['avg'], dynvois['dt'], dynamic_break=dynamic_break,
-            model='srtmb_basis',
-            weights='dur',
-            outpath=dynvois['outpath'])
+        dimkm = km_img(aligned['fpet'], dynvois['voi']['cerebellum']['avg'], dynvois['dt'],
+                       dynamic_break=dynamic_break, model='srtmb_basis', weights='dur',
+                       outpath=dynvois['outpath'])
 
         # # show the great matter mask and atlas
         # imscroll([dynvois['atlas_gm']['atlpet'], dynvois['atlas_gm']['gmpet']])
@@ -78,6 +81,9 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2
         # figure paths (if run in full, with kinetic modelling)
         # if static only, then only CL output
         # if dynamic too, then the figure as well.
-        return {'CL': next(iter(out_cl.values())), '_amypet_imscroll': (out_cl[next(iter(out_cl))]['fqc'], dkm['fig'])}
+        return {
+            'CL': next(iter(out_cl.values())),
+            '_amypet_imscroll': (out_cl[next(iter(out_cl))]['fqc'], dkm['fig'])}
 
-    return {'CL': next(iter(out_cl.values())), '_amypet_imscroll': out_cl[next(iter(out_cl))]['fqc']}
+    return {
+        'CL': next(iter(out_cl.values())), '_amypet_imscroll': out_cl[next(iter(out_cl))]['fqc']}
