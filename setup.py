@@ -7,7 +7,7 @@ sys.path.append(os.path.join(path_current,'amypet'))
 from amypet_config import path_amypet_local
 
 
-path_resources =path_amypet_local()
+path_resources = path_amypet_local()
 
 
 # > check if the local folder for AmyPET exists; if not create one.

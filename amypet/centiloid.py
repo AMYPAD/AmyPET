@@ -22,14 +22,10 @@ import re
 from pathlib import Path
 
 from .backend_centiloid import run as centiloid_run
-from .preproc import tracer_names
 from .align import align_ur
 from .ur_tools import preproc_ur
 
 log = logging.getLogger(__name__)
-# TRACERS = ('pib', 'flt', 'fbp', 'fbb')
-TRACERS = tracer_names.keys()
-
 
 def run(inpath, tracer='pib', start=None, end=None, dynamic_analysis=False, voxsz=2,
         bias_corr=True, outpath=None):

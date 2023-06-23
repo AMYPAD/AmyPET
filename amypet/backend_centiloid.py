@@ -114,7 +114,7 @@ def sort_input(fpets, fmris, flip_pet=None):
 
 def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         cmass_corr_pet=True, stage='f', voxsz: int = 2, outpath=None, use_stored=False,
-        climage=True, cl_anchor_path: Optional[Path] = None,
+        climage=True, urimage=True, cl_anchor_path: Optional[Path] = None,
         csv_metrics='short', fcsv=None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
@@ -213,6 +213,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
         optho = spth / 'normalised'
         opths = spth / 'results'
         opthi = spth / 'cl-image'
+        opthu = spth / 'ur-image'
 
         # > find if the normalised PET is already there
         if optho.is_dir():
@@ -338,6 +339,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                 np.save(fcldct, out)
             return out
 
+
         # **************************************************************
         # C E N T I L O I D   S C A L I N G
         # **************************************************************
@@ -439,7 +441,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
 
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
         # > output the CL-converted PET image in the MNI space
-        if climage and tracer != 'new':
+        if (climage or urimage) and tracer != 'new':
 
             for refvoi in fmasks:
                 if refvoi == 'ctx':
@@ -449,6 +451,16 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
 
                 # > obtain the UR image for the given reference VOI
                 npet_ur = npet / refavg
+
+                if urimage:
+                    # > save the UR image files
+                    nimpa.create_dir(opthu)
+                    fout = opthu/('UR_image_ref-'+refvoi+fnpets[0].name.split('.nii')[0]+'.nii.gz')
+                    nimpa.array2nii(
+                            npet_ur, npet_dct['affine'], fout,
+                            trnsp=(npet_dct['transpose'].index(0), npet_dct['transpose'].index(1),
+                                   npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
+
 
                 # > convert to PiB scale if it is an F18 tracer
                 if tracer in f18_tracers:
@@ -461,22 +473,25 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True,
                 cl_ = np.mean(npet_cl[masks['ctx'].astype(bool)])
 
                 cl_refvoi = cl[refvoi]
-                if tracer != 'new' and abs(cl_ - cl_refvoi) < 0.25:
-                    # > save the CL-converted file
-                    nimpa.create_dir(opthi)
-                    fout = opthi / ('CL_image_ref-' + refvoi + fnpets[0].name.split('.nii')[0] +
-                                    '.nii.gz')
-                    nimpa.array2nii(
-                        npet_cl, npet_dct['affine'], fout,
-                        trnsp=(npet_dct['transpose'].index(0), npet_dct['transpose'].index(1),
-                               npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
 
-                elif tracer != 'new' and abs(cl_ - cl_refvoi) > 0.25:
-                    log.warning('The CL of CL-converted image is different to the calculated CL'
-                                f' (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
-                    log.warning('The CL image has not been generated!')
-                else:
-                    log.warning('The CL image has not been generated due to new tracer being used')
+                if climage:
+                    if tracer != 'new' and abs(cl_ - cl_refvoi) < 0.25:
+
+                        # > save the CL-converted file
+                        nimpa.create_dir(opthi)
+
+                        fout = opthi/('CL_image_ref-'+refvoi+fnpets[0].name.split('.nii')[0]+'.nii.gz')
+                        nimpa.array2nii(
+                            npet_cl, npet_dct['affine'], fout,
+                            trnsp=(npet_dct['transpose'].index(0), npet_dct['transpose'].index(1),
+                                   npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
+
+                    elif tracer != 'new' and abs(cl_ - cl_refvoi) > 0.25:
+                        log.warning('The CL of CL-converted image is different to the calculated CL'
+                                    f' (CL_img={cl_:.4f} vs CL={cl_refvoi:.4f}).')
+                        log.warning('The CL image has not been generated!')
+                    else:
+                        log.warning('The CL image has not been generated due to new tracer being used')
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
         if not stage=='f':
