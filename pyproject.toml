@@ -21,7 +21,7 @@ maintainers = [{name = "Casper da Costa-Luis", email = "casper.dcl@physics.org"}
 description = "Amyloid imaging to prevent Alzheimer's Disease"
 readme = "README.rst"
 requires-python = ">=3.7"
-keywords = ["PET", "Alzheimers"]
+keywords = ["PET", "Alzheimers", "Neuroimaging", "Endocrinology"]
 license = {text = "MPL-2.0"}
 classifiers = [
     "Development Status :: 3 - Alpha",
