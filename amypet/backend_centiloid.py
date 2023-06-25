@@ -423,6 +423,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             if fcsv is not None:
                 fcsv = Path(fcsv)
             else:
+                nimpa.create_dir(opths)
                 fcsv = opths / 'amypet_outputs.csv'
 
             append = fcsv.is_file()
