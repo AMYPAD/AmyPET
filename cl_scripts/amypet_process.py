@@ -10,14 +10,15 @@ from niftypet import nimpa
 import spm12
 import amypet
 from amypet import backend_centiloid as centiloid
-from amypet import params
+from amypet import params as Cnt
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # INPUT
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ignore_derived = False
 
-# > UR window def
+# > Uptake ratio (UR) window def
 ur_win_def=[5400,6600]
 
 tracer = 'fbb' # 'pib', 'flute', 'fbp'
@@ -26,7 +27,7 @@ tracer = 'fbb' # 'pib', 'flute', 'fbp'
 # > input PET folder
 input_fldr = Path('/sdata/PNHS/FBB1')
 
-outpath = input_fldr.parent/('q_amypet_output_'+input_fldr.name) 
+outpath = input_fldr.parent/('d4_amypet_output_'+input_fldr.name) 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -36,7 +37,7 @@ outpath = input_fldr.parent/('q_amypet_output_'+input_fldr.name)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #------------------------------
 # > structural/T1w image
-ft1w = amypet.get_t1(input_fldr, params)
+ft1w = amypet.get_t1(input_fldr, Cnt)
 
 if ft1w is None:
     raise ValueError('Could not find the necessary T1w DICOM or NIfTI images')
@@ -46,7 +47,7 @@ if ft1w is None:
 # > processed the PET input data and classify it (e.g., automatically identify UR frames)
 indat = amypet.explore_indicom(
     input_fldr,
-    params,
+    Cnt,
     tracer=tracer,
     find_ur=True,
     ur_win_def=ur_win_def,
@@ -61,7 +62,7 @@ niidat = amypet.convert2nii(indat, use_stored=True)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # REMOVE ARTEFACTS AT THE END OF FOV
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-niidat = amypet.rem_artefacts(niidat, params, artefact='endfov')
+niidat = amypet.rem_artefacts(niidat, Cnt, artefact='endfov')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -70,7 +71,9 @@ niidat = amypet.rem_artefacts(niidat, params, artefact='endfov')
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 aligned = amypet.align(
     niidat,
-    params,
+    Cnt,
+    reg_tool='spm',
+    ur_fwhm=4.5,
     use_stored=True)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -79,16 +82,20 @@ aligned = amypet.align(
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # CL QUANTIFICATION
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# > optional CSV file output for CL results 
+fcsv = input_fldr.parent/(input_fldr.name+'_AmyPET_CL.csv')
+
 out_cl = centiloid.run(
     aligned['ur']['fur'],
     ft1w,
-    params,
+    Cnt,
     stage='f',
     voxsz=2,
     bias_corr=True,
     tracer=tracer,
     outpath=outpath/'CL',
-    use_stored=True,)
+    use_stored=True,
+    fcsv=fcsv)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
