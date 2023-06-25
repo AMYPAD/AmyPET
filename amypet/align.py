@@ -5,20 +5,12 @@ Aligning tools for PET dynamic frames
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
-import copy
 import logging
-import os
 import shutil
-from datetime import datetime
 from itertools import combinations
 from pathlib import Path
-from subprocess import run
 
-import dcm2niix
 import numpy as np
-import spm12
-from miutil.fdio import hasext
-from miutil.imio import nii
 from niftypet import nimpa
 
 from .preproc import id_acq
@@ -681,7 +673,7 @@ def align_ur(
         fsi = 0
         fwi = 0
 
-        for fi, frm in enumerate(falign):
+        for fi, _ in enumerate(falign):
             if idx_r[fi]:
                 S_w[fi] = aligned_wide['affines'][fwi]
                 R_w[fi] = aligned_wide['metric'][fwi]
@@ -734,12 +726,10 @@ def align_break(
       frame_min_dur:
       decay_corr:
     """
-    reg_fwhm = Cnt['align']['reg_fwhm']
+
     # > the threshold for the registration metric (combined trans. and rots)
     # when deciding to apply the transformation
     reg_thrshld = Cnt['align']['reg_thrshld']
-    # > registration cost function
-    reg_costfun = Cnt['align']['reg_costfun']
     # > the shortest PET frame to be used for registration in the alignment process.
     # frame_min_dur=Cnt['align']['frame_min_dur']
     # > correct for decay between different series relative to the earliest one

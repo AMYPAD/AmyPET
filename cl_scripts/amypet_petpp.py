@@ -6,9 +6,6 @@ __copyright__ = "Copyright 2023"
 
 from pathlib import Path
 
-import spm12
-from niftypet import nimpa
-
 import amypet
 from amypet import backend_centiloid as centiloid
 from amypet import params

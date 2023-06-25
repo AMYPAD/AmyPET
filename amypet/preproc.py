@@ -253,8 +253,6 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
 
     # ------------------------------------------------
     # DEFINITIONS:
-    pttrn_t1 = Cnt['pttrn_t1']
-
     # > UR time window post injection and duration
     ur_twindow = Cnt['timings']['ur_twindow']
     tracer_names = Cnt['tracer_names']

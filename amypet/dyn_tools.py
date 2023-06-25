@@ -207,7 +207,6 @@ def km_img(fpet, rvoi, dt, dynamic_break=False, model='srtmb_basis', beta_lim=No
     thr = 0.005 * np.amax(pet)
 
     model_inputs = get_model_inputs(user_inputs, model)
-    km_outputs = ['R1', 'k2', 'BP']
 
     # > loop through dims to iteratively go over each voxel
     for zi in trange(petnii.shape[2], desc='image z-slice'):
