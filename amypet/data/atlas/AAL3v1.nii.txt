@@ -32,8 +32,8 @@
 32 OFClat_R 32
 33 Insula_L 33
 34 Insula_R 34
-35 Cingulate_Ant_L 
-36 Cingulate_Ant_R 
+35 Cingulate_Ant_L
+36 Cingulate_Ant_R
 37 Cingulate_Mid_L 37
 38 Cingulate_Mid_R 38
 39 Cingulate_Post_L 39
@@ -78,8 +78,8 @@
 78 Putamen_R 78
 79 Pallidum_L 79
 80 Pallidum_R 80
-81 Thalamus_L 
-82 Thalamus_R 
+81 Thalamus_L
+82 Thalamus_R
 83 Heschl_L 83
 84 Heschl_R 84
 85 Temporal_Sup_L 85

@@ -1,39 +1,33 @@
 '''
-Static frames processing tools for AmyPET 
+Static frames processing tools for AmyPET
 '''
 
 __author__ = "Pawel Markiewicz"
 __copyright__ = "Copyright 2022-3"
 
-import logging as log
+import logging
 import os
-from pathlib import Path, PurePath
+from pathlib import Path
 from subprocess import run
 
 import dcm2niix
 import numpy as np
-from itertools import combinations
 from matplotlib import pyplot as plt
+from miutil.fdio import hasext
 from niftypet import nimpa
 
 from .preproc import r_trimup
+from .proc import extract_vois
 
-log.basicConfig(level=log.WARNING, format=nimpa.LOG_FORMAT)
+log = logging.getLogger(__name__)
 
-nifti_ext = ('.nii', '.nii.gz')
-dicom_ext = ('.DCM', '.dcm', '.img', '.IMG', '.ima', '.IMA')
-
+nifti_ext = 'nii', 'nii.gz'
+dicom_ext = 'dcm', 'img', 'ima'
 
 
 # ========================================================================================
-def preproc_ur(
-    pet_path,
-    frames=None,
-    outpath=None,
-    fname=None,
-    com_correction=True,
-    fwhm=0.,
-    force=True):
+def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=True, fwhm=0.,
+               force=True):
     ''' Prepare the PET image for UR (aka SUVr) analysis.
         Arguments:
         - pet_path: path to the folder of DICOM images, or to the NIfTI file
@@ -67,18 +61,18 @@ def preproc_ur(
 
     if fname is None:
         fname = nimpa.rem_chars(pet_path.name.split('.')[0]) + '_static.nii.gz'
-    elif not str(fname).endswith(nifti_ext[1]):
+    elif not hasext(fname, nifti_ext[1]):
         fname += '.nii.gz'
     # --------------------------------------
 
     # > NIfTI case
-    if pet_path.is_file() and str(pet_path).endswith(nifti_ext):
+    if pet_path.is_file() and hasext(pet_path, nifti_ext):
         log.info('PET path exists and it is a NIfTI file')
 
         fpet_nii = pet_path
 
     # > DICOM case (if any file inside the folder is DICOM)
-    elif pet_path.is_dir() and any([f.suffix in dicom_ext for f in pet_path.glob('*')]):
+    elif pet_path.is_dir() and any(hasext(f, dicom_ext) for f in pet_path.glob('*')):
 
         # > get the NIfTi images from previous processing
         fpet_nii = list(petout.glob(pet_path.name + '*.nii*'))
@@ -117,11 +111,10 @@ def preproc_ur(
     # > static image file path
     fstat = petout / fname
 
-    # > output dictionary
-    outdct = dict(fpet_framed=fpet_nii)
+    outdct = {'fpet_framed': fpet_nii}
 
     # > check if the static (for UR) file already exists
-    if not fstat.is_file() or force==True:
+    if not fstat.is_file() or force:
 
         if nfrm > 1:
             imstat = np.sum(imdct['im'][frames, ...], axis=0)
@@ -129,13 +122,10 @@ def preproc_ur(
             imstat = np.squeeze(imdct['im'])
 
         # > apply smoothing when requested
-        if fwhm>0:
-            fwhmstr = str(fwhm).replace('.','-')
-            fur_smo = petout / (fname.split('.nii')[0]+f'_smo-{fwhmstr}.nii.gz')
-            imsmo = nimpa.imsmooth(
-                imstat,
-                fwhm=fwhm,
-                voxsize=imdct['voxsize'])
+        if fwhm > 0:
+            fwhmstr = str(fwhm).replace('.', '-')
+            fur_smo = petout / (fname.split('.nii')[0] + f'_smo-{fwhmstr}.nii.gz')
+            imsmo = nimpa.imsmooth(imstat, fwhm=fwhm, voxsize=imdct['voxsize'])
 
             nimpa.array2nii(
                 imsmo, imdct['affine'], fur_smo,
@@ -143,7 +133,6 @@ def preproc_ur(
                        imdct['transpose'].index(2)), flip=imdct['flip'])
 
             outdct['fur_smo'] = fur_smo
-
 
         nimpa.array2nii(
             imstat, imdct['affine'], fstat,
@@ -156,26 +145,26 @@ def preproc_ur(
 
         if com_correction:
             fur_com = nimpa.centre_mass_corr(fstat, outpath=petout)
-            log.info(f'Centre-of-mass corrected uptake ratio (UR) image has been saved to: {fur_com}')
+            log.info(
+                f'Centre-of-mass corrected uptake ratio (UR) image has been saved to: {fur_com}')
             outdct['fcom'] = fur_com['fim']
             outdct['com'] = fur_com['com_abs']
 
             # > the same for the smoothed
-            if fwhm>0:
-                fur_smo_com = nimpa.centre_mass_corr(fur_smo, outpath=petout, com=fur_com['com_abs'])
+            if fwhm > 0:
+                fur_smo_com = nimpa.centre_mass_corr(fur_smo, outpath=petout,
+                                                     com=fur_com['com_abs'])
                 outdct['fcom_smo'] = fur_smo_com['fim']
-        
+
     # ------------------------------------------
 
     return outdct
 
 
-
-
-
 # ========================================================================================
 # Extract VOI values for uptake ratio (UR) analysis
 # ========================================================================================
+
 
 def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None, fname=None,
                 t1_bias_corr=True, outpath=None, output_masks=True, save_voi_masks=False,
@@ -234,13 +223,12 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         lbl = nimpa.getnii(lblpth)
         voi_dct = {int(lab): [int(lab)] for lab in np.unique(lbl)}
 
-    if ref_voi is not None and not all([r in voi_dct for r in ref_voi]):
+    if ref_voi is not None and not all(r in voi_dct for r in ref_voi):
         raise ValueError('Not all VOIs listed as reference are in the VOI definition dictionary.')
 
     # > static (UR) image preprocessing
     ur_preproc = preproc_ur(petpth, frames=frames,
-                                outpath=outpath / (petpth.name.split('.')[0] + '_ur'),
-                                fname=fname)
+                            outpath=outpath / (petpth.name.split('.')[0] + '_ur'), fname=fname)
 
     out.update(ur_preproc)
 
@@ -273,7 +261,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     if not fplbl.is_file() or reg_fresh:
 
         log.info(f'registration with smoothing of {reg_fwhm_pet}, {reg_fwhm_mri} mm'
-                     ' for reference and floating images respectively')
+                 ' for reference and floating images respectively')
 
         spm_res = nimpa.coreg_spm(trmout['ftrm'], fmri, fwhm_ref=reg_fwhm_pet,
                                   fwhm_flo=reg_fwhm_mri, fwhm=[7, 7], costfun=reg_costfun,

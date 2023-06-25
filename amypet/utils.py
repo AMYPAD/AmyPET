@@ -1,10 +1,9 @@
 import pickle
 import re
-import urllib
-from pathlib import Path
-import xml.etree.ElementTree as ET
-import re
 import tarfile
+import urllib
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,6 +25,7 @@ except ImportError:
 
         def cpu_count():
             return 4
+
 
 params_path = resources.files('amypet').resolve() / 'params.toml'
 params = toml.load(params_path)
@@ -59,12 +59,12 @@ def get_atlas(atlas='aal', res=1):
        - res:       the resolution of the atlas in mm.
     '''
 
-    if atlas.lower()=='aal':
-        fatl = atlas_fldr/f'AAL3v1_{res}mm.nii.gz'
+    if atlas.lower() == 'aal':
+        fatl = atlas_fldr / f'AAL3v1_{res}mm.nii.gz'
         if not fatl.is_file():
             raise IOError('unrecognised atlas!')
 
-        flbl = atlas_fldr/f'AAL3v1.xml'
+        flbl = atlas_fldr / 'AAL3v1.xml'
 
         tree = ET.parse(flbl)
         lbls = tree.getroot()
@@ -72,32 +72,31 @@ def get_atlas(atlas='aal', res=1):
         lbls = lbls[1]
 
         # > atlas dictionary
-        datlas = dict((i[0].text, i[1].text) for i in lbls)
+        datlas = {i[0].text: i[1].text for i in lbls}
 
-        outdct = dict(fatlas=fatl, flabels=flbl, vois=datlas)
+        outdct = {'fatlas': fatl, 'flabels': flbl, 'vois': datlas}
 
+    elif atlas.lower() == 'hammers':
 
-    elif atlas.lower()=='hammers':
-        
-        # > main URL 
+        # > main URL
         murl = 'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers'
 
         # > hammers atlas and demographics folders
         hfldr = list(atlas_fldr.glob('Hammers_*n30r95*MNI152*SPM12'))
         dfldr = list(atlas_fldr.glob('Hammers_*ancillary-data'))
 
-        if hfldr and dfldr and (atlas_fldr/'hammers_license').is_file():
+        if hfldr and dfldr and (atlas_fldr / 'hammers_license').is_file():
             hfldr = hfldr[0]
             dfldr = dfldr[0]
 
             fatl = list(hfldr.glob('Hammers_*full*'))
-            if len(fatl)!=1:
+            if len(fatl) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas (FULL)')
             else:
                 fatl = fatl[0]
 
             flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
-            if len(flbl)!=1:
+            if len(flbl) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas labels file')
             else:
                 flbl = flbl[0]
@@ -105,7 +104,8 @@ def get_atlas(atlas='aal', res=1):
         else:
 
             # > atlas
-            urld = urllib.request.urlopen(murl + '/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
+            urld = urllib.request.urlopen(murl +
+                                          '/Hammers_mith-n30r95-maxprob-MNI152-SPM12.tar.gz')
             data = urld.read()
 
             fatl = atlas_fldr / f'atlases-{atlas}_res-{res}mm.tar.gz'
@@ -117,18 +117,16 @@ def get_atlas(atlas='aal', res=1):
             file.close()
 
             hfldr = list(atlas_fldr.glob('Hammers_*n30r95*MNI152*SPM12'))
-            if len(hfldr)!=1:
+            if len(hfldr) != 1:
                 raise IOError('Confused with obtaining the Hammers atlases')
             else:
                 hfldr = hfldr[0]
 
             fatl = list(hfldr.glob('Hammers_*full*'))
-            if len(fatl)!=1:
+            if len(fatl) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas (FULL)')
             else:
                 fatl = fatl[0]
-
-
 
             # > atlas demographics
             urld = urllib.request.urlopen(murl + '/Hammers_mith-n30-ancillary-data.tar.gz')
@@ -142,30 +140,29 @@ def get_atlas(atlas='aal', res=1):
             file.close()
 
             dfldr = list(atlas_fldr.glob('Hammers_*ancillary-data'))
-            if len(dfldr)!=1:
+            if len(dfldr) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas demographics')
             else:
                 dfldr = dfldr[0]
 
             flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
-            if len(flbl)!=1:
+            if len(flbl) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas labels file')
             else:
                 flbl = flbl[0]
-
 
         with open(flbl) as f:
             xml = f.read()
 
         # > correct the first line of xml file if needed
-        if xml[:5]!='<?xml':
-            xml = '<?xml version="1.0" encoding="UTF-8" ?>\n'+xml
+        if xml[:5] != '<?xml':
+            xml = '<?xml version="1.0" encoding="UTF-8" ?>\n' + xml
 
         # > add a single <data> node
         lbls = ET.fromstring(re.sub(r"(<\?xml[^>]+\?>)", r"\1<data>", xml) + "</data>")
 
         # > atlas dictionary
-        datlas = dict((i[0].text, i[1].text) for i in lbls)
+        datlas = {i[0].text: i[1].text for i in lbls}
 
         # > dictionary of lobe VOIs
         lobes = ['FL', 'TL', 'PL', 'OL', 'CG', 'in']
@@ -173,29 +170,24 @@ def get_atlas(atlas='aal', res=1):
         for k in datlas:
             lstr = datlas[k][:2]
             if lstr in lobes:
-                if not lstr in dlobes:
+                if lstr not in dlobes:
                     dlobes[lstr] = [int(k)]
                 else:
                     dlobes[lstr].append(int(k))
 
-        #--------------------------------------------------
-        # LICENSE
-        if not (atlas_fldr/'hammers_license').is_file():
+        if not (atlas_fldr / 'hammers_license').is_file():
+            # LICENSE
             import webbrowser
-            webbrowser.open('http://brain-development.org/brain-atlases/adult-brain-atlases/individual-adult-brain-atlases-new/')
-            with open(atlas_fldr/'hammers_license', 'w') as f:
+            webbrowser.open('http://brain-development.org/brain-atlases'
+                            '/adult-brain-atlases/individual-adult-brain-atlases-new/')
+            with open(atlas_fldr / 'hammers_license', 'w') as f:
                 f.write('submit the license')
-        #--------------------------------------------------
 
-        outdct = dict(fatlas=fatl, flabels=flbl, voi_lobes=dlobes, vois=datlas)
+        outdct = {'fatlas': fatl, 'flabels': flbl, 'voi_lobes': dlobes, 'vois': datlas}
 
     return outdct
 
 
-# ----------------------------------------------------------------------
-
-
-# ----------------------------------------------------------------------
 def im_check_pairs(fpets, fmris):
     '''
     checks visually image by image if the PET and MR have

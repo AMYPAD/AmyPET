@@ -22,6 +22,7 @@ from functools import lru_cache, wraps
 from os import fspath
 from pathlib import Path
 
+from miutil.fdio import hasext
 from miutil.imio import nii
 from spm12 import ensure_spm
 from tqdm.auto import tqdm
@@ -113,10 +114,8 @@ def run(
             eng.f_4Normalise(d_file_norm, d_MRI, d_PET, nargout=0)
 
     s_PET = list(
-        map(
-            fspath,
-            Path(dir_PET).glob("w" +
-                               (glob_PET[:-3] if glob_PET.lower().endswith(".gz") else glob_PET))))
+        map(fspath,
+            Path(dir_PET).glob("w" + (glob_PET[:-3] if hasext(glob_PET, 'gz') else glob_PET))))
     res = eng.f_Quant_centiloid(s_PET, fspath(dir_RR), nargout=5)
     if outfile:
         with open(outfile, "w") as fd:
