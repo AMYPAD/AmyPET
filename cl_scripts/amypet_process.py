@@ -27,7 +27,7 @@ tracer = 'fbb' # 'pib', 'flute', 'fbp'
 # > input PET folder
 input_fldr = Path('/sdata/PNHS/FBB1')
 
-outpath = input_fldr.parent/('d4_amypet_output_'+input_fldr.name) 
+outpath = input_fldr.parent/('d5_amypet_output_'+input_fldr.name) 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -83,7 +83,7 @@ aligned = amypet.align(
 # CL QUANTIFICATION
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # > optional CSV file output for CL results 
-fcsv = input_fldr.parent/(input_fldr.name+'_AmyPET_CL.csv')
+# fcsv = input_fldr.parent/(input_fldr.name+'_AmyPET_CL.csv')
 
 out_cl = centiloid.run(
     aligned['ur']['fur'],
@@ -95,7 +95,8 @@ out_cl = centiloid.run(
     tracer=tracer,
     outpath=outpath/'CL',
     use_stored=True,
-    fcsv=fcsv)
+    #fcsv=fcsv
+    )
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
