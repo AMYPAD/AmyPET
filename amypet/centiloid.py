@@ -48,7 +48,7 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2
     # remove artefacts at the end of FoV
     niidat = rem_artefacts(niidat, params, artefact='endfov')
     # align pet frames for static/dynamic imaging
-    aligned = align(niidat, params, use_stored=True)
+    aligned = align(niidat, params, reg_tool='spm', ur_fwhm=4.5, use_stored=True)
 
     # calculate Centiloid (CL) quantification
     out_cl = centiloid_run(aligned['ur']['fur'], ft1w, params, stage='f', voxsz=voxsz,
