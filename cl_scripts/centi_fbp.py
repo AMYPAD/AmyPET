@@ -183,7 +183,7 @@ ur = amypet.save_ur2pib(cal, 'fbp')
 
 # TEST
 out_t = centi.run(fpibs[0], fmris[0], atlases, tracer='pib', outpath=opth / 'output_test_pib')
-out_tt = centi.run(ffbbs[0], fmris[0], atlases, tracer='fbb', outpath=opth / 'output_test_fbb',
+out_tt = centi.run(ffbps[0], fmris[0], atlases, tracer='fbb', outpath=opth / 'output_test_fbb',
                    used_saved=True)
 
 with open(opth / 'cal_data.pkl', 'wb') as f:
@@ -219,5 +219,6 @@ plt.figure()
 plt.plot(urf_avid, urf_amyp, '.')
 
 fig, ax = plt.subplots()
+rvoi = 'wc'
 ax.scatter(cal[rvoi]['calib']['cl_ur'][:, 1], cal[rvoi]['calib']['cl_ur'][:, 2], c='black')
 amypet.utils.identity_line(ax=ax, ls='--', c='b')
