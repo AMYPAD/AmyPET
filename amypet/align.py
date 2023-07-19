@@ -86,6 +86,9 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     frm_lsize = Cnt['align']['frame_min_dur']
     reg_metric = Cnt['align']['reg_metric']
 
+    dipy_level_iters = Cnt['align']['dipy']['level_iters']
+    dipy_sig = Cnt['align']['dipy']['sigmas']
+
     if reg_metric not in reg_metric_list:
         raise ValueError('Unrecognised registration metric.')
 
@@ -197,21 +200,28 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     outdct['mashed_frame_idx'] = mfrms
     outdct['mashed_files'] = mfrms_out
 
-    # > initialise the array for metric of registration result (sum of angles+translations)
+    # > initialise the array for metric of registration result 
+    # > (sum of angles+translations) for mashed and full frames
     R = np.zeros(len(mfrms_out))
+    Rf = np.zeros(nfrm)
 
     # > similar metric but uses a sampled average distance imposed by the affine transformation
     D = np.zeros(len(mfrms_out))
+    Df = np.zeros(nfrm)
 
-    # > full rotations and translations for mashed and full frames
+    # > rotations and translations for mashed and full frames
     RT = np.zeros((len(mfrms_out), 6), dtype=np.float32)
     RTf = np.zeros((nfrm, 6),)
 
     # > affine file outputs
     S = [None for _ in range(len(mfrms_out))]
+    Sf = [None for _ in range(nfrm)]
 
     # > aligned/resampled file names
     faligned = [None for _ in range(nfrm)]
+
+    # > indicates which frame was modified/aligned
+    M = np.zeros(nfrm, dtype=bool)
 
     # > counter for base frames
     fi = 0
@@ -246,6 +256,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
         elif reg_tool == 'dipy':
             # > register mashed frames to the reference using DIPY
             dipy_res = nimpa.affine_dipy(fref, mfrm, metric='MI', outpath=mniidir,
+                                         level_iters=dipy_level_iters, sigmas=dipy_sig,
                                          fcomment='_mashed_ref-mfrm', rfwhm=reg_fwhm,
                                          ffwhm=reg_fwhm)
 
@@ -254,16 +265,21 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
             # > average distance due to transformation/motion
             D[mi] = nimpa.aff_dist(dipy_res['affine'], com_)
 
+        #------------------------------------------------------------
         # > align each frame through resampling
         for i in mfrms[mi]:
 
             # > get the rotation and translation parameters for each frame
             RTf[i, :] = RT[mi, :]
+            Rf[i] = R[mi]
+            Df[i] = D[mi]
+            Sf[i] = S[mi]
 
             if (R[mi] > reg_thrshld) * (reg_metric == 'rss') or (D[mi] > reg_thrshld) * (
                     reg_metric == 'adst'):
-                # > resample images for alignment
 
+                M[i] = True
+                # > resample images for alignment
                 if reg_tool == 'spm':
                     faligned[fi] = nimpa.resample_spm(
                         fref,
@@ -277,24 +293,29 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
                         del_out_uncmpr=True,
                     )
                 elif reg_tool == 'dipy':
-
                     rsmpld = nimpa.resample_dipy(fref, fniis[i], faff=S[mi], outpath=rsmpl_opth,
                                                  pickname='flo', intrp=1)
-
                     faligned[fi] = rsmpld['fnii']
 
             else:
+                M[i] = False
                 faligned[fi] = rsmpl_opth / fniis[i].name
                 shutil.copyfile(fniis[i], faligned[fi])
 
             fi += 1
+        #------------------------------------------------------------
 
-    outdct['affines'] = S
-    outdct['metric'] = R
-    outdct['metric2'] = D
+    outdct['mashed_affines'] = S
+    outdct['mashed_metric'] = R
+    outdct['mashed_metric2'] = D
+    
     # > for every frame:
+    outdct['metric'] = Rf
+    outdct['metric2'] = Df
     outdct['rot_trans'] = RTf
+    outdct['affines'] = Sf
     outdct['faligned'] = faligned
+    outdct['modified'] = M
 
     if save4d:
         if f4d is not None and Path(f4d).parent.is_dir():
@@ -310,7 +331,11 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     return outdct
 
 
-def align(niidat, Cnt, reg_tool='spm', com_correction=True, ur_fwhm=0, outpath=None,
+def align(niidat, Cnt,
+          reg_tool='spm', 
+          com_correction=True,
+          ur_fwhm=0,
+          outpath=None,
           use_stored=True):
     """
     align all the frames in static, dynamic or coffee-break acquisitions.
@@ -335,11 +360,16 @@ def align(niidat, Cnt, reg_tool='spm', com_correction=True, ur_fwhm=0, outpath=N
 
     # ALIGN PET FRAMES FOR STATIC/DYNAMIC IMAGING
     # > align the PET frames around the equilibrium static scan/uptake ration (UR)
-    aligned_ur = align_ur(stat_tdata, Cnt, reg_tool=reg_tool, com_correction=com_correction,
+    aligned_ur = align_ur(stat_tdata, Cnt, reg_tool=reg_tool, 
+                          com_correction=com_correction,
                           ur_fwhm=ur_fwhm, outpath=opth, use_stored=use_stored)
 
     # > align for all dynamic frames (if any remaining)
-    aligned_dyn = align_break(niidat, aligned_ur, Cnt, reg_tool=reg_tool, use_stored=use_stored)
+    aligned_dyn = align_break(niidat,
+                              aligned_ur,
+                              Cnt,
+                              reg_tool=reg_tool,
+                              use_stored=use_stored)
 
     return aligned_dyn
 
@@ -380,6 +410,9 @@ def align_ur(
     reg_metric = Cnt['align']['reg_metric']
     reg_thrshld = Cnt['align']['reg_thrshld']
     reg_costfun = Cnt['align']['reg_costfun']
+
+    dipy_level_iters = Cnt['align']['dipy']['level_iters']
+    dipy_sig = Cnt['align']['dipy']['sigmas']
 
     if reg_metric not in reg_metric_list:
         raise ValueError('Unrecognised registration metric.')
@@ -511,6 +544,7 @@ def align_ur(
             elif reg_tool == 'dipy':
                 # > 1st way of registration using DIPY
                 dipy_res = nimpa.affine_dipy(fnii0, fnii1, rfwhm=reg_fwhm, ffwhm=reg_fwhm,
+                                             level_iters=dipy_level_iters, sigmas=dipy_sig,
                                              outpath=niidir, fcomment=f'_combi_{frm0}-{frm1}')
 
                 S[frm0][frm1] = (dipy_res['faff'])
@@ -521,6 +555,7 @@ def align_ur(
 
                 # > 2nd way of registration using DIPY
                 dipy_res = nimpa.affine_dipy(fnii1, fnii0, rfwhm=reg_fwhm, ffwhm=reg_fwhm,
+                                             level_iters=dipy_level_iters, sigmas=dipy_sig,
                                              outpath=niidir, fcomment=f'_combi_{frm1}-{frm0}')
 
                 S[frm1][frm0] = (dipy_res['faff'])
@@ -556,6 +591,9 @@ def align_ur(
         # > aligned individual frames, starting with the reference
         fnii_aligned = [nii_frms[rfrm]]
 
+        # > indicator of which frames are modified
+        M = np.zeros(len(nii_frms), dtype=bool)
+
         for ifrm in range(len(nii_frms)):
 
             # > ignore the reference frame already dealt with
@@ -565,6 +603,8 @@ def align_ur(
             # > check if the motion for this frame is large enough to warren correction
             if (R[rfrm, ifrm] > reg_thrshld) * (reg_metric == 'rss') or (
                     D[rfrm, ifrm] > reg_thrshld) * (reg_metric == 'adst'):
+
+                M[ifrm] = True
 
                 # > resample images for alignment
                 if reg_tool == 'spm':
@@ -591,6 +631,7 @@ def align_ur(
                 niiim[ifrm, ...] = nimpa.getnii(frsmpl)
 
             else:
+                M[ifrm] = False
                 fnii_aligned.append(nii_frms[ifrm])
                 niiim[ifrm, ...] = nimpa.getnii(nii_frms[ifrm])
 
@@ -607,17 +648,27 @@ def align_ur(
         # > preprocess the aligned PET into a single UR frame
         ur_frm = preproc_ur(faligned, outpath=niidir, com_correction=com_correction, fwhm=ur_fwhm)
         if ur_fwhm > 0:
-            fref = ur_frm['fcom_smo']
+            if com_correction:
+                fref = ur_frm['fcom_smo']
+            else:
+                fref = ur_frm['fur_smo']
         else:
-            fref = ur_frm['fcom']
+            if com_correction:
+                fref = ur_frm['fcom']
+            else:
+                fref = ur_frm['fur']
 
         # > saved frames aligned and CoM-modified
         fniic_aligned = []
         niiim[:] = 0
         for i in range(len(fnii_aligned)):
-            com_ = nimpa.centre_mass_corr(fnii_aligned[i], outpath=rsmpl_opth, com=ur_frm['com'])
-            fniic_aligned.append(com_['fim'])
-            niiim[i, ...] = nimpa.getnii(com_['fim'])
+            if com_correction:
+                com_ = nimpa.centre_mass_corr(fnii_aligned[i], outpath=rsmpl_opth, com=ur_frm['com'])
+                fniic_aligned.append(com_['fim'])
+                niiim[i, ...] = nimpa.getnii(com_['fim'])
+            else:
+                fniic_aligned.append(fnii_aligned[i])
+                niiim[i, ...] = nimpa.getnii(fnii_aligned[i])
 
         # > save aligned UR frames
         tmp = nimpa.getnii(fref, output='all')
@@ -654,15 +705,25 @@ def align_ur(
         falign = np.array([stat_tdata[f]['fnii'] for f in stat_tdata['descr']['frms']])
         ts = np.array(stat_tdata['descr']['timings'])
 
-        aligned_wide = align_frames(list(falign[idx_r]), ts[idx_r], fref, Cnt, save4d=False,
-                                    f4d=None, outpath=niidir)
+        #-----------------------------
+        aligned_wide = align_frames(
+            list(falign[idx_r]),
+            ts[idx_r],
+            fref,
+            Cnt,
+            reg_tool=reg_tool,
+            save4d=False,
+            f4d=None,
+            outpath=niidir)
+        #-----------------------------
 
         # > output files for affines
         S_w = [None for _ in range(nfrm)]
 
-        # > motion metrics for any remaining frames
+        # > motion metrics for any remaining frames and motion modification indicator
         R_w = np.zeros(nfrm)
         D_w = np.zeros(nfrm)
+        M_w = np.zeros(nfrm, dtype=bool)
 
         # > output paths of aligned images for the static part
         fnii_aligned_w = [None for _ in range(nfrm)]
@@ -678,14 +739,17 @@ def align_ur(
                 S_w[fi] = aligned_wide['affines'][fwi]
                 R_w[fi] = aligned_wide['metric'][fwi]
                 D_w[fi] = aligned_wide['metric2'][fwi]
+                M_w[fi] = aligned_wide['modified'][fwi]
                 fnii_aligned_w[fi] = aligned_wide['faligned'][fwi]
                 niiim_[fi, ...] = nimpa.getnii(fnii_aligned_w[fi])
                 fwi += 1
             else:
-                # > already aligned as part of UR
+                # > already aligned as part of uptake ratio (UR) image
                 fnii_aligned_w[fi] = Path(outdct['ur']['fpeti'][fsi])
                 S_w[fi] = S[rfrm][fsi]
                 R_w[fi] = R[rfrm][fsi]
+                D_w[fi] = D[rfrm][fsi]
+                M_w[fi] = M[fsi]
                 niiim_[fi, ...] = niiim[fsi, ...]
                 fsi += 1
 
@@ -696,7 +760,12 @@ def align_ur(
                    niiref['transpose'].index(2)), flip=niiref['flip'])
 
         outdct['wide'] = {
-            'fpet': faligned_s, 'fpeti': fnii_aligned_w, 'outpath': niidir, 'Metric': R_w,
+            'fpet': faligned_s,
+            'fpeti': fnii_aligned_w,
+            'outpath': niidir,
+            'metric': R_w,
+            'metric2': D_w,
+            'modified': M_w, 
             'faff': S_w}
 
         np.save(falign_dct, outdct)
@@ -740,6 +809,13 @@ def align_break(
 
     if not bdyn_tdata:
         log.info('no coffee-break protocol data detected.')
+        
+        # > get the main aligned PET image more exposed in output dictionary
+        if 'wide' in aligned_ur and 'fpet' in aligned_ur['wide']:
+            aligned_ur['fpet'] = aligned_ur['wide']['fpet']
+        elif 'ur' in aligned_ur and 'fpet' in aligned_ur['ur']:
+            aligned_ur['fpet'] = aligned_ur['ur']['fpet']
+
         return aligned_ur
 
     if decay_corr:

@@ -25,6 +25,10 @@ reg_fwhm = 8
 reg_thrshld = 1.0
 reg_metric = "adst"
 
+[align.dipy]
+level_iters = [10000, 1000, 200]
+sigmas = [3.0, 1.0, 0.0]
+
 [timings]
 break_time = 1800
 breakdyn_t = [1200, 2400]
