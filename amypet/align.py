@@ -441,7 +441,7 @@ def align_ur(
     nimpa.create_dir(niidir_i)
 
     # > folder of resampled and aligned NIfTI files (SPM)
-    rsmpl_opth = niidir / 'SPM-aligned'
+    rsmpl_opth = niidir / (reg_tool+'-aligned')
     nimpa.create_dir(rsmpl_opth)
 
     tmp = stat_tdata[stat_tdata['descr']['frms'][0]]
@@ -461,10 +461,12 @@ def align_ur(
         stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     falign_dct = f'Aligned-{nfrm}-frames-to-UR_{t_}_' + nimpa.rem_chars(
         stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.npy'
-    faligned = niidir_i / faligned
-    faligned_s = niidir / faligned_s
-    faligned_c = niidir_i / faligned_c
-    falign_dct = niidir / falign_dct
+
+    faligned   = niidir_i/faligned
+    faligned_c = niidir_i/faligned_c
+
+    faligned_s = niidir/faligned_s
+    falign_dct = niidir/falign_dct
 
     # > the same for the not aligned frames, if requested
     fnotaligned = 'UR_NOT_aligned_' + nimpa.rem_chars(
@@ -580,13 +582,14 @@ def align_ur(
         print('reference frame using rss', rfrm)
         print('reference frame using adst', rfrmd)
 
-        niiref = nimpa.getnii(nii_frms[rfrm], output='all')
+        # > NIfTI file reference #0 (no centre of mass)
+        niiref_0 = nimpa.getnii(nii_frms[rfrm], output='all')
 
         # > initialise target aligned UR image
-        niiim = np.zeros((len(nii_frms),) + niiref['shape'], dtype=np.float32)
+        niiim = np.zeros((len(nii_frms),) + niiref_0['shape'], dtype=np.float32)
 
         # > copy in the target frame for UR composite
-        niiim[rfrm, ...] = niiref['im']
+        niiim[rfrm, ...] = niiref_0['im']
 
         # > aligned individual frames, starting with the reference
         fnii_aligned = [nii_frms[rfrm]]
@@ -640,9 +643,9 @@ def align_ur(
 
         # > save aligned UR frames
         nimpa.array2nii(
-            niiim, niiref['affine'], faligned, descrip='AmyPET: aligned UR frames',
-            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
-                   niiref['transpose'].index(2)), flip=niiref['flip'])
+            niiim, niiref_0['affine'], faligned, descrip='AmyPET: aligned UR frames',
+            trnsp=(niiref_0['transpose'].index(0), niiref_0['transpose'].index(1),
+                   niiref_0['transpose'].index(2)), flip=niiref_0['flip'])
 
         # SINGLE UR FRAME  &  CoM CORRECTION
         # > preprocess the aligned PET into a single UR frame
@@ -671,12 +674,12 @@ def align_ur(
                 niiim[i, ...] = nimpa.getnii(fnii_aligned[i])
 
         # > save aligned UR frames
-        tmp = nimpa.getnii(fref, output='all')
+        niiref_1 = nimpa.getnii(fref, output='all')
         nimpa.array2nii(
-            niiim, tmp['affine'], faligned_c,
+            niiim, niiref_1['affine'], faligned_c,
             descrip='AmyPET: aligned UR frames' + com_correction * (', CoM-modified'),
-            trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1),
-                   tmp['transpose'].index(2)), flip=tmp['flip'])
+            trnsp=(niiref_1['transpose'].index(0), niiref_1['transpose'].index(1),
+                   niiref_1['transpose'].index(2)), flip=niiref_1['flip'])
 
         # > output dictionary
         outdct = {
@@ -691,9 +694,9 @@ def align_ur(
                 nii_noalign[k, ...] = nimpa.getnii(fnf)
 
             nimpa.array2nii(
-                nii_noalign, niiref['affine'], fnotaligned, descrip='AmyPET: unaligned UR frames',
-                trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
-                       niiref['transpose'].index(2)), flip=niiref['flip'])
+                nii_noalign, niiref_0['affine'], fnotaligned, descrip='AmyPET: unaligned UR frames',
+                trnsp=(niiref_0['transpose'].index(0), niiref_0['transpose'].index(1),
+                       niiref_0['transpose'].index(2)), flip=niiref_0['flip'])
 
             outdct['ur']['fpet_notaligned'] = fnotaligned
 
@@ -728,7 +731,7 @@ def align_ur(
         # > output paths of aligned images for the static part
         fnii_aligned_w = [None for _ in range(nfrm)]
 
-        niiim_ = np.zeros((nfrm,) + niiref['shape'], dtype=np.float32)
+        niiim_ = np.zeros((nfrm,) + niiref_1['shape'], dtype=np.float32)
 
         # > index/counter for UR/SUVr frames and wide frames
         fsi = 0
@@ -753,11 +756,12 @@ def align_ur(
                 niiim_[fi, ...] = niiim[fsi, ...]
                 fsi += 1
 
+
         # > save aligned static/dynamic frames
         nimpa.array2nii(
-            niiim_, niiref['affine'], faligned_s, descrip='AmyPET: aligned static frames',
-            trnsp=(niiref['transpose'].index(0), niiref['transpose'].index(1),
-                   niiref['transpose'].index(2)), flip=niiref['flip'])
+            niiim_, niiref_1['affine'], faligned_s, descrip='AmyPET: aligned static frames',
+            trnsp=(niiref_1['transpose'].index(0), niiref_1['transpose'].index(1),
+                   niiref_1['transpose'].index(2)), flip=niiref_1['flip'])
 
         outdct['wide'] = {
             'fpet': faligned_s,
