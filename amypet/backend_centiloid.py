@@ -460,7 +460,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
                 if refvoi == 'ctx':
                     continue
 
-                refavg = out[onm]['avgvoi'][refvoi]
+                refavg = odct['avgvoi'][refvoi]
 
                 # > obtain the UR image for the given reference VOI
                 npet_ur = npet / refavg
