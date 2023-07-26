@@ -180,6 +180,9 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
     pet_mr_list, flips = sort_input(fpets, fmris, flip_pet=None)
 
+    # > number of PET/MR pairs
+    npair = len(pet_mr_list[0])
+
     # -------------------------------------------------------------
     # > get the CL masks
     fmasks, masks = load_masks(cl_masks_fldr, voxsz=voxsz)
@@ -199,8 +202,15 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # > file which will be CL quantified; name of the folder
         # > and dictionary output is based on PET name
         onm = fpet.name.rsplit('.nii', 1)[0]
-        spth = opth / onm
-        out[onm] = {'opth': spth, 'fpet': fpet, 'fmri': fmri}
+
+        # > if more than one PET/MR pair, add one more folder level
+        if npair>1:
+            spth = opth / onm
+        else:
+            spth = opth
+
+        # > scan level output dictionary
+        odct = {'opth': spth, 'fpet': fpet, 'fmri': fmri}
 
         # >output path for centre of mass alignment and registration
         opthc = spth / 'centre-of-mass'
@@ -220,8 +230,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # run bias field correction unless cancelled
         if bias_corr:
             log.info(f'subject {onm}: running MR bias field correction')
-            out[onm]['n4'] = nimpa.bias_field_correction(fmri, executable='sitk', outpath=spth)
-            fmri = out[onm]['n4']['fim']
+            odct['n4'] = nimpa.bias_field_correction(fmri, executable='sitk', outpath=spth)
+            fmri = odct['n4']['fim']
 
         # > check if flipping the PET is requested
         if flips[fi] is not None and any(flips[fi]):
@@ -239,22 +249,22 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             except Exception:
                 dscr = None
             if isinstance(dscr, str) and 'CoM-modified' in dscr:
-                out[onm]['petc'] = petc = {'fim': fpet}
+                odct['petc'] = petc = {'fim': fpet}
                 log.info('the PET data is already modified for the centre of mass.')
             elif dscr is None and 'com-modified' in fpet.name:
-                out[onm]['petc'] = petc = {'fim': fpet}
+                odct['petc'] = petc = {'fim': fpet}
                 log.info('the PET data is already modified for the centre of mass.')
             else:
-                out[onm]['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
+                odct['petc'] = petc = nimpa.centre_mass_corr(fpet, flip=flip, outpath=opthc)
         else:
-            out[onm]['petc'] = petc = {'fim': fpet}
+            odct['petc'] = petc = {'fim': fpet}
             log.info('PET image has NOT been corrected for the centre of mass.')
 
         # > centre of mass correction for the MR part
-        out[onm]['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
+        odct['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
         log.info(f'subject {onm}: MR registration to MNI space')
-        out[onm]['reg1'] = reg1 = spm12.coreg_spm(
+        odct['reg1'] = reg1 = spm12.coreg_spm(
             tmpl_avg,
             mric['fim'],
             fwhm_ref=0,
@@ -273,7 +283,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         )
 
         log.info(f'subject {onm}: PET -> MR registration')
-        out[onm]['reg2'] = reg2 = spm12.coreg_spm(
+        odct['reg2'] = reg2 = spm12.coreg_spm(
             reg1['freg'],
             petc['fim'],
             fwhm_ref=Cnt['regpars']['fwhm_t1'],
@@ -292,18 +302,20 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         )
 
         if stage == 'r':
-            if fcldct is not None:
-                np.save(fcldct, out)
-            return out
+            if npair>1:
+                out[onm] = odct
+            else:
+                out = odct
+            continue
 
         log.info(f'subject {onm}: MR normalisation/segmentation...')
-        out[onm]['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
+        odct['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
                                                 store_nat_gm=True, store_nat_wm=False,
                                                 store_nat_csf=True, store_fwd=True, store_inv=True,
                                                 visual=int(Cnt['regpars']['visual']))
         # > normalise
         list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
-        out[onm]['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
+        odct['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
                                             outpath=optho)
 
         log.info(f'subject {onm}: load normalised PET image...')
@@ -324,15 +336,17 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # npet[npet<0] = 0
 
         # > extract mean values and UR
-        out[onm]['avgvoi'] = avgvoi = {fmsk: np.mean(npet[masks[fmsk] > 0]) for fmsk in fmasks}
-        out[onm]['ur'] = ur = {
+        odct['avgvoi'] = avgvoi = {fmsk: np.mean(npet[masks[fmsk] > 0]) for fmsk in fmasks}
+        odct['ur'] = ur = {
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
         if stage == 'n':
-            if fcldct is not None:
-                np.save(fcldct, out)
-            return out
+            if npair>1:
+                out[onm] = odct
+            else:
+                out = odct
+            continue 
 
         # **************************************************************
         # C E N T I L O I D   S C A L I N G
@@ -375,12 +389,12 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
                 print('loaded UR (aka SUVr) transformations for tracer:', tracer)
 
                 # > save the PiB converted URs
-                out[onm]['ur_pib_calc'] = ur_pib_calc = {
+                odct['ur_pib_calc'] = ur_pib_calc = {
                     fmsk: (ur[fmsk] - CNV[fmsk]['b_std']) / CNV[fmsk]['m_std']
                     for fmsk in fmasks if fmsk != 'ctx'}
 
                 # > save the linear transformation parameters
-                out[onm]['ur_pib_calc_transf'] = {
+                odct['ur_pib_calc_transf'] = {
                     fmsk: (CNV[fmsk]['m_std'], CNV[fmsk]['b_std'])
                     for fmsk in fmasks if fmsk != 'ctx'}
 
@@ -389,7 +403,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # ---------------------------------
 
         if tracer != 'new':
-            out[onm]['cl'] = cl = {
+            odct['cl'] = cl = {
                 fmsk: 100 * (ur[fmsk] - CLA[fmsk][0]) / (CLA[fmsk][1] - CLA[fmsk][0])
                 for fmsk in fmasks if fmsk != 'ctx'}
 
@@ -397,25 +411,25 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # > save CSV with UR and CL outputs
         if csv_metrics == 'short':
             csv_dict = {
-                'path_outputs': out[onm]['opth'],
+                'path_outputs': odct['opth'],
                 **{f'ur_{key}': value
-                   for key, value in out[onm]['ur'].items()},
+                   for key, value in odct['ur'].items()},
                 **{f'cl_{key}': value
-                   for key, value in out[onm]['cl'].items() if key == 'wc'}}
+                   for key, value in odct['cl'].items() if key == 'wc'}}
 
         elif csv_metrics == 'long':
             csv_dict = {
-                'path_outputs': out[onm]['opth'],
+                'path_outputs': odct['opth'],
                 **{f'suv_{key}': value
-                   for key, value in out[onm]['avgvoi'].items()},
+                   for key, value in odct['avgvoi'].items()},
                 **{f'ur_{key}': value
-                   for key, value in out[onm]['ur'].items()},
+                   for key, value in odct['ur'].items()},
                 **{f'ur_pib_calc_{key}': value
-                   for key, value in out[onm]['ur_pib_calc'].items()}, **{
+                   for key, value in odct['ur_pib_calc'].items()}, **{
                     f'ur_pib_calc_transf_{key}': value
-                    for key, value in out[onm]['ur_pib_calc_transf'].items()},
+                    for key, value in odct['ur_pib_calc_transf'].items()},
                 **{f'cl_{key}': value
-                   for key, value in out[onm]['cl'].items()}}
+                   for key, value in odct['cl'].items()}}
         elif csv_metrics:
             raise KeyError(f"`csv_metrics`: unknown value ({csv_metrics})")
 
@@ -433,7 +447,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
                     writer.writeheader()
                 writer.writerow(csv_dict)
 
-            out[onm]['fcsv'] = fcsv
+            odct['fcsv'] = fcsv
         # ---------------------------------
 
         # **************************************************************
@@ -497,9 +511,11 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
         if not stage == 'f':
-            if fcldct is not None:
-                np.save(fcldct, out)
-            return out
+            if npair>1:
+                out[onm] = odct
+            else:
+                out = odct
+            continue
 
         # -------------------------------------------------------------
         # VISUALISATION
@@ -591,11 +607,18 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
         fqcpng = opths / f'{onm}_CL-UR-mask_PET_sampling.png'
         plt.savefig(fqcpng, dpi=150, facecolor='auto', edgecolor='auto')
-        out[onm]['_amypet_imscroll'] = fig
+        odct['_amypet_imscroll'] = fig
         plt.close('all')
-        out[onm]['fqc'] = fqcpng
+        odct['fqc'] = fqcpng
+
+        if npair>1:
+            out[onm] = odct
+        else:
+            out = odct
+
 
     if fcldct is not None:
+        
         np.save(fcldct, out)
 
     return out
