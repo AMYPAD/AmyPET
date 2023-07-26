@@ -455,9 +455,9 @@ def align_ur(
     # > re-aligned output file names and output dictionary
     faligned = f'UR-aligned_{nsfrm}-summed-frames_' + nimpa.rem_chars(
         stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    faligned_c = f'UR-aligned_{nsfrm}-summed-frames_' + com_correction * (
+    faligned_c = f'UR-aligned_{nsfrm}-summed-frames_' + com_correction*(
         'CoM_') + nimpa.rem_chars(stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
-    faligned_s = f'Aligned-{nfrm}-frames-to-UR_' + nimpa.rem_chars(
+    faligned_s = f'Aligned-{nfrm}-frames-to-UR_' + com_correction*('CoM_') + nimpa.rem_chars(
         stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.nii.gz'
     falign_dct = f'Aligned-{nfrm}-frames-to-UR_{t_}_' + nimpa.rem_chars(
         stat_tdata[stat_tdata['descr']['frms'][0]]['series']) + '.npy'
@@ -685,7 +685,7 @@ def align_ur(
         outdct = {
             'ur': {
                 'fpet': faligned_c, 'fur': fref, 'fpeti': fniic_aligned, 'outpath': niidir,
-                'Metric': R, 'faff': S}, 'wide': {}}
+                'metric': R, 'metric2': D, 'faff': S}, 'wide': {}}
 
         # > save static image which is not aligned
         if save_not_aligned:
