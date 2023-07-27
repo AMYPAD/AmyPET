@@ -21,12 +21,11 @@ from .utils import get_atlas
 log = logging.getLogger(__name__)
 
 
-def atl2pet(frefpet, fatl, cldct, outpath=None):
+def atl2pet(fatl, cldct, outpath=None):
     '''
     Atlas and GM from the centiloid (CL) pipeline to the reference
     PET space.
     Arguments:
-    - frefpet:  the file path of the reference PET image
     - fatl:     the file path of the atlas in MNI space
     - cldct:    the CL output dictionary
     '''
@@ -45,6 +44,9 @@ def atl2pet(frefpet, fatl, cldct, outpath=None):
         cl_dct = cldct
     else:
         raise ValueError('unrecognised CL dictionary')
+
+
+    frefpet = cl_dct['petc']['fim'] 
 
     # > read the PET image
     petdct = nimpa.getnii(frefpet, output='all')
@@ -296,7 +298,7 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
             raise ValueError('unrecognised atlas name!')
 
     # > get the atlas and GM probability mask in PET space using CL inverse pipeline
-    atlgm = atl2pet(aligned['ur']['fur'], fatl, cl_dct, outpath=opth)
+    atlgm = atl2pet(fatl, cl_dct, outpath=opth) #aligned['ur']['fur']
 
     if apply_gmmask:
         gmmsk = atlgm['fgmpet']
