@@ -582,17 +582,23 @@ def align_ur(
         print('reference frame using rss', rfrm)
         print('reference frame using adst', rfrmd)
 
+        # > pick the right reference frame according to the requested method
+        if reg_metric=='adst':
+            reff = rfrmd
+        elif reg_metric=='rss':
+            reff = rfrm
+
         # > NIfTI file reference #0 (no centre of mass)
-        niiref_0 = nimpa.getnii(nii_frms[rfrm], output='all')
+        niiref_0 = nimpa.getnii(nii_frms[reff], output='all')
 
         # > initialise target aligned UR image
         niiim = np.zeros((len(nii_frms),) + niiref_0['shape'], dtype=np.float32)
 
         # > copy in the target frame for UR composite
-        niiim[rfrm, ...] = niiref_0['im']
+        niiim[reff, ...] = niiref_0['im']
 
         # > aligned individual frames, starting with the reference
-        fnii_aligned = [nii_frms[rfrm]]
+        fnii_aligned = [nii_frms[reff]]
 
         # > indicator of which frames are modified
         M = np.zeros(len(nii_frms), dtype=bool)
@@ -600,21 +606,21 @@ def align_ur(
         for ifrm in range(len(nii_frms)):
 
             # > ignore the reference frame already dealt with
-            if ifrm == rfrm:
+            if ifrm == reff:
                 continue
 
             # > check if the motion for this frame is large enough to warren correction
-            if (R[rfrm, ifrm] > reg_thrshld) * (reg_metric == 'rss') or (
-                    D[rfrm, ifrm] > reg_thrshld) * (reg_metric == 'adst'):
+            if (R[reff, ifrm] > reg_thrshld) * (reg_metric == 'rss') or (
+                    D[reff, ifrm] > reg_thrshld) * (reg_metric == 'adst'):
 
                 M[ifrm] = True
 
                 # > resample images for alignment
                 if reg_tool == 'spm':
                     frsmpl = nimpa.resample_spm(
-                        nii_frms[rfrm],
+                        nii_frms[reff],
                         nii_frms[ifrm],
-                        S[rfrm][ifrm],
+                        S[reff][ifrm],
                         intrp=1.,
                         outpath=rsmpl_opth,
                         pickname='flo',
@@ -624,8 +630,8 @@ def align_ur(
                     )
 
                 elif reg_tool == 'dipy':
-                    rsmpld = nimpa.resample_dipy(nii_frms[rfrm], nii_frms[ifrm],
-                                                 faff=S[rfrm][ifrm], outpath=rsmpl_opth,
+                    rsmpld = nimpa.resample_dipy(nii_frms[reff], nii_frms[ifrm],
+                                                 faff=S[reff][ifrm], outpath=rsmpl_opth,
                                                  pickname='flo', intrp=1)
 
                     frsmpl = rsmpld['fnii']
@@ -749,9 +755,9 @@ def align_ur(
             else:
                 # > already aligned as part of uptake ratio (UR) image
                 fnii_aligned_w[fi] = Path(outdct['ur']['fpeti'][fsi])
-                S_w[fi] = S[rfrm][fsi]
-                R_w[fi] = R[rfrm][fsi]
-                D_w[fi] = D[rfrm][fsi]
+                S_w[fi] = S[reff][fsi]
+                R_w[fi] = R[reff][fsi]
+                D_w[fi] = D[reff][fsi]
                 M_w[fi] = M[fsi]
                 niiim_[fi, ...] = niiim[fsi, ...]
                 fsi += 1
