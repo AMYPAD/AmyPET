@@ -225,7 +225,7 @@ def ur_inf(srs_dscr, t_frms, srs, Cnt, ur_win_def=None, tracer=None):
 
 # =====================================================================
 def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None, find_ur=False,
-                    grouping='a+t+d'):
+                    grouping='a+t+d', ref_time='injection'):
     '''
     Process the input folder of amyloid PET DICOM data.
     The folder can contain two subfolders for a coffee break protocol including
@@ -249,6 +249,8 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
     - grouping: defines how DICOMs are grouped, default is 'a+t+d', which is
                 by acquisition and series times plus series description;
                 see nimpa.dcmsort() for details.
+    - ref_time: the frame times will be calculated relative to the 'injection'
+                (default) or 'scan' start time.
     '''
 
     # ------------------------------------------------
@@ -317,6 +319,12 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
         # -----------------------------------------------
         # > frame timings relative to the injection time -
         #   radiopharmaceutical administration start time
+
+        # > reference time for frame timing:
+        if ref_time=='scan':
+            rtime = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
+                                   '%Y%m%d%H%M%S')
+
         t_frms = []
         for k in srs_t:
 
@@ -324,11 +332,20 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
                 log.info('non-PET DICOM data detected')
                 continue
 
-            t0 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
-                                   '%Y%m%d%H%M%S') - srs_t[k]['radio_start_time']
-            t1 = datetime.strptime(
-                srs_t[k]['dstudy'] + srs_t[k]['tacq'],
-                '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - srs_t[k]['radio_start_time']
+            if ref_time=='injection':
+                t0 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
+                                       '%Y%m%d%H%M%S') - srs_t[k]['radio_start_time']
+                t1 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
+                    '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - srs_t[k]['radio_start_time']
+            
+            elif ref_time=='scan':
+                t0 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
+                                       '%Y%m%d%H%M%S') - rtime
+                t1 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
+                    '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - rtime
+            else:
+                raise ValueError('unrecognised reference time choice!')
+
             t_frms.append((t0.seconds, t1.seconds))
 
         # if PET frame timings not found, skip
