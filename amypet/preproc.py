@@ -307,6 +307,27 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
     # > time-sorted series
     msrs_t = []
 
+    # > establish scan reference time for frame timing, if needed
+    # > starting with all the series and their starting time
+    # > relative to injection time
+    rel_sec = []
+    rtimes = []
+    if ref_time=='scan':
+        for m in msrs:
+            # > time sorted series according to acquisition time
+            srs_t = dict(sorted(m.items(), key=lambda item: item[1]['tacq']))
+            # > key for first time frame
+            k0 = list(srs_t.keys())[0]
+            rtime = datetime.strptime(srs_t[k0]['dstudy'] + srs_t[k0]['tacq'],
+                    '%Y%m%d%H%M%S') - srs_t[k0]['radio_start_time']
+            # > total seconds relative to the injection time
+            rel_sec.append(rtime.total_seconds())
+            rtimes.append(datetime.strptime(srs_t[k0]['dstudy'] + srs_t[k0]['tacq'],
+                    '%Y%m%d%H%M%S'))
+        # > get the closest time to injection time
+        rti = np.argmin(np.array(rel_sec))
+        rtime = rtimes[rti]
+
     for m in msrs:
 
         # > for each folder do the following:
@@ -319,12 +340,6 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
         # -----------------------------------------------
         # > frame timings relative to the injection time -
         #   radiopharmaceutical administration start time
-
-        # > reference time for frame timing:
-        if ref_time=='scan':
-            k0 = list(srs_t.keys())[0]
-            rtime = datetime.strptime(srs_t[k0]['dstudy'] + srs_t[k0]['tacq'],
-                                   '%Y%m%d%H%M%S')
 
         t_frms = []
         for k in srs_t:
