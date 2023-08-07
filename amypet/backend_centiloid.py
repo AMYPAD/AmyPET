@@ -171,7 +171,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         fcldct = None
 
     # supported F-18 tracers
-    f18_tracers = ['fbp', 'fbb', 'flute']
+    f18_amy_tracers = ['fbp', 'fbb', 'flute']
 
     spm_path = Path(spm12.spm_dir()) # _eng <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -341,7 +341,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             fmsk: avgvoi['ctx'] / avgvoi[fmsk]
             for fmsk in fmasks if fmsk != 'ctx'}
 
-        if stage == 'n':
+        if stage == 'n' or (tracer!='pib' and tracer not in f18_amy_tracers):
             if npair>1:
                 out[onm] = odct
             else:
@@ -377,7 +377,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # ---------------------------------
         # > centiloid transformation for PiB
         # > check if UR transformation is needed for F-18 tracers
-        if tracer in f18_tracers:
+        if tracer in f18_amy_tracers:
             pth = cl_fldr / f'ur_{tracer}_to_ur_pib__transform.pkl'
 
             if not os.path.isfile(pth):
@@ -476,7 +476,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
                                npet_dct['transpose'].index(2)), flip=npet_dct['flip'])
 
                 # > convert to PiB scale if it is an F18 tracer
-                if tracer in f18_tracers:
+                if tracer in f18_amy_tracers:
                     npet_ur = (npet_ur - CNV[refvoi]['b_std']) / CNV[refvoi]['m_std']
 
                 # > convert the (PiB) uptake ratio (UR) image to CL scale

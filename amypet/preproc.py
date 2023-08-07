@@ -367,14 +367,15 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
 
             # > when tracer info not provided and not in DICOMs
             if acq_type == 'static' and not tracer:
+                tracer = 'unknown'
 
-                # > assuming the first of the following tracers then
-                for t in ur_twindow:
-                    dur = ur_twindow[t][2]
-                    if (acq_dur > dur * (1-margin)) and (t_frms[0][0] < ur_twindow[t][0] *
-                                                         (1+margin)):
-                        tracer = t
-                        break
+                # # > assuming the first of the following tracers then
+                # for t in ur_twindow:
+                #     dur = ur_twindow[t][2]
+                #     if (acq_dur > dur * (1-margin)) and (t_frms[0][0] < ur_twindow[t][0] *
+                #                                          (1+margin)):
+                #         tracer = t
+                #         break
         else:
             tracer_grp = [tracer in tracer_names[t] for t in tracer_names]
             if any(tracer_grp):
@@ -419,7 +420,7 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
             if find_ur:
                 ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
 
-    return {'series': msrs_t, 'descr': msrs_dscr, 'outpath': amyout, 'tracer': tracer}
+    return {'series': msrs_t, 'descr': msrs_dscr, 'outpath': amyout, 'tracer': tracer, 'tracer_dcm':tracer_dcm}
 
 
 # =====================================================================
