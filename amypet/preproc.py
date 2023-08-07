@@ -322,7 +322,8 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
 
         # > reference time for frame timing:
         if ref_time=='scan':
-            rtime = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
+            k0 = list(srs_t.keys())[0]
+            rtime = datetime.strptime(srs_t[k0]['dstudy'] + srs_t[k0]['tacq'],
                                    '%Y%m%d%H%M%S')
 
         t_frms = []
