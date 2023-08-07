@@ -812,7 +812,7 @@ def align_break(
     # > the shortest PET frame to be used for registration in the alignment process.
     # frame_min_dur=Cnt['align']['frame_min_dur']
     # > correct for decay between different series relative to the earliest one
-    decay_corr = Cnt['align']['decay_corr'],
+    decay_corr = Cnt['align']['decay_corr']
 
     # > identify coffee-break data if any
     bdyn_tdata = id_acq(niidat, acq_type='break')
