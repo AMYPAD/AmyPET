@@ -55,7 +55,16 @@ def save4dnii(lfrm, fnii, descrip='AmyPET generated', retarr=True):
         return None
 
 
-def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None, outpath=None):
+def align_frames(
+        fniis,
+        times,
+        fref,
+        Cnt,
+        reg_tool='spm',
+        spm_com_corr=True,
+        save4d=True,
+        f4d=None,
+        outpath=None):
     """
     Align frames by mashing the short ones as defined by the threshold.
     Arguments:
@@ -116,17 +125,43 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     else:
         raise ValueError('unrecognised frame times')
 
-    outdct = {}    # > output dictionary
-
+    #------------------------------------------------------
     if outpath is None:
         opth = Path(fniis[0]).parent
     else:
         opth = Path(outpath)
 
-    mniidir = opth / 'mashed'
+    # > output folders
+    mniidir = opth / 'mash-n-align'
     rsmpl_opth = mniidir / 'aligned'
-    nimpa.create_dir(mniidir)
-    nimpa.create_dir(rsmpl_opth)
+    com_opth = mniidir / 'com_modified'
+    if nfrm>0:
+        nimpa.create_dir(rsmpl_opth)
+
+    # > output dictionary
+    outdct = {}
+    #------------------------------------------------------
+
+    #------------------------------------------------------
+    # > centre of mass correction for SPM
+    if spm_com_corr and reg_tool=='spm' and nfrm>0:
+        # > create sum image (dictionary) for a global centre of mass
+        simd = nimpa.getnii(fniis[0], output='all')
+        simd['im'][:] = 0
+        for fi in fniis:
+            simd['im'] += nimpa.getnii(fi)
+
+        # > global and absolute centre of mass
+        com_g = nimpa.centre_mass_img(simd)
+
+        nimpa.create_dir(com_opth)
+        fniis_c = []
+        for fi in fniis:
+            com_ = nimpa.centre_mass_corr(fi, outpath=com_opth, com=com_g)
+            fniis_c.append(Path(com_['fim']))
+    else:
+        fniis_c = fniis
+    #------------------------------------------------------
 
     # > short frame size for registration (in seconds)
     frms_l = dur < frm_lsize
@@ -156,7 +191,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
         # > update the overall number of frames to be mashed
         nmfrm_chck += len(ifrm)
 
-    # >> CHECKS >>
+    # >>- CHECKS -<<
     if nmfrm_chck != nmfrm:
         raise ValueError(
             'Mashing frames inconsistent: number of frames to be mashed incorrectly established.')
@@ -168,7 +203,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     if nmfrm_chck != nfrm:
         raise ValueError('Mashing frames inconsistency: number of overall frames'
                          ' (including mashed) is incorrectly established')
-    # << <<
+    # >>-<<
 
     # > the output file paths of mashed frames
     mfrms_out = []
@@ -177,14 +212,14 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
     for mgrp in mfrms:
 
         # > image holder
-        tmp = nimpa.getnii(fniis[mgrp[0]], output='all')
+        tmp = nimpa.getnii(fniis_c[mgrp[0]], output='all')
         im = np.zeros(tmp['shape'], dtype=np.float32)
 
         for i in mgrp:
-            im += nimpa.getnii(fniis[i])
+            im += nimpa.getnii(fniis_c[i])
 
         # > output file path and name
-        fout = mniidir / (f'mashed_n{len(mgrp)}_' + fniis[mgrp[0]].name)
+        fout = mniidir / (f'mashed_n{len(mgrp)}_' + fniis_c[mgrp[0]].name)
 
         # > append the mashed frames output file path
         mfrms_out.append(fout)
@@ -283,7 +318,7 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
                 if reg_tool == 'spm':
                     faligned[fi] = nimpa.resample_spm(
                         fref,
-                        fniis[i],
+                        fniis_c[i],
                         S[mi],
                         intrp=1.,
                         outpath=rsmpl_opth,
@@ -293,14 +328,14 @@ def align_frames(fniis, times, fref, Cnt, reg_tool='spm', save4d=True, f4d=None,
                         del_out_uncmpr=True,
                     )
                 elif reg_tool == 'dipy':
-                    rsmpld = nimpa.resample_dipy(fref, fniis[i], faff=S[mi], outpath=rsmpl_opth,
+                    rsmpld = nimpa.resample_dipy(fref, fniis_c[i], faff=S[mi], outpath=rsmpl_opth,
                                                  pickname='flo', intrp=1)
                     faligned[fi] = rsmpld['fnii']
 
             else:
                 M[i] = False
-                faligned[fi] = rsmpl_opth / fniis[i].name
-                shutil.copyfile(fniis[i], faligned[fi])
+                faligned[fi] = rsmpl_opth / fniis_c[i].name
+                shutil.copyfile(fniis_c[i], faligned[fi])
 
             fi += 1
         #------------------------------------------------------------
@@ -687,11 +722,11 @@ def align_ur(
             trnsp=(niiref_1['transpose'].index(0), niiref_1['transpose'].index(1),
                    niiref_1['transpose'].index(2)), flip=niiref_1['flip'])
 
-        # > output dictionary
+        # > output dictionary with the UR and wide (later or earlier frames) outputs
         outdct = {
-            'ur': {
-                'fpet': faligned_c, 'fur': fref, 'fpeti': fniic_aligned, 'outpath': niidir,
-                'metric': R, 'metric2': D, 'faff': S}, 'wide': {}}
+            'ur': {'fpet': faligned_c, 'fur': fref, 'fpeti': fniic_aligned,
+                'outpath': niidir, 'metric': R, 'metric2': D, 'faff': S},
+            'wide': {}}
 
         # > save static image which is not aligned
         if save_not_aligned:

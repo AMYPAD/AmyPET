@@ -390,13 +390,16 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
         # -----------------------------------------------
 
         # > classify tracer if possible and if not given
+        if 'tracer' in srs_t[next(iter(srs_t))]:
+            tracer_dcm = srs_t[next(iter(srs_t))]['tracer'].lower()
+        else:
+            tracer_dcm = 'undefined'
+        
         if tracer is None:
-            if 'tracer' in srs_t[next(iter(srs_t))]:
-                tracer_dcm = srs_t[next(iter(srs_t))]['tracer'].lower()
-                for t in tracer_names:
-                    for n in tracer_names[t]:
-                        if n in tracer_dcm:
-                            tracer = t
+            for t in tracer_names:
+                for n in tracer_names[t]:
+                    if n in tracer_dcm:
+                        tracer = t
 
             # > when tracer info not provided and not in DICOMs
             if acq_type == 'static' and not tracer:
