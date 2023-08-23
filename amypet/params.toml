@@ -14,11 +14,11 @@ costfun = "nmi"
 visual = false
 
 [segpars]
-store_nat_gm = True
-store_nat_wm = True
-store_nat_csf = True
-store_fwd = True
-store_inv = True
+store_nat_gm = true
+store_nat_wm = true
+store_nat_csf = true
+store_fwd = true
+store_inv = true
 
 [endfov_corr]
 frm_rng = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
