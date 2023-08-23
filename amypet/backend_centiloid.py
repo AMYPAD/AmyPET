@@ -326,6 +326,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             list4norm.append(odct['norm']['c1']+',1')
         if Cnt['segpars']['store_nat_wm']:
             list4norm.append(odct['norm']['c2']+',1')
+        if Cnt['segpars']['store_nat_csf']:
+            list4norm.append(odct['norm']['c3']+',1')
 
         odct['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
                                             outpath=optho)
