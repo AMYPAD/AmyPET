@@ -319,9 +319,14 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             store_fwd=Cnt['segpars']['store_fwd'],
             store_inv=Cnt['segpars']['store_inv'],
             visual=int(Cnt['regpars']['visual']))
-        
+
         # > normalise
         list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
+        if Cnt['segpars']['store_nat_gm']:
+            list4norm.append(odct['norm']['c1']+',1')
+        if Cnt['segpars']['store_nat_wm']:
+            list4norm.append(odct['norm']['c2']+',1')
+
         odct['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
                                             outpath=optho)
 

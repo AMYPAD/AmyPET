@@ -16,7 +16,7 @@ visual = false
 [segpars]
 store_nat_gm = true
 store_nat_wm = true
-store_nat_csf = true
+store_nat_csf = false
 store_fwd = true
 store_inv = true
 
