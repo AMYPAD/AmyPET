@@ -13,6 +13,13 @@ fwhm_pet = 6
 costfun = "nmi"
 visual = false
 
+[segpars]
+store_nat_gm = True
+store_nat_wm = True
+store_nat_csf = True
+store_fwd = True
+store_inv = True
+
 [endfov_corr]
 frm_rng = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 z_margin = 10

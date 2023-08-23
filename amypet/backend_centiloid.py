@@ -309,10 +309,17 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             continue
 
         log.info(f'subject {onm}: MR normalisation/segmentation...')
-        odct['norm'] = norm = spm12.seg_spm(reg1['freg'], spm_path, outpath=opthn,
-                                                store_nat_gm=True, store_nat_wm=False,
-                                                store_nat_csf=True, store_fwd=True, store_inv=True,
-                                                visual=int(Cnt['regpars']['visual']))
+        odct['norm'] = norm = spm12.seg_spm(
+            reg1['freg'],
+            spm_path,
+            outpath=opthn,
+            store_nat_gm=Cnt['segpars']['store_nat_gm'],
+            store_nat_wm=Cnt['segpars']['store_nat_wm'],
+            store_nat_csf=Cnt['segpars']['store_nat_csf'],
+            store_fwd=Cnt['segpars']['store_fwd'],
+            store_inv=Cnt['segpars']['store_inv'],
+            visual=int(Cnt['regpars']['visual']))
+        
         # > normalise
         list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
         odct['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
