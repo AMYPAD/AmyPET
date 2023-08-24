@@ -191,10 +191,21 @@ def align_frames(
         # > update the overall number of frames to be mashed
         nmfrm_chck += len(ifrm)
 
+    # > adding any over-hanging frames
+    if nmfrm_chck<nmfrm:
+        # > number of frames to be added
+        addfrm = nmfrm-nmfrm_chck
+        # > next frame index
+        nxtfrm = mfrms[nset-1][-1]+1
+        # > update the mashed-frame list
+        mfrms[nset-1] += list( range(nxtfrm, nxtfrm+addfrm) )
+        nmfrm_chck += addfrm
+
     # >>- CHECKS -<<
     if nmfrm_chck != nmfrm:
         raise ValueError(
             'Mashing frames inconsistent: number of frames to be mashed incorrectly established.')
+    
     # > add the normal length (not mashed) frames
     for i, frm in enumerate(~frms_l):
         if frm:
