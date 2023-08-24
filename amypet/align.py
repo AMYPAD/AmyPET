@@ -960,7 +960,7 @@ def align_break(
         trnsp=(tmp['transpose'].index(0), tmp['transpose'].index(1), tmp['transpose'].index(2)),
         flip=tmp['flip'])
 
-    outdct = {'fpet': falign_nii, 'fpeti': fall, 'alignment': aligned}
+    outdct = {'fpet': falign_nii, 'fpeti': fall, 'break_alignment': aligned}
     outdct.update(aligned_ur)
     np.save(falign_dct, outdct)
 
