@@ -11,12 +11,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
+from scipy.optimize import fmin
+from niftypet import nimpa
+from tqdm import trange
+
 from niftypad import basis
 from niftypad.kt import dt2mft, dt2tdur, dt_fill_gaps
 from niftypad.models import get_model_inputs
 from niftypad.tac import TAC, Ref
-from niftypet import nimpa
-from tqdm import trange
 
 log = logging.getLogger(__name__)
 
@@ -71,9 +73,17 @@ def dyn_timing(dat):
 
 
 #==========================================================
-def fit_tac(tac, tp, pp0, plot=True):
+def fit_tac(tac, tp, plot=True):
     ''' Fit exponential to TAC data points
     '''
+
+    # > get starting parameters
+    i1 = np.argmax(tac)
+    a1 = np.max(tac)
+    t1 = tp[i1]
+    t0 = tp[np.nonzero(tac<(a1/100))]
+    t0 = t0[-1]
+    pp0 = [t0, t1, a1-1, 0.01, 1]
 
     def obj_fun(pp):
         ''' objective function
