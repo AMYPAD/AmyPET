@@ -39,6 +39,126 @@ def timing_dyn(niidat):
     return {'timings': t, 'niftypad': dt, 't_mid_points': tm}
 
 
+
+#==========================================================
+def dyn_timing(dat):
+    ''' establish the timing per frame in minutes
+    '''
+
+    if 'descr' in dat:
+        t = []
+        for dct in dat['descr']:
+            t += dct['timings']
+        t.sort()
+        timings = np.array(t)
+    elif isinstance(dat, (list, np.ndarray)):
+        timings = np.array(dat)
+    else:
+        raise ValueError('wrong format for the time data')
+
+
+    # > time point for each frame
+    tp = np.mean(timings, axis=1) / 60
+
+    # > frame duration
+    dtp = np.array([t[1]-t[0] for t in timings])/60
+
+    # > number of frame/time points
+    nt = len(tp)
+
+    return dict(tp=tp, dtp=dtp, nt=nt)
+#==========================================================
+
+
+#==========================================================
+def fit_tac(tac, tp, pp0, plot=True):
+    ''' Fit exponential to TAC data points
+    '''
+
+    def obj_fun(pp):
+        ''' objective function
+        '''
+        ff = test_fun(pp)
+        return np.sum((ff-tac)**2)
+
+    def test_fun(pp):
+        ''' test function
+        '''
+        t0 = pp[0]
+        t1 = pp[1]
+        npp = len(pp)
+        ne = int(ceil( (npp-2)/2 ))
+        aa = np.zeros(ne)
+        ss = np.zeros(ne)
+
+        for j in range(ne):
+            ip1 = 2*j + 2
+            ip2 = ip1 + 1
+            aa[j] = pp[ip1]
+            if ip2 < npp:
+                ss[j] = pp[ip2]
+
+        ff = np.zeros(len(tp))
+        ii = (tp>=t0) & (tp<=t1)
+        ff[ii] = (tp[ii]-t0) * np.sum(aa)/(t1-t0)
+        ii = tp>=t1
+        for j in range(ne):    
+            ff[ii] = ff[ii] + aa[j] * np.exp(-ss[j]*(tp[ii]-t1))
+
+        return ff
+
+    pp_opt = fmin(obj_fun, pp0)
+    yy_opt = test_fun(pp_opt)
+
+    if plot:
+        fig, ax = plt.subplots(1,1, figsize=(9,6))
+        ax.plot(tp, tac, '+')
+        ax.plot(tp, yy)
+        ax.set_xlabel('Time (min)')
+        ax.set_ylabel('Activity conc.')
+        ax.set_title('Reference region')
+
+    return dict(y=yy_opt, pars=pp_opt)   
+#==========================================================
+
+#==========================================================
+def logan_fit(ref_tac, tac, t, t_star, plot=True):
+    ''' fit logan model to dynamic PET data
+    '''
+
+    if t['nt']!=len(ref_tac) or t['nt']!=len(tac):
+        raise ValueError('incompatible TAC and/or reference TAC and time vector lengths')
+
+    S_ref = np.cumsum(t['dtp']*ref_tac)
+    S_tac = np.cumsum(t['dtp']*tac)
+
+    aa = np.zeros(t['nt'])
+    bb = np.zeros(t['nt'])
+    
+    ii = tac>0
+    aa[ii] = S_ref[ii]/tac[ii]
+    bb[ii] = S_tac[ii]/tac[ii]
+
+    ii = ( t['tp'] > t_star )
+    pp = np.polyfit(aa[ii], bb[ii], 1)
+
+    xx = np.array([0, np.max(aa)])
+
+    if plot:
+        fig, ax = plt.subplots(1,1, figsize=(9,6))
+        ax.plot(aa, bb,'+', label='time points')
+        ax.plot(xx, pp[0]*xx+pp[1], label='fit')
+        ax.set_xlabel('Logan-x (min)')
+        ax.set_ylabel('Logan-y (min)')
+        ax.set_title('TAC')
+
+    return dict(pars=pp, aa=aa, bb=bb, t_star=t_star)
+#==========================================================
+
+
+
+
+
 # =====================================================================
 def km_voi(dynvois, voi=None, dynamic_break=False, model='srtmb_basis', beta_lim=None, n_beta=100,
            k2p=None, weights='dur', outpath=None):
