@@ -123,7 +123,7 @@ def fit_tac(tac, tp, plot=True):
     if plot:
         fig, ax = plt.subplots(1,1, figsize=(9,6))
         ax.plot(tp, tac, '+')
-        ax.plot(tp, yy)
+        ax.plot(tp, yy_opt)
         ax.set_xlabel('Time (min)')
         ax.set_ylabel('Activity conc.')
         ax.set_title('Reference region')
