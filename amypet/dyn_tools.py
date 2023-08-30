@@ -97,7 +97,7 @@ def fit_tac(tac, tp, plot=True):
         t0 = pp[0]
         t1 = pp[1]
         npp = len(pp)
-        ne = int(ceil( (npp-2)/2 ))
+        ne = int(np.ceil( (npp-2)/2 ))
         aa = np.zeros(ne)
         ss = np.zeros(ne)
 
