@@ -117,15 +117,27 @@ def atl2pet(fatl, cldct, outpath=None):
     fgmpet = spm12.resample_spm(frefpet, cl_dct['norm']['c1'], M, intrp=1.0, outpath=opth,
                                 pickname='flo', fcomment='_GM_in_PET', del_ref_uncmpr=True,
                                 del_flo_uncmpr=True, del_out_uncmpr=True)
+    # > WM mask
+    fwmpet = spm12.resample_spm(frefpet, cl_dct['norm']['c2'], M, intrp=1.0, outpath=opth,
+                                pickname='flo', fcomment='_WM_in_PET', del_ref_uncmpr=True,
+                                del_flo_uncmpr=True, del_out_uncmpr=True)
 
     # > remove NaNs
     atl = nimpa.getnii(finvatl)
     atl[np.isnan(atl)] = 0
     gm = nimpa.getnii(fgmpet)
     gm[np.isnan(gm)] = 0
+    wm = nimpa.getnii(fwmpet)
+    wm[np.isnan(wm)] = 0
 
     return {
-        'fatlpet': finvatl, 'fgmpet': fgmpet, 'atlpet': atl, 'gmpet': gm, 'outpath': opth,
+        'fatlpet': finvatl,
+        'fwmpet': fwmpet,
+        'fgmpet': fgmpet,
+        'atlpet': atl,
+        'gmpet': gm,
+        'wmpet': wm,
+        'outpath': opth,
         'bbox': bbox}
 
 
@@ -209,6 +221,10 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
             amsk = atlas_mask
         else:
             raise ValueError('Incorrectly provided atlas mask')
+
+        # > remove any NaNs if present
+        amsk[np.isnan(amsk)] = 0
+
     else:
         amsk = 1
 
@@ -264,7 +280,7 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
 # ========================================================================================
 def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, outpath=None,
-              apply_gmmask=True):
+              apply_mask='gm'):
     '''
     Process and prepare the VOI dynamic data for kinetic analysis.
     Arguments:
@@ -280,8 +296,8 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
                 labelling strategy.
     res:        resolution of the atlas - the default is 1 mm voxel size
                 isotropically.
-    apply_gmmask: applies the GM mask based on the T1w image to refine
-                the VOI sampling.
+    apply_mask: applies either the grey matter mask ('gm') or the white matter
+                mask ('wm') based on the T1w image to refine the VOI sampling.
     '''
 
     # > output path
@@ -312,12 +328,14 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
     # > get the atlas and GM probability mask in PET space using CL inverse pipeline
     atlgm = atl2pet(fatl, cl_dct, outpath=opth) #aligned['ur']['fur']
 
-    if apply_gmmask:
-        gmmsk = atlgm['fgmpet']
+    if apply_mask=='gm':
+        msk = atlgm['fgmpet']
+    elif apply_mask=='wm':
+        msk = atlgm['fwmpet']
     else:
-        gmmsk = None
+        msk = None
 
-    rvoi = extract_vois(aligned['fpet'], atlgm['fatlpet'], dvoi, atlas_mask=gmmsk,
+    rvoi = extract_vois(aligned['fpet'], atlgm['fatlpet'], dvoi, atlas_mask=msk,
                         outpath=opth / 'masks', output_masks=True)
 
     # > timing of all frames
