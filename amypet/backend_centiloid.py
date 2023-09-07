@@ -537,7 +537,11 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         msk = 'ctx'
         mskr = 'wc' # 'pons'#
 
-        showpet = nimpa.imsmooth(npet.astype(np.float32), voxsize=npet_dct['voxsize'], fwhm=3.)
+        showpet = nimpa.imsmooth(
+            npet.astype(np.float32),
+            voxsize=npet_dct['voxsize'],
+            fwhm=3.,
+            dev_id=False)
 
         nimpa.create_dir(opths)
 
