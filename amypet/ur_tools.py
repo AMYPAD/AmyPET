@@ -125,7 +125,11 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
         if fwhm > 0:
             fwhmstr = str(fwhm).replace('.', '-')
             fur_smo = petout / (fname.split('.nii')[0] + f'_smo-{fwhmstr}.nii.gz')
-            imsmo = nimpa.imsmooth(imstat, fwhm=fwhm, voxsize=imdct['voxsize'])
+            imsmo = nimpa.imsmooth(
+                imstat,
+                fwhm=fwhm,
+                voxsize=imdct['voxsize'],
+                dev_id=False)
 
             nimpa.array2nii(
                 imsmo, imdct['affine'], fur_smo,
