@@ -15,6 +15,8 @@ visual = false
 
 [dipypars]
 level_iters = [10, 10, 5]
+level_iters_aff = [10000, 1000, 200]
+sigmas_aff = [3.0, 1.0, 0.0]
 
 [segpars]
 store_nat_gm = true
