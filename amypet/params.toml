@@ -13,6 +13,9 @@ fwhm_pet = 6
 costfun = "nmi"
 visual = false
 
+[dipypars]
+level_iters = [10, 10, 5]
+
 [segpars]
 store_nat_gm = true
 store_nat_wm = true
