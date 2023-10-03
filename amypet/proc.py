@@ -286,8 +286,15 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
 
 # ========================================================================================
-def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, outpath=None,
-              apply_mask='gm'):
+def proc_vois(
+        niidat,
+        aligned,
+        cl_dct,
+        atlas='hammers',
+        voi_idx=None,
+        res=1,
+        outpath=None,
+        apply_mask='gm'):
     '''
     Process and prepare the VOI dynamic data for kinetic analysis.
     Arguments:
@@ -333,7 +340,11 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
             raise ValueError('unrecognised atlas name!')
 
     # > get the atlas and GM probability mask in PET space (in UR space) using CL inverse pipeline
-    atlgm = atl2pet(fatl, cl_dct, fpet=aligned['ur']['fur'], outpath=opth) #aligned['ur']['fur']
+    atlgm = atl2pet(
+        fatl,
+        cl_dct,
+        fpet=None, #aligned['ur']['fur'] - this will not work
+        outpath=opth) 
 
     if apply_mask=='gm':
         msk = atlgm['fgmpet']
