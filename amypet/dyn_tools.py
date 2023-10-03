@@ -73,7 +73,7 @@ def dyn_timing(dat):
 
 
 #==========================================================
-def fit_tac(tac, tp, plot=True):
+def fit_tac(tac, tp, plotting=True):
     ''' Fit exponential to TAC data points
     '''
 
@@ -111,7 +111,7 @@ def fit_tac(tac, tp, plot=True):
         ff = np.zeros(len(tp))
         ii = (tp>=t0) & (tp<=t1)
         ff[ii] = (tp[ii]-t0) * np.sum(aa)/(t1-t0)
-        ii = tp>=t1
+        ii = tp>t1
         for j in range(ne):    
             ff[ii] = ff[ii] + aa[j] * np.exp(-ss[j]*(tp[ii]-t1))
 
@@ -120,7 +120,7 @@ def fit_tac(tac, tp, plot=True):
     pp_opt = fmin(obj_fun, pp0)
     yy_opt = test_fun(pp_opt)
 
-    if plot:
+    if plotting:
         fig, ax = plt.subplots(1,1, figsize=(9,6))
         ax.plot(tp, tac, '+')
         ax.plot(tp, yy_opt)

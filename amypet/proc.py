@@ -52,13 +52,15 @@ hmmrs_vois = {
 #----------------------------------------------------------
 
 
-def atl2pet(fatl, cldct, outpath=None):
+def atl2pet(fatl, cldct, fpet=None, outpath=None):
     '''
     Atlas and GM from the centiloid (CL) pipeline to the reference
     PET space.
     Arguments:
     - fatl:     the file path of the atlas in MNI space
     - cldct:    the CL output dictionary
+    - fpet:     the reference PET (file path or dictionary)
+                for reslicing into PET space
     '''
 
     # > output path
@@ -76,8 +78,13 @@ def atl2pet(fatl, cldct, outpath=None):
     else:
         raise ValueError('unrecognised CL dictionary')
 
-
-    frefpet = cl_dct['petc']['fim'] 
+    # > get the reference PET image if provided, otherwise get it from CL pipeline
+    if isinstance(fpet, (str, PurePath)) and os.path.isfile(fpet):
+        frefpet = Path(fpet)
+    elif isinstance(fpet, dict) and 'voxsize' in fpet:
+        frefpet = fpet
+    else:
+        frefpet = cl_dct['petc']['fim'] 
 
     # > read the PET image
     petdct = nimpa.getnii(frefpet, output='all')
@@ -325,8 +332,8 @@ def proc_vois(niidat, aligned, cl_dct, atlas='hammers', voi_idx=None, res=1, out
         else:
             raise ValueError('unrecognised atlas name!')
 
-    # > get the atlas and GM probability mask in PET space using CL inverse pipeline
-    atlgm = atl2pet(fatl, cl_dct, outpath=opth) #aligned['ur']['fur']
+    # > get the atlas and GM probability mask in PET space (in UR space) using CL inverse pipeline
+    atlgm = atl2pet(fatl, cl_dct, fpet=aligned['ur']['fur'], outpath=opth) #aligned['ur']['fur']
 
     if apply_mask=='gm':
         msk = atlgm['fgmpet']

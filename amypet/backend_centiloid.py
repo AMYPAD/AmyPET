@@ -419,20 +419,22 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             t1 = load_nifti(mric['fim'])
             sdr = SymmetricDiffeomorphicRegistration(CCMetric(3), Cnt['dipypars']['level_iters'])
             mapping = sdr.optimize(t1_mni[0], t1[0], t1_mni[1], t1[1], reg1['affine'])
-            fmap = opth/'mapping.pkl'
+            nimpa.create_dir(opthn)
+            fmap = opthn/'mapping.pkl'
             with open(fmap, 'wb') as f:
                 pickle.dump(mapping, f)
-            odct['norm']['fmap'] = fmap
+            odct['norm'] = {'fmap':fmap}
 
             t1w = mapping.transform(t1[0])
             npet = mapping.transform(reg2['regim'])
+            nimpa.create_dir(optho)
             # > save the normalised T1 image
             nii = nib.Nifti1Image(t1w, t1_mni[1])
-            fnt1 = optho/(mric['fim'].name.split('.nii')+'_wrp.nii.gz')
-            nib.save(nii, )
+            fnt1 = optho/(os.path.basename(mric['fim']).split('.nii')[0]+'_wrp.nii.gz')
+            nib.save(nii, fnt1)
             # > save the normalised PET
             nii = nib.Nifti1Image(npet, t1_mni[1])
-            fnpet = optho/(petc['fim'].name.split('.nii')+'_wrp.nii.gz')
+            fnpet = optho/(os.path.basename(petc['fim']).split('.nii')[0]+'_wrp.nii.gz')
             nib.save(nii, fnpet)
 
             odct['fnorm'] = [fnt1, fnpet]
