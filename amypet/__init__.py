@@ -12,6 +12,7 @@ except ImportError:
 __licence__ = "MPL-2.0"
 
 from .align import *  # noqa, yapf: disable
+from .align_brkdyn_ct import *
 from .dyn_tools import *  # noqa, yapf: disable
 from .preproc import *  # noqa, yapf: disable
 from .proc import *  # noqa, yapf: disable

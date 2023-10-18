@@ -98,19 +98,27 @@ def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False
                 else:
                     shutil.rmtree(f)
 
-    run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', str(opth), '-f', '%f_%s', str(inpath)])
+    # > create a unique temporary folder
+    tmp = opth/'json_dcm2nii'
+    nimpa.create_dir(tmp)
+
+    run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', str(tmp), '-f', '%f_%s', str(inpath)])
 
     # > get the converted NIfTI file
-    fnii = list(opth.glob('*.nii*'))
+    fnii = list(tmp.glob('*.nii*'))
+    fnew = [] 
+    for f in fnii:
+        fnew.append(opth/(f.name))
+        shutil.move(f, fnew[-1])
 
-    if len(fnii) > 1:
+    if len(fnew) > 1:
         log.warning('Detected more than one NIfTI files in the output folder')
-        out = fnii
-    elif len(fnii) == 0:
+        out = fnew
+    elif len(fnew) == 0:
         log.warning('No converted NIfTI files')
         out = None
     else:
-        out = fnii[0]
+        out = fnew[0]
 
     return out
 
@@ -318,6 +326,11 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
             srs_t = dict(sorted(m.items(), key=lambda item: item[1]['tacq']))
             # > key for first time frame
             k0 = list(srs_t.keys())[0]
+            if not ('source' in srs_t[k0] \
+                    and srs_t[k0]['source']=='EMISSION'\
+                    or 'radio_start_time' in srs_t[k0]):
+                continue
+
             rtime = datetime.strptime(srs_t[k0]['dstudy'] + srs_t[k0]['tacq'],
                     '%Y%m%d%H%M%S') - srs_t[k0]['radio_start_time']
             # > total seconds relative to the injection time
@@ -325,8 +338,11 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
             rtimes.append(datetime.strptime(srs_t[k0]['dstudy'] + srs_t[k0]['tacq'],
                     '%Y%m%d%H%M%S'))
         # > get the closest time to injection time
-        rti = np.argmin(np.array(rel_sec))
-        rtime = rtimes[rti]
+        if rel_sec:
+            rti = np.argmin(np.array(rel_sec))
+            rtime = rtimes[rti]
+        else:
+            raise ValueError('No PET data detected for scan information')
 
     for m in msrs:
 

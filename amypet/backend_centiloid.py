@@ -413,7 +413,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             npet = npet_dct['im']
             npet[np.isnan(npet)] = 0 # get rid of NaNs
 
-        #-------------- FIPY (non-linear) --------------
+        #-------------- DIPY (non-linear) --------------
         elif tool=='dipy':
             t1_mni = load_nifti(tmpl_dipy)
             t1 = load_nifti(mric['fim'])

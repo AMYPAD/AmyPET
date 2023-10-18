@@ -159,8 +159,10 @@ def align_frames(
         for fi in fniis:
             com_ = nimpa.centre_mass_corr(fi, outpath=com_opth, com=com_g)
             fniis_c.append(Path(com_['fim']))
+        fniis_com = fniis_c
     else:
         fniis_c = fniis
+        fniis_com = None
     #------------------------------------------------------
 
     # > short frame size for registration (in seconds)
@@ -360,6 +362,7 @@ def align_frames(
     outdct['metric2'] = Df
     outdct['rot_trans'] = RTf
     outdct['affines'] = Sf
+    outdct['fnii_com'] = fniis_com
     outdct['faligned'] = faligned
     outdct['modified'] = M
 
