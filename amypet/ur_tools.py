@@ -166,7 +166,7 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
 # ========================================================================================
 
 
-def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None, fname=None,
+def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, voi_mask=None, frames=None, fname=None,
                 t1_bias_corr=True, outpath=None, output_masks=True, save_voi_masks=False,
                 qc_plot=True, reg_fwhm_pet=0, reg_fwhm_mri=0, reg_costfun='nmi', reg_fresh=True,
                 com_correction=True):
@@ -180,7 +180,9 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         - t1wpth:   path to the T1w MRI NIfTI image for registration
         - voi_dct:  dictionary of VOI definitions
         - ref_voi:  if given and in `voi_dct` it is used as reference region
-                    for calculating UR
+                    for calculating UR;
+        - voi_mask: an additional mask on top of VOIs, e.g., to refine the GM
+                    or to get rid of lesions;
         - frames:   select the frames if multi-frame image given;
                     by default selects all frames
         - fname:    the core file name for resulting images
@@ -296,8 +298,9 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         mask_dir = trmdir / 'masks'
     else:
         mask_dir = None
-    voival = extract_vois(trmout['im'], plbl_dct, voi_dct, outpath=mask_dir,
-                          output_masks=output_masks)
+    voival = extract_vois(trmout['im'], plbl_dct, voi_dct,
+                atlas_mask=voi_mask,
+                outpath=mask_dir, output_masks=output_masks)
 
     # > calculate UR if reference regions is given
     urtxt = None
