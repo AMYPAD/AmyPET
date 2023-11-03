@@ -168,7 +168,8 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
 
 def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None, fname=None,
                 t1_bias_corr=True, outpath=None, output_masks=True, save_voi_masks=False,
-                qc_plot=True, reg_fwhm_pet=0, reg_fwhm_mri=0, reg_costfun='nmi', reg_fresh=True):
+                qc_plot=True, reg_fwhm_pet=0, reg_fwhm_mri=0, reg_costfun='nmi', reg_fresh=True,
+                com_correction=True):
     ''' Process PET image for VOI extraction using MR-based parcellations.
         The T1w image and the labels which are based on the image must be
         in the same image space.
@@ -196,6 +197,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         - reg_costfun: cost function used in image registration
         - reg_fresh:runs fresh registration if True, otherwise uses an existing
                     one if found.
+        - com_correction: correction for centre of mass (image)
 
     '''
 
@@ -228,13 +230,15 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
 
     # > static (UR) image preprocessing
     ur_preproc = preproc_ur(petpth, frames=frames,
-                            outpath=outpath / (petpth.name.split('.')[0] + '_ur'), fname=fname)
+                            outpath=outpath/'UR',
+                            fname=fname,
+                            com_correction=com_correction)
 
     out.update(ur_preproc)
 
     if t1_bias_corr:
         out['n4'] = nimpa.bias_field_correction(t1wpth, executable='sitk',
-                                                outpath=ur_preproc['fstat'].parent.parent)
+                                                outpath=ur_preproc['fur'].parent.parent)
         fmri = out['n4']['fim']
     else:
         fmri = t1wpth
@@ -243,7 +247,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
-    trmout = r_trimup(ur_preproc['fstat'], lblpth, store_img_intrmd=True)
+    trmout = r_trimup(ur_preproc['fur'], lblpth, store_img_intrmd=True)
 
     # > trimmed folder
     trmdir = trmout['trmdir']
@@ -256,7 +260,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
     # > - - - - - - - - - - - - - - - - - - - - - - - -
     # > parcellations in PET space
     fplbl = trmdir / '{}_Parcellation_in-upsampled-PET.nii.gz'.format(
-        ur_preproc['fstat'].name.split('.nii')[0])
+        ur_preproc['fur'].name.split('.nii')[0])
 
     if not fplbl.is_file() or reg_fresh:
 
@@ -281,6 +285,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
         )
 
     out['flbl'] = fplbl
+    out['faff'] = spm_res['faff']
     # > - - - - - - - - - - - - - - - - - - - - - - - -
 
     # > get the label image in PET space
@@ -310,7 +315,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, frames=None,
             # > get the static trimmed image:
             imur = nimpa.getnii(out['ftrm'], output='all')
 
-            fur = trmdir / 'UR_ref-{}_{}'.format(rvoi, ur_preproc['fstat'].name)
+            fur = trmdir / 'UR_ref-{}_{}'.format(rvoi, ur_preproc['fur'].name)
             # > save UR image
             nimpa.array2nii(
                 imur['im'] / ref, imur['affine'], fur,

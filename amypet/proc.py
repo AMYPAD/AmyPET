@@ -255,6 +255,9 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
         else:
             msk2 = rmsk * amsk
 
+        if msk2.dtype==type(True):
+            msk2 = np.int8(msk2)
+
         if outpath is not None and not isinstance(atlas, np.ndarray):
             nimpa.create_dir(outpath)
             fvoi = Path(outpath) / f'{voi}_mask.nii.gz'
