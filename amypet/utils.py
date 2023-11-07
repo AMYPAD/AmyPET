@@ -78,11 +78,17 @@ def get_atlas(atlas='hammers', res=1):
             hfldr = hfldr[0]
             dfldr = dfldr[0]
 
-            fatl = list(hfldr.glob('Hammers_*full*'))
-            if len(fatl) != 1:
+            fatl_full = list(hfldr.glob('Hammers_*full*'))
+            if len(fatl_full) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas (FULL)')
             else:
-                fatl = fatl[0]
+                fatl_full = fatl_full[0]
+
+            fatl_gm = list(hfldr.glob('Hammers_*gm*'))
+            if len(fatl_gm) != 1:
+                raise IOError('Confused with obtaining the Hammers atlas (FULL)')
+            else:
+                fatl_gm = fatl_gm[0]
 
             flbl = list(dfldr.glob('Hammers*atlases*n30r95*label*indices*SPM12*.xml'))
             if len(flbl) != 1:
@@ -111,11 +117,17 @@ def get_atlas(atlas='hammers', res=1):
             else:
                 hfldr = hfldr[0]
 
-            fatl = list(hfldr.glob('Hammers_*full*'))
-            if len(fatl) != 1:
+            fatl_full = list(hfldr.glob('Hammers_*full*'))
+            if len(fatl_full) != 1:
                 raise IOError('Confused with obtaining the Hammers atlas (FULL)')
             else:
-                fatl = fatl[0]
+                fatl_full = fatl_full[0]
+
+            fatl_gm = list(hfldr.glob('Hammers_*gm*'))
+            if len(fatl_gm) != 1:
+                raise IOError('Confused with obtaining the Hammers atlas (FULL)')
+            else:
+                fatl_gm = fatl_gm[0]
 
             # > atlas demographics
             urld = urllib.request.urlopen(murl + '/Hammers_mith-n30-ancillary-data.tar.gz')
@@ -172,7 +184,7 @@ def get_atlas(atlas='hammers', res=1):
             with open(atlas_fldr / 'hammers_license', 'w') as f:
                 f.write('submit the license')
 
-        outdct = {'fatlas': fatl, 'flabels': flbl, 'voi_lobes': dlobes, 'vois': datlas}
+        outdct = {'fatlas': fatl_gm, 'fatlas_full':fatl_full, 'flabels': flbl, 'voi_lobes': dlobes, 'vois': datlas}
 
     #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
     # > AAL ATLAS
@@ -228,7 +240,7 @@ def get_atlas(atlas='hammers', res=1):
         flbl = atlas_fldr/'Schaefer_2018_100_Parcels.csv'
 
         data = []
-        with open(fpth, 'r') as csv_file:
+        with open(flbl, 'r') as csv_file:
             csvread = csv.reader(csv_file)
             for row in csvread:
                 data.append(row)
