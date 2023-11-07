@@ -4,6 +4,7 @@ import tarfile
 import urllib
 import xml.etree.ElementTree as ET
 from pathlib import Path
+import csv
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,7 +50,7 @@ def is_one_or_more(nargs):
 
 
 # ----------------------------------------------------------------------
-def get_atlas(atlas='aal', res=1):
+def get_atlas(atlas='hammers', res=1):
     '''Get a brain atlas from `neuroparc` out of many available in MNI space.
 
        Options:
@@ -59,24 +60,12 @@ def get_atlas(atlas='aal', res=1):
        - res:       the resolution of the atlas in mm.
     '''
 
-    if atlas.lower() == 'aal':
-        fatl = atlas_fldr / f'AAL3v1_{res}mm.nii.gz'
-        if not fatl.is_file():
-            raise IOError('unrecognised atlas!')
+    #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    # > HAMMERS ATLAS
+    if atlas.lower() == 'hammers':
 
-        flbl = atlas_fldr / 'AAL3v1.xml'
-
-        tree = ET.parse(flbl)
-        lbls = tree.getroot()
-
-        lbls = lbls[1]
-
-        # > atlas dictionary
-        datlas = {i[0].text: i[1].text for i in lbls}
-
-        outdct = {'fatlas': fatl, 'flabels': flbl, 'vois': datlas}
-
-    elif atlas.lower() == 'hammers':
+        if int(res)!=1:
+            raise ValueError('Hammers atlas is only available in resolution of 1 mm isotropic')
 
         # > main URL
         murl = 'http://biomedic.doc.ic.ac.uk/brain-development/downloads/hammers'
@@ -162,7 +151,7 @@ def get_atlas(atlas='aal', res=1):
         lbls = ET.fromstring(re.sub(r"(<\?xml[^>]+\?>)", r"\1<data>", xml) + "</data>")
 
         # > atlas dictionary
-        datlas = {i[0].text: i[1].text for i in lbls}
+        datlas = {int(i[0].text): i[1].text for i in lbls}
 
         # > dictionary of lobe VOIs
         lobes = ['FL', 'TL', 'PL', 'OL', 'CG', 'in']
@@ -184,6 +173,76 @@ def get_atlas(atlas='aal', res=1):
                 f.write('submit the license')
 
         outdct = {'fatlas': fatl, 'flabels': flbl, 'voi_lobes': dlobes, 'vois': datlas}
+
+    #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    # > AAL ATLAS
+    elif atlas.lower() == 'aal':
+        fatl = atlas_fldr / f'AAL3v1_{res}mm.nii.gz'
+        if not fatl.is_file():
+            raise IOError('unrecognised atlas!')
+
+        flbl = atlas_fldr / 'AAL3v1.xml'
+
+        tree = ET.parse(flbl)
+        lbls = tree.getroot()
+
+        lbls = lbls[1]
+
+        # > atlas dictionary
+        datlas = {int(i[0].text): i[1].text for i in lbls}
+
+        outdct = {'fatlas': fatl, 'flabels': flbl, 'vois': datlas}
+
+    #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    # > DESIKAN-KILIANY-TOURNIER ATLAS
+    elif atlas.lower() == 'dkt':
+        fatl = atlas_fldr/f'DKT_MNI152NLin6_{res}mm.nii.gz'
+        if not fatl.is_file():
+            raise IOError('unrecognised atlas!')
+
+        # > file path for the description of VOI labels
+        flbl = atlas_fldr/'DKT_Desikan.csv'
+
+        data = []
+        with open(flbl, 'r') as csv_file:
+            csvread = csv.reader(csv_file)
+            for row in csvread:
+                data.append(row)
+
+        # > correcting for weird CSV formatting with every other line
+        data = data[::2]
+
+        # > dictionary of atlas labels
+        datlas = {int(d[0]): d[1] for d in data}
+
+        outdct = {'fatlas': fatl, 'flabels': flbl, 'vois': datlas}
+
+    #||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    # > SCHAEFER ATLAS
+    elif atlas.lower() == 'schaefer':
+        fatl = atlas_fldr/f'Schaefer_2018_100_Parcels_{res}mm.nii.gz'
+        if not fatl.is_file():
+            raise IOError('unrecognised atlas!')
+
+        # > file path for the description of VOI labels
+        flbl = atlas_fldr/'Schaefer_2018_100_Parcels.csv'
+
+        data = []
+        with open(fpth, 'r') as csv_file:
+            csvread = csv.reader(csv_file)
+            for row in csvread:
+                data.append(row)
+
+        data = data[1:]
+
+        datlas = {int(d[0]): d[1] for d in data}
+        dras = {int(d[0]): (int(d[2]), int(d[2]), int(d[2])) for d in data}
+
+        outdct = {'fatlas': fatl, 'flabels': flbl, 'vois': datlas, 'RAS':dras}
+
+    else:
+        raise KeyError('Unrecognised atlas name')
+
 
     return outdct
 
