@@ -15,7 +15,7 @@ import spm12
 from miutil.fdio import hasext
 from niftypet import nimpa
 
-from .dyn_tools import timing_dyn
+from .dyn_tools import dyn_timing
 from .utils import get_atlas
 
 log = logging.getLogger(__name__)
@@ -290,19 +290,20 @@ def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_ma
 
 # ========================================================================================
 def proc_vois(
-        niidat,
         aligned,
         cl_dct,
         atlas='hammers',
         voi_idx=None,
         res=1,
         outpath=None,
-        apply_mask='gm'):
+        apply_mask='gm',
+        timing=None):
     '''
     Process and prepare the VOI dynamic data for kinetic analysis.
     Arguments:
     niidat:     dictionary with NIfTI file paths and properties with time.
-    aligned:    dictionary of aligned frames, with properties
+    aligned:    dictionary of aligned frames, with properties or the path to 
+                4D PET image;
     cl_dct:     dictionary of centiloid (CL) processing outputs - used
                 for inverse transformation to native image spaces.
     atlas:      choice of atlas; default is the Hammers atlas (atlas='hammers'');
@@ -317,9 +318,15 @@ def proc_vois(
                 mask ('wm') based on the T1w image to refine the VOI sampling.
     '''
 
+    # > get sorted the dynamic PET input
+    if isinstance(aligned, dict) and 'fpet' in aligned:
+        fdynin = aligned['fpet']
+    elif isinstance(aligned, (str, PurePath)) and os.path.isfile(aligned):
+        fdynin = aligned
+
     # > output path
     if outpath is None:
-        opth = niidat['outpath'].parent / 'DYN'
+        opth = aligned['fpet'].parent / 'DYN'
     else:
         opth = outpath
     nimpa.create_dir(opth)
@@ -356,14 +363,21 @@ def proc_vois(
     else:
         msk = None
 
-    rvoi = extract_vois(aligned['fpet'], atlgm['fatlpet'], dvoi, atlas_mask=msk,
+    rvoi = extract_vois(fdynin, atlgm['fatlpet'], dvoi, atlas_mask=msk,
                         outpath=opth / 'masks', output_masks=True)
 
-    # > timing of all frames
-    tdct = timing_dyn(niidat)
+    
+    if isinstance(timing, dict) and 'descr' in timing:
+        # > timing of all frames
+        tdct = dyn_timing(timing)
 
-    # > frame time definitions for NiftyPAD
-    dt = tdct['niftypad']
+        # > frame time definitions for NiftyPAD
+        dt = tdct['niftypad']
+
+    elif isinstance(timing, dict) and 'timings' in timing:
+        dt = timing['niftypad']
+    else:
+        dt = None
 
     return {'dt': dt, 'voi': rvoi, 'atlas_gm': atlgm, 'outpath': opth}
 

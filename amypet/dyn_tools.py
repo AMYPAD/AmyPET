@@ -23,28 +23,9 @@ from niftypad.tac import TAC, Ref
 log = logging.getLogger(__name__)
 
 
-def timing_dyn(niidat):
-    '''
-    Get the frame timings from the NIfTI series
-    '''
-
-    t = []
-    for dct in niidat['descr']:
-        t += dct['timings']
-    t.sort()
-    # > time mid points
-    tm = [(tt[0] + tt[1]) / 2 for tt in t]
-
-    # > convert the timings to NiftyPAD format
-    dt = np.array(t).T
-
-    return {'timings': t, 'niftypad': dt, 't_mid_points': tm}
-
-
-
 #==========================================================
 def dyn_timing(dat):
-    ''' establish the timing per frame in minutes
+    ''' establish the timing per frame in minutes (seconds)
     '''
 
     if 'descr' in dat:
@@ -58,9 +39,11 @@ def dyn_timing(dat):
     else:
         raise ValueError('wrong format for the time data')
 
+    # > time mid points [seconds]
+    tm = np.mean(timings, axis=1)
 
-    # > time point for each frame
-    tp = np.mean(timings, axis=1) / 60
+    # > time point in minutes for each frame
+    tp = tm/60
 
     # > frame duration
     dtp = np.array([t[1]-t[0] for t in timings])/60
@@ -68,7 +51,14 @@ def dyn_timing(dat):
     # > number of frame/time points
     nt = len(tp)
 
-    return dict(tp=tp, dtp=dtp, nt=nt)
+
+    return dict(
+        timings=timings,
+        tm=tm,
+        tp=tp,
+        dtp=dtp,
+        nt=nt,
+        niftypad=timings.T)
 #==========================================================
 
 

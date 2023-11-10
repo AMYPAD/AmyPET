@@ -124,7 +124,7 @@ def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False
 
 
 # ========================================================================================
-def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
+def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True, int_order=0):
     '''
     trim and upscale PET relative to MR T1w or its derivative;
     derives the scale of upscaling/trimming using the image/voxel sizes
@@ -152,7 +152,7 @@ def r_trimup(fpet, fmri, outpath=None, store_img_intrmd=True):
     scale = np.abs(np.round(pet_szyx[::-1] / mri_szyx[::-1])).astype(np.int32)
 
     # > trim the PET image for more accurate regional sampling
-    ftrm = nimpa.imtrimup(fpet, scale=scale, store_img_intrmd=store_img_intrmd, outpath=outpath)
+    ftrm = nimpa.imtrimup(fpet, scale=scale, int_order=int_order, store_img_intrmd=store_img_intrmd, outpath=outpath)
 
     # > trimmed folder
     trmdir = Path(ftrm['fimi'][0]).parent

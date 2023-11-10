@@ -167,7 +167,7 @@ def preproc_ur(pet_path, frames=None, outpath=None, fname=None, com_correction=T
 
 
 def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, voi_mask=None, frames=None, fname=None,
-                t1_bias_corr=True, outpath=None, output_masks=True, save_voi_masks=False,
+                pet_int_order=0, t1_bias_corr=True, outpath=None, output_masks=True, save_voi_masks=False,
                 qc_plot=True, reg_fwhm_pet=0, reg_fwhm_mri=0, reg_costfun='nmi', reg_fresh=True,
                 com_correction=True):
     ''' Process PET image for VOI extraction using MR-based parcellations.
@@ -249,7 +249,7 @@ def voi_process(petpth, lblpth, t1wpth, voi_dct=None, ref_voi=None, voi_mask=Non
     # TRIMMING / UPSCALING
     # > derive the scale of upscaling/trimming using the current
     # > image/voxel sizes
-    trmout = r_trimup(ur_preproc['fur'], lblpth, store_img_intrmd=True)
+    trmout = r_trimup(ur_preproc['fur'], lblpth, store_img_intrmd=True, int_order=pet_int_order)
 
     # > trimmed folder
     trmdir = trmout['trmdir']
