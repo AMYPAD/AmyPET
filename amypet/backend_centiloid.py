@@ -133,7 +133,7 @@ def sort_input(fpets, fmris, flip_pet=None):
 
 
 def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_corr_pet=True,
-        stage='f', tool='spm', voxsz: int = 2, outpath=None, use_stored=False, climage=True, 
+        stage='f', standalone=False, voxsz: int = 2, outpath=None, use_stored=False, climage=True, 
         urimage=True, cl_anchor_path: Optional[Path] = None, csv_metrics='short', fcsv=None):
     """
     Process centiloid (CL) using input file lists for PET and MRI
@@ -147,9 +147,9 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
               [18F]florbetapir, 'fbp', are supported.
               IMPORTANT: when calibrating a new tracer, ensure that
               `tracer`='new'.
-      tool: registration software, by default it is SPM12 in MATLAB
-            environment, but DIPY ('dipy') can be used when MATLAB
-            is not available.
+      standalone: if True, it uses the standalone SPM (with MATLAB Runtime without
+              the need of a license); by default it is False, and uses the 
+              standard MATLAB.
       stage: processes the data up to:
              (1) registration - both PET and MRI are registered
              to MNI space, `stage`='r'
@@ -178,8 +178,6 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             and CL ,`csv_metrics`='long'
     """
 
-    if not tool in ['spm', 'dipy']:
-        raise ValueError('unrecognised choice of registration tool.')
 
     # > the processing stage must be one of registration 'r',
     # > normalisation 'n', CL scaling 'c' or full 'f':
@@ -291,79 +289,47 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         odct['mric'] = mric = nimpa.centre_mass_corr(fmri, outpath=opthc)
 
         #-------------- SPM --------------
-        if tool=='spm':
-            log.info(f'subject {onm}: MR registration to MNI space (SPM)')
-            odct['reg1'] = reg1 = spm12.coreg_spm(
-                tmpl_avg,
-                mric['fim'],
-                fwhm_ref=0,
-                fwhm_flo=Cnt['regpars']['fwhm_t1_mni'],
-                outpath=opthr,
-                fname_aff="",
-                fcomment="",
-                pickname="ref",
-                costfun=Cnt['regpars']['costfun'],
-                graphics=1,
-                visual=int(Cnt['regpars']['visual']),
-                del_uncmpr=True,
-                save_arr=True,
-                save_txt=True,
-                modify_nii=True,
-            )
 
-            log.info(f'subject {onm}: PET -> MR registration (SPM)')
-            odct['reg2'] = reg2 = spm12.coreg_spm(
-                reg1['freg'],
-                petc['fim'],
-                fwhm_ref=Cnt['regpars']['fwhm_t1'],
-                fwhm_flo=Cnt['regpars']['fwhm_pet'],
-                outpath=opthr,
-                fname_aff="",
-                fcomment='_mr-reg',
-                pickname="ref",
-                costfun=Cnt['regpars']['costfun'],
-                graphics=1,
-                visual=int(Cnt['regpars']['visual']),
-                del_uncmpr=True,
-                save_arr=True,
-                save_txt=True,
-                modify_nii=True,
-            )
+        log.info(f'subject {onm}: MR registration to MNI space (SPM)')
+        odct['reg1'] = reg1 = spm12.coreg_spm(
+            tmpl_avg,
+            mric['fim'],
+            fwhm_ref=0,
+            fwhm_flo=Cnt['regpars']['fwhm_t1_mni'],
+            outpath=opthr,
+            fname_aff="",
+            fcomment="",
+            pickname="ref",
+            costfun=Cnt['regpars']['costfun'],
+            graphics=1,
+            visual=int(Cnt['regpars']['visual']),
+            del_uncmpr=True,
+            save_arr=True,
+            save_txt=True,
+            modify_nii=True,
+            standalone=standalone,
+        )
 
-        #-------------- DIPY --------------
-        elif tool=='dipy':
-            tmpl_dipy = fetch_dipy_mni()
+        log.info(f'subject {onm}: PET -> MR registration (SPM)')
+        odct['reg2'] = reg2 = spm12.coreg_spm(
+            reg1['freg'],
+            petc['fim'],
+            fwhm_ref=Cnt['regpars']['fwhm_t1'],
+            fwhm_flo=Cnt['regpars']['fwhm_pet'],
+            outpath=opthr,
+            fname_aff="",
+            fcomment='_mr-reg',
+            pickname="ref",
+            costfun=Cnt['regpars']['costfun'],
+            graphics=1,
+            visual=int(Cnt['regpars']['visual']),
+            del_uncmpr=True,
+            save_arr=True,
+            save_txt=True,
+            modify_nii=True,
+            standalone=standalone,
+        )
 
-            log.info(f'subject {onm}: MR registration to MNI space (DIPY)')
-            odct['reg1'] = reg1 = nimpa.affine_dipy(
-                tmpl_dipy,
-                mric['fim'],
-                ffwhm=Cnt['regpars']['fwhm_t1_mni'],
-                rfwhm=0.,
-                pipeline=['center_of_mass', 'translation', 'rigid', 'affine'],
-                level_iters=Cnt['dipypars']['level_iters_aff'],
-                sigmas=Cnt['dipypars']['sigmas_aff'],
-                fcomment='',
-                pickname='ref',
-                outpath=opthr,
-                faffine=None,
-                )
-
-            log.info(f'subject {onm}: PET -> MR registration (DIPY)')
-            odct['reg2'] = reg2 = nimpa.affine_dipy(
-                mric['fim'],
-                petc['fim'],
-                ffwhm=Cnt['regpars']['fwhm_pet'],
-                rfwhm=Cnt['regpars']['fwhm_t1'],
-                pipeline=['center_of_mass', 'translation', 'rigid'],
-                level_iters=Cnt['dipypars']['level_iters_aff'],
-                sigmas=Cnt['dipypars']['sigmas_aff'],
-                fcomment='_pet-mr-reg',
-                pickname='ref',
-                outpath=opthr,
-                faffine=None,
-                modify_nii=True
-                )
 
         if stage == 'r':
             if npair>1:
@@ -373,71 +339,53 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             continue
 
         #-------------- SPM (non-linear) --------------
-        if tool=='spm':
-            log.info(f'subject {onm}: MR normalisation/segmentation...')
-            odct['norm'] = norm = spm12.seg_spm(
-                reg1['freg'],
-                spm_path,
-                outpath=opthn,
-                store_nat_gm=Cnt['segpars']['store_nat_gm'],
-                store_nat_wm=Cnt['segpars']['store_nat_wm'],
-                store_nat_csf=Cnt['segpars']['store_nat_csf'],
-                store_fwd=Cnt['segpars']['store_fwd'],
-                store_inv=Cnt['segpars']['store_inv'],
-                visual=int(Cnt['regpars']['visual']))
+        log.info(f'subject {onm}: MR normalisation/segmentation...')
+        odct['norm'] = norm = spm12.seg_spm(
+            reg1['freg'],
+            spm_path,
+            outpath=opthn,
+            store_nat_gm=Cnt['segpars']['store_nat_gm'],
+            store_nat_wm=Cnt['segpars']['store_nat_wm'],
+            store_nat_csf=Cnt['segpars']['store_nat_csf'],
+            store_fwd=Cnt['segpars']['store_fwd'],
+            store_inv=Cnt['segpars']['store_inv'],
+            visual=int(Cnt['regpars']['visual']),
+            standalone=standalone)
 
-            # > normalise
-            list4norm = [reg1['freg'] + ',1', reg2['freg'] + ',1']
-            if Cnt['segpars']['store_nat_gm']:
-                list4norm.append(odct['norm']['c1']+',1')
-            if Cnt['segpars']['store_nat_wm']:
-                list4norm.append(odct['norm']['c2']+',1')
-            if Cnt['segpars']['store_nat_csf']:
-                list4norm.append(odct['norm']['c3']+',1')
+        # > normalise
+        list4norm = [
+            reg1['freg'],
+            reg2['freg']
+            ]
 
-            odct['fnorm'] = spm12.normw_spm(norm['fordef'], list4norm, voxsz=float(voxsz),
-                                                outpath=optho)
+        if Cnt['segpars']['store_nat_gm']:
+            list4norm.append(odct['norm']['c1'])
+        if Cnt['segpars']['store_nat_wm']:
+            list4norm.append(odct['norm']['c2'])
+        if Cnt['segpars']['store_nat_csf']:
+            list4norm.append(odct['norm']['c3'])
 
-            log.info(f'subject {onm}: load normalised PET image...')
-            fnpets = [
-                f for f in optho.iterdir()
-                if fpet.name.split('.nii')[0] in f.name and 'n4bias' not in f.name.lower()]
-            # and 'mr' not in f.name.lower()
+        odct['fnorm'] = spm12.normw_spm(
+            norm['fordef'],
+            list4norm,
+            voxsz=float(voxsz),
+            outpath=optho,
+            standalone=standalone)
 
-            if len(fnpets) == 0:
-                raise ValueError('could not find normalised PET image files')
-            elif len(fnpets) > 1:
-                raise ValueError('too many potential normalised PET image files found')
+        log.info(f'subject {onm}: load normalised PET image...')
+        fnpets = [
+            f for f in optho.iterdir()
+            if fpet.name.split('.nii')[0] in f.name and 'n4bias' not in f.name.lower()]
+        # and 'mr' not in f.name.lower()
 
-            npet_dct = nimpa.getnii(fnpets[0], output='all')
-            npet = npet_dct['im']
-            npet[np.isnan(npet)] = 0 # get rid of NaNs
+        if len(fnpets) == 0:
+            raise ValueError('could not find normalised PET image files')
+        elif len(fnpets) > 1:
+            raise ValueError('too many potential normalised PET image files found')
 
-        #-------------- DIPY (non-linear) --------------
-        elif tool=='dipy':
-            t1_mni = load_nifti(tmpl_dipy)
-            t1 = load_nifti(mric['fim'])
-            sdr = SymmetricDiffeomorphicRegistration(CCMetric(3), Cnt['dipypars']['level_iters'])
-            mapping = sdr.optimize(t1_mni[0], t1[0], t1_mni[1], t1[1], reg1['affine'])
-            nimpa.create_dir(opthn)
-            fmap = opthn/'mapping.pkl'
-            with open(fmap, 'wb') as f:
-                pickle.dump(mapping, f)
-            odct['norm'] = {'fmap':fmap}
-
-            t1w = mapping.transform(t1[0])
-            npet = mapping.transform(reg2['regim'])
-            nimpa.create_dir(optho)
-            # > save the normalised T1 image
-            nii = nib.Nifti1Image(t1w, t1_mni[1])
-            fnt1 = optho/(os.path.basename(mric['fim']).split('.nii')[0]+'_wrp.nii.gz')
-            nib.save(nii, fnt1)
-            # > save the normalised PET
-            nii = nib.Nifti1Image(npet, t1_mni[1])
-            fnpet = optho/(os.path.basename(petc['fim']).split('.nii')[0]+'_wrp.nii.gz')
-            nib.save(nii, fnpet)
-
-            odct['fnorm'] = [fnt1, fnpet]
+        npet_dct = nimpa.getnii(fnpets[0], output='all')
+        npet = npet_dct['im']
+        npet[np.isnan(npet)] = 0 # get rid of NaNs
 
 
         # > extract mean values and UR

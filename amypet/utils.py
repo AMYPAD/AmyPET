@@ -1,3 +1,10 @@
+'''
+Various utilities for AmyPET
+'''
+
+__author__ = "Pawel Markiewicz"
+__copyright__ = "Copyright 2022-3"
+
 import pickle
 import re
 import tarfile
