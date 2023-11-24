@@ -200,8 +200,14 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
     spm_path = Path(spm12.spm_dir()) # _eng <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-    out = {}                                           # output dictionary
-    tmpl_avg = spm_path / 'canonical' / 'avg152T1.nii' # template path
+    # > output dictionary
+    out = {}      
+
+    # > MNI template path
+    if not standalone:                                  
+        tmpl_avg = spm_path/'canonical'/'avg152T1.nii'
+    else:
+        tmpl_avg = spm12.standalone_path().parent/'spm12_mcr'/'spm12'/'spm12'/'canonical'/'avg152T1.nii'
 
     pet_mr_list, flips = sort_input(fpets, fmris, flip_pet=None)
 
