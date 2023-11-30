@@ -114,7 +114,7 @@ def atl2pet(fatl, cldct, fpet=None, outpath=None):
     fniiatl = nimpa.nii_ugzip(fatl, outpath=opth)
 
     # > inverse transform the atlas to PET space
-    finvatl = spm12.normw_spm(str(fmod), [fniiatl + ',1'], voxsz=np.flip(petdct['voxsize']),
+    finvatl = spm12.normw_spm(str(fmod), fniiatl, voxsz=np.flip(petdct['voxsize']),
                               intrp=0., bbox=bbox, outpath=str(opth))[0]
 
     # > remove the uncompressed input atlas after transforming it

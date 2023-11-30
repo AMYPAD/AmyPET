@@ -705,7 +705,7 @@ def native_proc(cl_dct, atlas='aal', res='1', outpath=None, refvoi_idx=None, ref
     fniiatl = nimpa.nii_ugzip(fatl, outpath=natout)
 
     # > inverse transform the atlas to PET space
-    finvatl = spm12.normw_spm(fmod, [fniiatl + ',1'], voxsz=1., intrp=0., bbox=bbox,
+    finvatl = spm12.normw_spm(fmod, fniiatl, voxsz=1., intrp=0., bbox=bbox,
                               outpath=natout)
 
     # > remove the uncompressed input atlas after transforming it
