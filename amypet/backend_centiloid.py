@@ -209,7 +209,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
     else:
         tmpl_avg = spm12.standalone_path().parent/'spm12_mcr'/'spm12'/'spm12'/'canonical'/'avg152T1.nii'
 
-    pet_mr_list, flips = sort_input(fpets, fmris, flip_pet=None)
+    pet_mr_list, flips = sort_input(fpets, fmris, flip_pet=flip_pet)
 
     # > number of PET/MR pairs
     npair = len(pet_mr_list[0])
