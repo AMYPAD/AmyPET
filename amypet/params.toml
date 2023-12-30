@@ -36,6 +36,7 @@ reg_costfun = "nmi"
 reg_fwhm = 8
 reg_thrshld = 1.0
 reg_metric = "adst"
+sigreg_thrshld = 0.1
 
 [align.dipy]
 level_iters = [10000, 1000, 200]

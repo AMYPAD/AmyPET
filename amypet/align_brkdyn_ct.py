@@ -89,7 +89,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None):
         fres = Path(fres)
         #~~~~~~~~~~~~~~~~~~~~
 
-        # > centre of mas (CoM)
+        # > centre of mass (CoM)
         fcom = fres.parent/(fres.name.split('.nii')[0]+'_CoM-modified.nii')
         nimpa.centre_mass_corr(fres, fout=fcom)
         print('Modified CoM:', fcom)
@@ -124,6 +124,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None):
 
 
     #--------------------------------------------
+    # > the first part of the acquisition
     # > the index of acquisition to be aligned (first)
     i_acq = 0
     faligned = []
@@ -150,7 +151,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None):
 
         faligned.append(Path(frpet))
 
-    # > the second part of the acquisition
+    # > the second part of the acquisition (is already in the CT space of interest)
     i_acq = 1
     keys2 = list(niidat['series'][i_acq].keys())
     imdct = nimpa.getnii(algn_frm[i_acq]['faligned'][0], output='all')
@@ -177,20 +178,35 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None):
 
 
     #--------------------------------------------
+    # > number of frames for break dynamic acquisitions A and B
+    nfrmA = len(niidat['series'][0])
+    nfrmB = len(niidat['series'][1])
+
     imdct = nimpa.getnii(faligned[0], output='all')
+
     im4d = np.zeros( (len(faligned),) + imdct['shape'], dtype=np.float32)
+    im4A = np.zeros( (nfrmA,) + imdct['shape'], dtype=np.float32)
+    im4B = np.zeros( (nfrmB,) + imdct['shape'], dtype=np.float32)
     imsum = np.zeros(imdct['shape'], dtype=np.float32)
 
-    # > combined all images into one 4D PET NIfTI
+    # > combine all images into one 4D PET NIfTI and two 4D dynamic break acquisitions
     for fi, f in enumerate(faligned):
-        print('> saving frames to 4D NIfTI image...')
+        print('> saving frames to 4D NIfTI images...')
         print(f)
         im4d[fi,...] = nimpa.getnii(f)
+        if fi<nfrmA:
+            im4A[fi,...] = nimpa.getnii(f)
+        else:
+            im4B[fi-nfrmA,...] = nimpa.getnii(f)
         imsum += nimpa.getnii(f)
 
     f4d = algnFpth/'PET-4D-aligned.nii.gz'
+    f4A = algnFpth/'PET-4D-aligned_break-A.nii.gz'
+    f4B = algnFpth/'PET-4D-aligned_break-B.nii.gz'
     fsumF = opth/'PET-summed-aligned.nii.gz'
-    nimpa.array2nii(im4d, imdct['affine'],f4d, trnsp=imdct['transpose'], flip=imdct['flip'])
+    nimpa.array2nii(im4d, imdct['affine'], f4d, trnsp=imdct['transpose'], flip=imdct['flip'])
+    nimpa.array2nii(im4A, imdct['affine'], f4A, trnsp=imdct['transpose'], flip=imdct['flip'])
+    nimpa.array2nii(im4B, imdct['affine'], f4B, trnsp=imdct['transpose'], flip=imdct['flip'])
     nimpa.array2nii(imsum, imdct['affine'],fsumF, trnsp=imdct['transpose'], flip=imdct['flip'])
     #--------------------------------------------
 

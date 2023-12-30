@@ -95,6 +95,9 @@ def align_frames(
     frm_lsize = Cnt['align']['frame_min_dur']
     reg_metric = Cnt['align']['reg_metric']
 
+    # > threshold for the signal in the dynamic frames
+    sigreg_thrshld = Cnt['align']['sigreg_thrshld']
+
     dipy_level_iters = Cnt['align']['dipy']['level_iters']
     dipy_sig = Cnt['align']['dipy']['sigmas']
 
@@ -165,8 +168,27 @@ def align_frames(
         fniis_com = None
     #------------------------------------------------------
 
+    #------------------------------------------------------
+    # find useful frames for registration (avoids frames with no or little signal)
+    #------------------------------------------------------
+    # > frames with registration signal
+    sigregf = np.zeros(nfrm, dtype=np.float64)
+    for fi, f in enumerate(fniis):
+        sigregf[fi] = np.sum(nimpa.getnii(f))
+
+    frmreg = sigregf > sigreg_thrshld*np.max(sigregf)
+
+    # > frame index and time offset
+    frmoff = np.sum(~frmreg)
+    toff = ts[frmoff][0]
+
+    if not all(sigregf[frmoff:] > sigreg_thrshld*np.max(sigregf)):
+        print(f'>>> frames above threshold of {sigreg_thrshld}*signal_max:\n{frmreg}')
+        raise IndexError('Unexpectedly detected mid frames with little or no signal')
+    #------------------------------------------------------
+
     # > short frame size for registration (in seconds)
-    frms_l = dur < frm_lsize
+    frms_l = (dur < frm_lsize) &  frmreg
 
     # > number of frames to be mashed for registration
     nmfrm = np.sum(frms_l)
@@ -178,11 +200,13 @@ def align_frames(
     # > overall list of mashed frames and normal frames which are longer than `frm_lsize`
     mfrms = []
 
+    # > add the frames with no or little signal first
+
     nmfrm_chck = 0
     # > mashing frames for registration
     for i in range(nset):
-        sfrms = ts[:, 1] <= (i+1) * frm_lsize
-        sfrms *= ts[:, 1] > i * frm_lsize
+        sfrms = ts[:, 1] <= (i+1) * frm_lsize + toff
+        sfrms *= ts[:, 1] > i * frm_lsize + toff
 
         # > list of keys of frames to be mashed
         ifrm = [i for i in range(nfrm) if sfrms[i]]
@@ -203,20 +227,21 @@ def align_frames(
         mfrms[nset-1] += list( range(nxtfrm, nxtfrm+addfrm) )
         nmfrm_chck += addfrm
 
-    # >>- CHECKS -<<
+    # >>--- CHECKS ---<<
     if nmfrm_chck != nmfrm:
         raise ValueError(
             'Mashing frames inconsistent: number of frames to be mashed incorrectly established.')
     
-    # > add the normal length (not mashed) frames
-    for i, frm in enumerate(~frms_l):
+    # > add the normal length (not mashed) frames excluding the no signal frames
+    for i, frm in enumerate(~frms_l * frmreg):
         if frm:
             mfrms.append([i])
             nmfrm_chck += 1
-    if nmfrm_chck != nfrm:
+
+    if nmfrm_chck != (nfrm-frmoff):
         raise ValueError('Mashing frames inconsistency: number of overall frames'
                          ' (including mashed) is incorrectly established')
-    # >>-<<
+    # >>-- - --<<
 
     # > the output file paths of mashed frames
     mfrms_out = []
@@ -245,8 +270,14 @@ def align_frames(
             'The number of generated mashed frames is inconsistent with the intended mashed frames'
         )
 
+
     outdct['mashed_frame_idx'] = mfrms
     outdct['mashed_files'] = mfrms_out
+
+    #------------------------------------------------
+    # > add the early frames with no or little signal
+    mfrms[0] = list(range(frmoff)) + mfrms[0]
+    #------------------------------------------------
 
     # > initialise the array for metric of registration result 
     # > (sum of angles+translations) for mashed and full frames
