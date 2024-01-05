@@ -77,8 +77,6 @@ def align_frames(
                 it is SPM ('spm'), alternatively it can be DIPY ('dipy').
     saved4d:    if True, saves aligned frames into a one 4D NIfTI file.
     f4d:        the file name of the 4D output NIfTI file.
-    reg_fwhm:   FWHM of the smoothing used for reference and floating
-                images in registration.
     reg_costfun:the registration cost function, by default the normalised
                 mutual information, 'nmi'.
     """
