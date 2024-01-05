@@ -236,7 +236,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None):
             # > create a single uptake ratio (UR) image
             imur += nimpa.getnii(f)
 
-        fur = opth/'UR-PET-aligned_partB.nii.gz'
+        fur = algnFpth/'UR-PET-aligned_partB.nii.gz'
         nimpa.array2nii(imur, imdct['affine'],fur, trnsp=imdct['transpose'], flip=imdct['flip'])
 
     #+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
