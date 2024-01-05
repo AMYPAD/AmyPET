@@ -293,11 +293,15 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
     nimpa.create_dir(amyout)
 
     # ================================================
-    # > first check if the folder has DICOM series
+    # > get the input for sorting
+    infldrs = [itm for itm in input_fldr.iterdir()]
 
-    # > multiple series in folders (if any)
+    # > the sorting assumes that either the series folders start with dates or are alphabetically sortable
+    infldrs.sort()
+
+    # > check for multiple DICOM series in folders (if any)
     msrs = []
-    for itm in input_fldr.iterdir():
+    for itm in infldrs:
         if itm.is_dir():
             srs = nimpa.dcmsort(itm, grouping=grouping, copy_series=True, outpath=amyout)
             if srs:
