@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 
 
-def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None):
+def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=False):
     '''
     Align PET images in break dynamic acquisition
     using the CT for aligning all frames within each acquisition
@@ -38,6 +38,23 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None):
                 if refpetidx=None (default), then CT acquisitions are
                 used as reference instead.
     '''
+
+    # > output path from the input dictionary
+    opth = niidat['outpath'].parent
+
+    # > output path for alignment of CTs
+    algnFpth = opth/(f'aligned_full')
+    affsF = algnFpth/'combined_affines'
+    
+    nimpa.create_dir(algnFpth)
+    nimpa.create_dir(affsF)
+
+    # > output dictionary file
+    fout = algnFpth/'aligned_full_output.npy'
+    if use_stored and fout.is_file():
+        outdct = np.load(fout, allow_pickle=True)
+        outdct = outdct.item()
+        return outdct
 
     # > number of frames for break dynamic acquisitions A and B
     nfrmA = len(niidat['series'][0])
@@ -65,14 +82,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None):
     # > alignment results
     algn_frm = [None, None]
 
-    opth = niidat['outpath'].parent
-
-    # > output path for alignment of CTs
-    algnFpth = opth/(f'aligned_full')
-    affsF = algnFpth/'combined_affines'
     
-    nimpa.create_dir(algnFpth)
-    nimpa.create_dir(affsF)
 
     if qcpth is None:
         qcpth = opth/'QC-output'
@@ -342,6 +352,8 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None):
     outdct['fpet4B'] = f4B
     outdct['faffines'] = faffines
     outdct['fnii_com'] = algn_frm[0]['fnii_com'] + algn_frm[1]['fnii_com']
+
+    np.save(fout, outdct)
 
     return outdct
 
