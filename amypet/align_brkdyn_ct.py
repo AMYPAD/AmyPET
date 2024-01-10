@@ -353,7 +353,8 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     outdct['faffines'] = faffines
     outdct['fnii_com'] = algn_frm[0]['fnii_com'] + algn_frm[1]['fnii_com']
 
-    np.save(fout, outdct)
+    if use_stored:
+        np.save(fout, outdct)
 
     return outdct
 

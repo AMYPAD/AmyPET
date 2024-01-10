@@ -930,7 +930,7 @@ def align_break(
         lmbd = np.log(2) / nimpa.resources.riLUT[istp]['thalf']
 
         # > decay correction factor
-        dcycrr = 1 / np.exp(-lmbd * td)
+        dcycrr = np.exp(lmbd * td)
     else:
         dcycrr = 1.
 
