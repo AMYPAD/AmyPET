@@ -17,9 +17,6 @@ from .preproc import id_acq
 from .ur_tools import preproc_ur
 from .utils import get_atlas
 
-# > tracer in different radionuclide group
-f18group = ['fbb', 'fbp', 'flute']
-c11group = ['pib']
 
 # > list of registration/motion metrics for alignment
 reg_metric_list = ['rss', 'adst']
@@ -924,7 +921,7 @@ def align_break(
             td = td[0]
 
         # > what tracer / radionuclide is used?
-        istp = 'F18' * (niidat['tracer'] in f18group) + 'C11' * (niidat['tracer'] in c11group)
+        istp = 'F18' * (niidat['tracer'] in Cnt['tracer']['f18']) + 'C11' * (niidat['tracer'] in Cnt['tracer']['c11'])
 
         # > decay constant using half-life
         lmbd = np.log(2) / nimpa.resources.riLUT[istp]['thalf']
