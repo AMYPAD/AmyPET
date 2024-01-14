@@ -39,6 +39,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
                 used as reference instead.
     '''
 
+
     # > output path from the input dictionary
     opth = niidat['outpath'].parent
 
@@ -55,10 +56,15 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
         outdct = np.load(fout, allow_pickle=True)
         outdct = outdct.item()
         return outdct
+    else:
+        # > output dictionary
+        outdct = {}
 
     # > number of frames for break dynamic acquisitions A and B
     nfrmA = len(niidat['series'][0])
     nfrmB = len(niidat['series'][1])
+
+    outdct['nfrm_t'] = (nfrmA, nfrmB)
 
     # > sort out the correct index for PET reference frame
     if refpetidx is not None:
@@ -70,6 +76,38 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
 
         if refpetidx[1]<0:
             refpetidx[1] += nfrmB
+
+
+    # > DECAY CORRECTION (if requested)
+    if Cnt['align']['decay_corr']:
+        
+        # > get the start time of each series for decay correction if requested
+        ts = [sri['time'][0] for sri in niidat['descr']]
+        # > index the earliest ref time
+        i_tref = np.argmin(ts)
+        idxs = list(range(len(ts)))
+        idxs.pop(i_tref)
+        i_tsrs = idxs
+        # > time difference
+        td = [ts[i] - ts[i_tref] for i in i_tsrs]
+        if len(td) > 1:
+            raise ValueError(
+                'currently only one dynamic break is allowed - detected more than one')
+        else:
+            td = td[0]
+
+        # > what tracer / radionuclide is used?
+        istp = 'F18' * (niidat['tracer'] in Cnt['tracer']['f18']) + 'C11' * (niidat['tracer'] in Cnt['tracer']['c11'])
+
+        # > decay constant using half-life
+        lmbd = np.log(2) / nimpa.resources.riLUT[istp]['thalf']
+
+        # > decay correction factor
+        dcycrr = np.exp(lmbd * td)
+    else:
+        dcycrr = 1.
+        
+    outdct['dcycrr'] = dcycrr
 
 
     # > reference images based on CT
@@ -235,9 +273,22 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
 
         for fi, f in enumerate(algn_frm[1]['faligned']):
             print(f)
-            fcopy = algnFpth/Path(f).name
-            shutil.copyfile(f, fcopy)
-            faligned.append(fcopy)
+            
+            # > correction for decay
+            if Cnt['align']['decay_corr']:
+                fdcrr = algnFpth/(Path(f).name.split('.nii')[0]+'_dcrr.nii.gz')
+                imd = nimpa.getnii(f, output='all')
+                nimpa.array2nii(
+                    imd['im']*dcycrr,
+                    imd['affine'],
+                    fdcrr,
+                    trnsp=imd['transpose'],
+                    flip=imd['flip'])
+                faligned.append(fdcrr)
+            else:
+                fcopy = algnFpth/Path(f).name
+                shutil.copyfile(f, fcopy)
+                faligned.append(fcopy)
 
             faff = affsF/(Path(f).name.split('.nii')[0]+'_affine.txt')
             shutil.copyfile(algn_frm[1]['affines'][fi], faff)
@@ -287,11 +338,23 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
 
         for fi, f in enumerate(algn_frm[i_acq]['faligned']):
             print(f)
-            #fnii_org.append(niidat['series'][i_acq][keys2[fi]]['fnii'])
 
-            fcopy = algnFpth/Path(f).name
-            shutil.copyfile(f, fcopy)
-            faligned.append(fcopy)
+            # > correction for decay
+            if Cnt['align']['decay_corr']:
+                fdcrr = algnFpth/(Path(f).name.split('.nii')[0]+'_dcrr.nii.gz')
+                imd = nimpa.getnii(f, output='all')
+                nimpa.array2nii(
+                    imd['im']*dcycrr,
+                    imd['affine'],
+                    fdcrr,
+                    trnsp=imd['transpose'],
+                    flip=imd['flip'])
+                faligned.append(fdcrr)
+            else:
+                fcopy = algnFpth/Path(f).name
+                shutil.copyfile(f, fcopy)
+                faligned.append(fcopy)
+
 
             faff = affsF/(Path(f).name.split('.nii')[0]+'_affine.txt')
             shutil.copyfile(algn_frm[i_acq]['affines'][fi], faff)
@@ -335,9 +398,6 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     #--------------------------------------------
 
 
-
-    # > output dictionary
-    outdct = {}
     outdct['align_acq'] = algn_frm
     outdct['ctref'] = fctref
     outdct['petref'] = fpetref

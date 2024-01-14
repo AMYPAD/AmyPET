@@ -5,6 +5,7 @@ pib = ["pib"]
 flute = ["flt", "flut", "flute", "flutemetamol"]
 fbb = ["fbb", "florbetaben"]
 fbp = ["fbp", "florbetapir"]
+mk6240 = ["mk6240", "mk-6240"]
 
 [regpars]
 fwhm_t1_mni = 3
@@ -55,5 +56,5 @@ fbb = [5400, 6600, 1200]
 fbp = [3000, 3600, 600]
 
 [tracer]
-f18 = ['fbb', 'fbp', 'flute', 'mk-6240']
+f18 = ['fbb', 'fbp', 'flute', 'mk6240']
 c11 = ['pib']
