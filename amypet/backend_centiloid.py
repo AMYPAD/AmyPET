@@ -178,6 +178,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             and CL ,`csv_metrics`='long'
     """
 
+    if not voxsz in [1, 2]:
+        raise ValueError('Voxel size can only be integer and 1 or 2 mm')
 
     # > the processing stage must be one of registration 'r',
     # > normalisation 'n', CL scaling 'c' or full 'f':
@@ -593,7 +595,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # transaxial tiling for QC
         # choose the shape of the mosaic/tiled image
-        izs = np.array([[30, 40, 50], [60, 70, 80]])
+        #izs = np.array([[30, 40, 50], [60, 70, 80]])
+        izs = np.array([[60, 80, 100], [120, 140, 160]]) // voxsz
 
         # get the shape of the mosaic
         shp = izs.shape
@@ -618,7 +621,8 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         # Sagittal tiling for QC
 
         # choose the shape of the mosaic/tiled image
-        ixs = np.array([[20, 30, 40], [50, 60, 70]])
+        # ixs = np.array([[20, 30, 40], [50, 60, 70]])
+        ixs = np.array([[40, 60, 80], [100, 120, 140]]) // voxsz
 
         # get the shape of the mosaic
         shp = ixs.shape
@@ -657,13 +661,13 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         urstr = ",   ".join([
             f"PiB transformed: $UR_{{WC}}=${ur['wc']:.3f}", f"$UR_{{GMC}}=${ur['cg']:.3f}",
             f"$UR_{{CBS}}=${ur['wcb']:.3f}", f"$UR_{{PNS}}=${ur['pns']:.3f}"])
-        ax[1].text(0, 190, urstr, fontsize=12)
+        ax[1].text(0, 380/voxsz, urstr, fontsize=12)
 
         if tracer != 'new':
             clstr = ",   ".join([
                 f"$CL_{{WC}}=${cl['wc']:.1f}", f"$CL_{{GMC}}=${cl['cg']:.1f}",
                 f"$CL_{{CBS}}=${cl['wcb']:.1f}", f"$CL_{{PNS}}=${cl['pns']:.1f}"])
-            ax[1].text(0, 205, clstr, fontsize=12)
+            ax[1].text(0, 410/voxsz, clstr, fontsize=12)
 
         plt.tight_layout()
         fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.1, wspace=0.1)

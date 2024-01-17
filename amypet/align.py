@@ -133,8 +133,12 @@ def align_frames(
     mniidir = opth / 'mash-n-align'
     rsmpl_opth = mniidir / 'aligned'
     com_opth = mniidir / 'com_modified'
+    
+    # > proceed only if there is any work to be done otherwise return None
     if nfrm>0:
         nimpa.create_dir(rsmpl_opth)
+    else:
+        return None
 
     # > output dictionary
     outdct = {}
