@@ -479,6 +479,135 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
     return {'series': msrs_t, 'descr': msrs_dscr, 'outpath': amyout, 'tracer': tracer, 'tracer_dcm':tracer_dcm}
 
 
+
+
+#===================================================================
+def explore_innii(
+    fpet,
+    Cnt=None,
+    outpath=None,
+    ur_win_def=None,
+    tracer=None
+    ):
+    '''
+    Process the input NIfTI file with an accompanying and 
+    mandatory JSON file obtained from DCM2NIIX convertor.
+
+    Use this info to generate dictionary of available frames
+    for uptake ratio (known as SUVr).
+    
+    Arguments:
+    ----------
+    fpet:       input NIfTI file
+    Cnt:        constants and defaults values
+    outpath:    output path, if not given the the folder 
+                above the NIfTI file will be used
+    ur_win_def: the definition of the UR (SUVr) time window;
+                if not given, it will try to get it from the
+                name of the tracer and `Cnt`
+    tracer:     the name of the tracer
+    '''
+
+    if outpath is None:
+        opth = fpet.parent.parent
+    else:
+        opth = Path(outpath)
+
+    niidir = opth/'NIfTIs'
+    nimpa.create_dir(niidir)
+
+    # > tracer name
+    tracer_name = 'unrecognised'
+    for t in Cnt['tracer_names']:
+        if tracer in Cnt['tracer_names'][t]:
+            tracer_name = t
+            break
+
+    # > uptake ration time window definition
+    if ur_win_def is None:
+        if Cnt is not None and 'ur_twindow' in Cnt and tracer is not None:
+            
+            ur_win_def =  Cnt['timings']['ur_twindow'][tracer_name]
+        else:
+            ur_win_def = [3600,5400]
+
+    # > full dictionary PET
+    dctpet = nimpa.getnii(fpet, output='all')
+
+    #-------------------------------------
+    # > JSON info
+    fjsn_options = [
+        fpet.parent/'json_dcm2nii'/(fpet.stem+'.json'),
+        fpet.parent/(fpet.stem+'.json')
+        ]
+    
+    fjsn = None
+    for f in fjsn_options:
+        if f.is_file():
+            fjsn = f
+            break
+    
+    if fjsn is None:
+        raise IOError('JSON file not found!')
+
+    with open(fjsn, 'r') as fj:
+        jdat = json.load(fj)
+
+    ts = jdat['FrameTimesStart']
+    td = jdat['FrameDuration']
+    tacq = jdat['AcquisitionTime'].split('.')[0]
+    tacq = datetime.strptime(tacq,'%H:%M:%S')
+    #-------------------------------------
+
+
+    #-----------------------------------------------------------
+    # > timing, separating frames and series info consolidation
+    tms = []
+    frms = []
+    dsrs = {}
+    for i in range(len(ts)):
+        tms.append((ts[i], ts[i]+td[i]))
+        ftt = tacq + timedelta(seconds=ts[i])
+        frm = str(ftt.time()).replace(':','') + '_' + str(tacq.time()).replace(':','')
+        frms.append(frm)
+
+        fnii = niidir/(frm+'_PET-frame.nii.gz')
+        nimpa.array2nii(
+            dctpet['im'][i,...],
+            dctpet['affine'],
+            fnii,
+            trnsp=dctpet['transpose'],
+            flip=dctpet['flip'])
+
+        dsrs[frm] = dict(
+            fnii=fnii,
+            series=jdat['SeriesDescription'],
+            )
+
+
+    niidat = dict(
+        series=[dsrs],
+        descr=[
+            dict(
+                acq=['dyn'],
+                time=(tms[0][0], tms[-1][1]),
+                timings=tms,
+                idx=(0,len(ts)),
+                frms=frms,
+                )
+            ])
+    #-----------------------------------------------------------
+
+    # > uptake ratio frames
+    amypet.ur_inf(niidat['descr'][-1], tms, niidat['series'][-1], Cnt, ur_win_def=ur_win_def)
+
+    return niidat
+#===================================================================
+
+
+
+
+
 # =====================================================================
 def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
     '''convert the individual DICOM series to NIfTI
