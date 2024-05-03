@@ -28,6 +28,10 @@ from .preproc import convert2nii, explore_indicom, get_t1, rem_artefacts
 from .proc import proc_vois
 from .utils import params
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
+
 log = logging.getLogger(__name__)
 TRACERS = set(params['tracer_names'].keys())
 
@@ -83,5 +87,14 @@ def run(inpath, tracer='pib', start=None, end=None, dynamic_break=False, voxsz=2
             'CL': next(iter(out_cl.values())),
             '_amypet_imscroll': (out_cl[next(iter(out_cl))]['fqc'], dkm['fig'])}
 
-    return {
-        'CL': next(iter(out_cl.values())), '_amypet_imscroll': out_cl[next(iter(out_cl))]['fqc']}
+
+
+    image_path = out_cl['fqc']
+    image = mpimg.imread(image_path)
+    fig, ax = plt.subplots(figsize=(12,16))
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()
+
+    return {'CL':out_cl['cl']}
+    #{'CL': next(iter(out_cl.values())), '_amypet_imscroll': out_cl['fqc']}
