@@ -386,6 +386,7 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
 
         # if PET frame timings not found, skip
         if not t_frms:
+            log.warning(f'Missing time information from DICOM files (e.g., frame duration or acquisition time) in series {k}')
             continue
 
         t_starts = [t[0] for t in t_frms]
