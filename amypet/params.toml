@@ -2,7 +2,7 @@ pttrn_t1 = ["mprage", "t1", "t1w", "spgr"]
 
 [tracer_names]
 pib = ["pib"]
-flute = ["flt", "flut", "flute", "flutemetamol"]
+flute = ["flt", "flut", "flute", "flutemetamol", "ah110690", "(18f)ah110690"]
 fbb = ["fbb", "florbetaben"]
 fbp = ["fbp", "florbetapir"]
 mk6240 = ["mk6240", "mk-6240"]

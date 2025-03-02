@@ -102,6 +102,8 @@ def dicom2nifti(inpath, outpath=None, ignore_derived=True, remove_previous=False
     tmp = opth/'json_dcm2nii'
     nimpa.create_dir(tmp)
 
+    log.debug(f'ignoring derived: {iopt}, >> output folder: {tmp}')
+
     run([dcm2niix.bin, '-i', iopt, '-v', 'n', '-o', str(tmp), '-f', '%f_%s', str(inpath)])
 
     # > get the converted NIfTI file
@@ -647,21 +649,17 @@ def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
     # > number of studies in  the folder
     Sn = len(indct['series'])
 
-    if ignore_derived:
-        iopt = 'y'
-    else:
-        iopt = 'n'
+    log.debug(f'ignoring derived?: {ignore_derived}')
 
     for sti in range(Sn):
         for k in indct['series'][sti]:
-            _fnii = dicom2nifti(indct['series'][sti][k]['files'][0].parent, outpath=niidir,
-                                ignore_derived=iopt)
+            _fnii = dicom2nifti(indct['series'][sti][k]['files'][0].parent, outpath=niidir, ignore_derived=ignore_derived)
 
             # > get the converted NIfTI file
             fnii = list(niidir.glob(str(indct['series'][sti][k]['tacq']) + '*.nii*'))
             niidat['series'][sti][k].pop('files', None)
             if len(fnii) != 1:
-                log.warning('Converted to more than one NIfTI files')
+                log.warning('Converted to none or more than one NIfTI files')
                 niidat['series'][sti][k]['fnii'] = fnii
             else:
                 niidat['series'][sti][k]['fnii'] = fnii[0]
