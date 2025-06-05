@@ -193,14 +193,14 @@ def align_frames(
     nmfrm = np.sum(frms_l)
 
     # > number of resulting mashed frame sets, e.g., the consecutive frames
-    # can be mashed into one or more frames
-    nset = int(np.floor(np.sum(dur[frms_l]) / frm_lsize))
+    # > can be mashed into one or more frames
+    nset = np.uint16(np.floor(np.sum(dur[frms_l]) / frm_lsize))
+    nset = 1 if nset==0 else nset
 
     # > overall list of mashed frames and normal frames which are longer than `frm_lsize`
     mfrms = []
 
     # > add the frames with no or little signal first
-
     nmfrm_chck = 0
     # > mashing frames for registration
     for i in range(nset):

@@ -186,7 +186,7 @@ def get_atlas(atlas='hammers', res=1):
         if not (atlas_fldr / 'hammers_license').is_file():
             # LICENSE
             import webbrowser
-            webbrowser.open('http://brain-development.org/brain-atlases'
+            webbrowser.open('https://brain-development.org/brain-atlases'
                             '/adult-brain-atlases/individual-adult-brain-atlases-new/')
             with open(atlas_fldr / 'hammers_license', 'w') as f:
                 f.write('submit the license')
