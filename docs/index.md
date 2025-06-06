@@ -242,7 +242,7 @@ axs[3].set_title('ATLAS*MASK');
 
 
     
-![png](amypet_atlases_files/amypet_atlases_17_0.png)
+![png](figs/amypet_atlases_17_0.png)
     
 
 
