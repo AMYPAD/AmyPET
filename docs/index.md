@@ -119,7 +119,7 @@ The extra analysis can use either the MNI normalised PET images, or the output C
 
 ### Obtain all the atlases
 
-The avialable atalses include:
+The available atlases include:
 - Hammers atlas (you will be promted to fill the online license)
 - DKT (Desikan-Killiany-Tourville) atlas
 - Schaefer atlas
