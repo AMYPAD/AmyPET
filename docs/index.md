@@ -52,6 +52,13 @@ outpath = input_fldr.parent/('amypet_output_'+input_fldr.name)
 
 ### Explore, identify DICOM files and convert to NIfTI
 
+Please note, that in order to obtain the relevant information about PET acquisition, key DICOM fields have to be present.  Among others (such as image orientation and size), these are:
+- study time and date
+- series time
+- acquisition time
+- frame duration time
+- time of tracer administration (start)
+- PET tracer name (not always accurate or present; can be overwritten by specifying it upfront when running AmyPET).
 
 ```python
 #------------------------------
