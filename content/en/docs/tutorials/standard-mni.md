@@ -1,5 +1,5 @@
 ---
-title: Standard Centiloid Anlysis - MNI space
+title: Standard Centiloid Anlysis - MNI and Native PET Space
 description: >
   Centiloid processing with subsequent regional brain analysis in the MNI PET space
 weight: 4
@@ -275,3 +275,37 @@ print('The average value in the cingulate gyrus is avg = {}. The number of voxle
 ```
 
     The average value in the cingulate gyrus is avg = 9066.670901759866. The number of voxels (also partial) is nvox = 26160.29958630912.
+
+
+## Performing Analysis in native PET space
+
+In the first instance raw (unmodified) PET image is used:
+
+```python
+    # output for native PET analysis 
+    onat = outpath/'native'
+
+    # > reference PET (explicitly identifying it from CL processing input)
+    fpetin = out_cl['petc']['fim']
+
+    # > get PET array
+    pet = nimpa.getnii(out_cl['petc']['fim'])
+
+    # > get the dicionary of native PET outpus
+    natdct = amypet.atl2pet(hmr['fatlas_full'], out_cl, fpet=fpetin, outpath=onat)
+```
+
+The above `natdct` dictionary contains the file paths and images for the grey and white matter probabilistic masks as well as the atlas in the native PET space.
+
+
+### Upsampled PET to higher resolution grid
+
+Alternatively, the PET image can be upsampled to higher resolution grid without any extra modifications (apart from interpolation if chosen) in order to obtain higher sampling accuracy from the structural information from the MRI.
+
+```python
+    # > upscale and trim the original PET and use linear interpolation (if no interpolation is desired then use int_order=0)
+    imupd = nimpa.imtrimup(fpetin, scale=2, int_order=1, store_img=True)
+
+    # > get the upscaled PET space atlas and probability GM/WM masks
+    natupdct = amypet.atl2pet(hmr['fatlas_full'], out_cl, fpet=imupd['fim'], outpath=onat)
+```
