@@ -1,11 +1,11 @@
 ---
 title: Tutorials
-description: Show your user how to work through some end to end examples.
-date: 2017-01-04
+description: Multiple examples of AmyPET usage
+date: 2025-07-15
 weight: 8
 ---
 
 {{% pageinfo %}}
-The key usage of AmyPET for native or MNI PET analysis
+The key usage of AmyPET Centiloid (CL) analysis.
 {{% /pageinfo %}}
 
