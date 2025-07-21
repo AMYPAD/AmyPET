@@ -1,12 +1,12 @@
 ---
-title: Overview
-description: The idea behind AmyPET.
+title: Software Overview
+description: The Idea Behind AmyPET - Robust Preprocessing For Solid Results
 weight: 1
 ---
 
 {{% pageinfo %}}
 
-Providing support for high accuracy and precision PET image analysis in neurodegeneration
+The aim of AmyPET software package is to provide open-source platform supporting high accuracy and precision PET image analysis in neurodegeneration and other neurological disease.  The emphasis is put on preparing the input images for robust analysis, which involves image frame alignment, including motion detection and correction, partial volume correction, etc.
 
 {{% /pageinfo %}}
 
@@ -21,3 +21,10 @@ The key features include:
 - Support for dynamic coffee break protocols and advanced alignment using PET frames or CT scans.
 - Support for amyloid, tau and TSPO tracers.
 
+## Multi-frame PET image alignment
+
+![png](/AmyPET/figs/ovrv_1.png)
+
+## Displacement Metric
+
+![png](/AmyPET/figs/ovrv_2.png)
