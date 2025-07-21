@@ -13,7 +13,7 @@ title: AmyPET
 <a class="btn btn-lg btn-secondary me-3 mb-4" href="https://github.com/AMYPAD/AmyPET">
   Source Code <i class="fab fa-github ms-2 "></i>
 </a>
-<a class="btn btn-lg btn-primary me-3 mb-4" href="/AmyPET/docs/">
+<a class="btn btn-lg btn-primary me-3 mb-4" href="/AmyPET/docs/overview">
   Software Overview <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 </a>
 {{< blocks/link-down color="info" >}}
