@@ -24,7 +24,11 @@ AmyPET provides comprehensive solution for advanced PET image analytics dedicate
 
 
 {{% blocks/section color="dark" type="row" %}}
-News
+
+{{% blocks/feature icon="fa-lightbulb" title="Centiloid Pipeline" href="/AmyPET/docs/" %}} Self-calibrating pipeline for processing amyloid PET images.
+
+Multiple PET radiotracers supported {{% /blocks/feature %}}
+
 {.h1 .text-center}
 {{% /blocks/section %}}
 
