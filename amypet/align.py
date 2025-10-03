@@ -211,7 +211,8 @@ def align_frames(
         ifrm = [i for i in range(nfrm) if sfrms[i]]
 
         # > append to the overall list of mashed frames
-        mfrms.append(ifrm)
+        if len(ifrm)>0:
+            mfrms.append(ifrm)
 
         # > update the overall number of frames to be mashed
         nmfrm_chck += len(ifrm)
