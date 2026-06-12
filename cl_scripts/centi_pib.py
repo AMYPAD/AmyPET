@@ -10,8 +10,10 @@ import openpyxl as xl
 from scipy.stats import linregress
 
 import amypet
-from amypet.centiloid import run as centiloid_run
+#from amypet.centiloid import run as centiloid_run
+from amypet import backend_centiloid as centiloid
 from amypet.utils import cl_anchor_fldr
+from amypet import params as Cnt
 
 # > input paths
 drv = Path('/data/AMYPET')
@@ -37,7 +39,8 @@ flip_pet[36] = (1, -1, 1)
 flip_pet[40] = (1, -1, 1)
 flip_pet[44] = (1, -1, 1)
 
-out_ad = centiloid_run(fpets, fmris, atlases, flip_pet=flip_pet, outpath=opth / 'output_pib_ad')
+out_ad = centiloid.run(fpets, fmris, Cnt, flip_pet=flip_pet, outpath=opth / 'output_pib_ad')
+
 with open(str(opth / 'output_pib_ad.pkl'), 'wb') as f:
     pickle.dump(out_ad, f)
 # ----------------------------------------------------------------------

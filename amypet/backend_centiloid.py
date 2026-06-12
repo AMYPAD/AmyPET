@@ -203,7 +203,7 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
     spm_path = Path(spm12.spm_dir()) # _eng <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # > output dictionary
-    out = {}      
+    out = {}
 
     # > MNI template path
     if not standalone:                                  

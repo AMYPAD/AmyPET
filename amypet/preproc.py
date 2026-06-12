@@ -9,7 +9,7 @@ import copy
 import logging
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path, PurePath
 from subprocess import run
 
@@ -353,11 +353,16 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
     for m in msrs:
 
         # > for each folder do the following:
+        # > time sorted series according to acquisition time or frame reference time
+        frm_ref_use = False
+        if len(np.unique([m[k]['tacq'] for k in m]))==1 and all(m[k]['tfrr'] != '' for k in m):
+            srs_t = dict(sorted(m.items(), key=lambda item: int(item[1]['tfrr'])))
+            frm_ref_use = True
+        else:
+            srs_t = dict(sorted(m.items(), key=lambda item: item[1]['tacq']))
 
-        # > time sorted series according to acquisition time
-        srs_t = dict(sorted(m.items(), key=lambda item: item[1]['tacq']))
-
-        msrs_t.append(srs_t)
+        if any(['radio_start_time' in srs_t[k] for k in srs_t]):
+            msrs_t.append(srs_t)
 
         # -----------------------------------------------
         # > frame timings relative to the injection time -
@@ -370,17 +375,20 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
                 log.info('non-PET DICOM data detected')
                 continue
 
+            # > if DICOM frame reference times are used instead of acquisition times
+            if frm_ref_use:
+                tbase = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tseries'], '%Y%m%d%H%M%S')
+                tbase += timedelta(seconds=int(srs_t[k]['tfrr']))
+            else:
+                tbase = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'], '%Y%m%d%H%M%S')
+
             if ref_time=='injection':
-                t0 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
-                                       '%Y%m%d%H%M%S') - srs_t[k]['radio_start_time']
-                t1 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
-                    '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - srs_t[k]['radio_start_time']
+                t0 = tbase - srs_t[k]['radio_start_time']
+                t1 = tbase + srs_t[k]['frm_dur'] - srs_t[k]['radio_start_time']
             
             elif ref_time=='scan':
-                t0 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
-                                       '%Y%m%d%H%M%S') - rtime
-                t1 = datetime.strptime(srs_t[k]['dstudy'] + srs_t[k]['tacq'],
-                    '%Y%m%d%H%M%S') + srs_t[k]['frm_dur'] - rtime
+                t0 = tbase - rtime
+                t1 = tbase + srs_t[k]['frm_dur'] - rtime
             else:
                 raise ValueError('unrecognised reference time choice!')
 
@@ -653,14 +661,18 @@ def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
 
     for sti in range(Sn):
         for k in indct['series'][sti]:
+            log.debug(f'series: {k}')
             _fnii = dicom2nifti(indct['series'][sti][k]['files'][0].parent, outpath=niidir, ignore_derived=ignore_derived)
 
             # > get the converted NIfTI file
             fnii = list(niidir.glob(str(indct['series'][sti][k]['tacq']) + '*.nii*'))
             niidat['series'][sti][k].pop('files', None)
-            if len(fnii) != 1:
-                log.warning('Converted to none or more than one NIfTI files')
+            if len(fnii) > 1:
+                log.warning('Converted to more than one NIfTI files')
                 niidat['series'][sti][k]['fnii'] = fnii
+            if len(fnii) ==0:
+                log.warning('Could not find the conversion initially, trying to use the direct output.')
+                niidat['series'][sti][k]['fnii'] = _fnii
             else:
                 niidat['series'][sti][k]['fnii'] = fnii[0]
 
