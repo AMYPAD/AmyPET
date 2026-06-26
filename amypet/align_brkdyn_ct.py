@@ -218,6 +218,9 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     #--------------------------------------------
 
     #--------------------------------------------
+    # > CT registration to spaces A and B ()
+    petct_Areg = None
+    petct_Breg = None
     # > When PET frames are used as reference for alignment
     if refpetidx is not None:
         # > register CT to average PET frames
@@ -403,6 +406,8 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     outdct['petref'] = fpetref
     outdct['fsumAB'] = fsum
     outdct['ct_reg'] = ct_reg
+    outdct['petct_aff_A'] = petct_Areg
+    outdct['petct_aff_A'] = petct_Breg
     outdct['fct_reg'] = frct
     outdct['fur'] = fur
     outdct['fsum'] = fsumF
