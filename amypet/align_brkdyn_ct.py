@@ -407,7 +407,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     outdct['fsumAB'] = fsum
     outdct['ct_reg'] = ct_reg
     outdct['petct_aff_A'] = petct_Areg
-    outdct['petct_aff_A'] = petct_Breg
+    outdct['petct_aff_B'] = petct_Breg
     outdct['fct_reg'] = frct
     outdct['fur'] = fur
     outdct['fsum'] = fsumF
