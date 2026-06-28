@@ -15,11 +15,13 @@ import spm12
 
 from .align import align_frames
 
+from scipy import ndimage
+
 log = logging.getLogger(__name__)
 
 
 
-def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=False):
+def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, segment_ct=False, use_stored=False):
     '''
     Align PET images in break dynamic acquisition
     using the CT for aligning all frames within each acquisition
@@ -37,6 +39,8 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
                 refpetidx=[0,0] or refpetidx=[-1,-1], respectively;
                 if refpetidx=None (default), then CT acquisitions are
                 used as reference instead.
+    segment_ct: if True, segment the CT in the aligned PET spaces for each 
+                acquisition.
     '''
 
 
@@ -114,6 +118,9 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     fctref = [None, None]
     fpetref = [None, None]
 
+    # > CT segmentation
+    fctseg = [None, None]
+
     # > sum PET images
     fsum = [None, None]
 
@@ -166,11 +173,51 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
 
         # > CT centre of mass (CoM)
         fctcom = fres.parent/(fres.name.split('.nii')[0]+'_CoM-modified.nii')
-        nimpa.centre_mass_corr(fres, fout=fctcom)
+        dctcom = nimpa.centre_mass_corr(fres, fout=fctcom)
         log.info(f'Modified CoM (CT): {fctcom}')
 
         # > CT reference image for CT registration and optionally PET
         fctref[i_acq] = fctcom
+
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if segment_ct:
+            # > CT-based segmentations
+            ctseg_out = opth/'CT_seg'
+            nimpa.create_dir(ctseg_out)
+
+            # > get rid of head holder
+            frgrnd = mudct['im']>-500
+            frgrnd = ndimage.binary_closing(frgrnd, iterations=2)
+            frgrnd = ndimage.binary_fill_holes(frgrnd)
+            lbl, n = ndimage.label(frgrnd)
+            sizes = np.bincount(lbl.ravel())
+            sizes[0] = 0
+            hd_msk = (lbl == sizes.argmax())
+
+            # > soft tissue and skull
+            sft = hd_msk * (mudct['im']>-650) * (mudct['im']<300)
+            skl = hd_msk * (mudct['im']>300)
+
+            ct_seg = 1.0*sft + 2.0*skl
+
+            fct_seg = ctseg_out/'temp_ct_seg.nii.gz'
+            nimpa.array2nii(ct_seg, mudct['affine'], ctseg_out/'temp_ct_seg.nii.gz', trnsp=mudct['transpose'], flip=mudct['flip'])
+
+            fseg_pet = nimpa.resample_spm(
+                imfrms[0], fct_seg, np.eye(4), fimout=ctseg_out/('CT_seg_part-{}_inPET.nii.gz'.format(i_acq+1)),
+                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+            fsegcom = ctseg_out/('CT_seg_part-{}_inPET_CoM.nii.gz'.format(i_acq+1))
+            nimpa.centre_mass_corr(fseg_pet, fout=fsegcom, com=dctcom['com_abs'])
+
+            fctseg[i_acq] = fsegcom
+
+            #matshow(mudct['im'][76,...], cmap='bone')
+            #matshow(ct_seg[76,...], cmap='gray')
+            #nimpa.imscroll([ct_seg, mudct['im']], cmap='gray')
+            #matshow(sft[76,...], cmap='gray')
+            #matshow(skl[76,...], cmap='gray')
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~
         #--------------------------------------------
 
         #--------------------------------------------
@@ -417,6 +464,27 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, use_stored=F
     outdct['fpet4B'] = f4B
     outdct['faffines'] = faffines
     outdct['fnii_com'] = algn_frm[0]['fnii_com'] + algn_frm[1]['fnii_com']
+    #--------------------------------------
+    # > for CT segmentation
+    if segment_ct:        
+        M_A = np.loadtxt(petct_Areg['faff'])
+        M_Ainv = np.linalg.inv(M_A)
+        M_B = np.loadtxt(petct_Breg['faff'])
+
+        fpetA_avg = fsum[0]
+        fpetB_avg = fsum[1]
+
+        fsegA = ctseg_out/(fctseg[0].name.split('.nii')[0]+'__aligned.nii.gz')
+        fsegB = ctseg_out/(fctseg[1].name.split('.nii')[0]+'__aligned.nii.gz')
+
+        fsegA_ = nimpa.resample_spm(fpetA_avg, fctseg[0], M_Ainv, fimout=fsegA,
+                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+        fsegB_ = nimpa.resample_spm(fpetB_avg, fctseg[1], M_B, fimout=fsegB,
+                del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+
+        outdct['ct_seg'] = [fsegA, fsegB] #fctseg
+    #--------------------------------------
+        
 
     if use_stored:
         np.save(fout, outdct)
