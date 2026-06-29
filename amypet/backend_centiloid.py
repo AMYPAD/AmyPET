@@ -13,7 +13,7 @@ Options:
 """
 
 __author__ = ("Pawel J Markiewicz", "Casper da Costa-Luis")
-__copyright__ = "Copyright 2022"
+__copyright__ = "Copyright 2022-6"
 
 import csv
 import logging
@@ -30,6 +30,7 @@ from miutil.fdio import hasext, nsort
 from niftypet import nimpa
 
 from .utils import cl_anchor_fldr, cl_masks_fldr
+from .ge_cmap import *
 
 log = logging.getLogger(__name__)
 
@@ -584,6 +585,11 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
         msk = 'ctx'
         mskr = 'wc' # 'pons'#
 
+        if tracer=='flute':
+            _cmap = ge_cmap
+        else:
+            _cmap = 'gray'
+
         showpet = nimpa.imsmooth(
             npet.astype(np.float32),
             voxsize=npet_dct['voxsize'],
@@ -648,12 +654,12 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
         thrsh = 0.9 * showpet.max()
 
-        ax[0].imshow(mscp_t, cmap='magma', vmax=thrsh)
+        ax[0].imshow(mscp_t, cmap=_cmap, vmax=thrsh)
         ax[0].imshow(mscm_t, cmap='gray_r', alpha=0.25)
         ax[0].set_axis_off()
         ax[0].set_title(f'{onm}: transaxial centiloid sampling')
 
-        ax[1].imshow(mscp_s, cmap='magma', vmax=thrsh)
+        ax[1].imshow(mscp_s, cmap=_cmap, vmax=thrsh)
         ax[1].imshow(mscm_s, cmap='gray_r', alpha=0.25)
         ax[1].set_axis_off()
         ax[1].set_title(f'{onm} sagittal centiloid sampling')
