@@ -394,32 +394,8 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
 
             t_frms.append((t0.seconds, t1.seconds))
 
-        # if PET frame timings not found, skip
-        if not t_frms:
-            log.warning(f'Missing time information from DICOM files (e.g., frame duration or acquisition time) in series {k}')
-            continue
 
-        t_starts = [t[0] for t in t_frms]
-        t_stops = [t[1] for t in t_frms]
         # -----------------------------------------------
-
-        # # -----------------------------------------------
-        # # > image path (input)
-        # impath = srs_t[next(iter(srs_t))]['files'][0].parent
-        # # -----------------------------------------------
-
-        # > check if the frames qualify for static, fully dynamic or
-        # > coffee-break dynamic acquisition
-        acq_type = None
-        if t_frms[0][0] < 1:
-            if t_frms[-1][-1] > breakdyn_t[0] and t_frms[-1][-1] <= breakdyn_t[1]:
-                acq_type = 'breakdyn'
-            elif t_frms[-1][-1] >= fulldyn_time:
-                acq_type = 'fulldyn'
-        elif t_frms[0][0] > 1:
-            acq_type = 'static'
-        # -----------------------------------------------
-
         # > classify tracer if possible and if not given
         if 'tracer' in srs_t[next(iter(srs_t))]:
             tracer_dcm = srs_t[next(iter(srs_t))]['tracer'].lower()
@@ -449,43 +425,74 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
                 tracer = np.array(list(tracer_names.keys()))[tracer_grp][0]
         # -----------------------------------------------
 
-        # > is the static acquisition covering the provided UR frame definition?
-        if acq_type == 'static':
-            msrs_dscr.append({
-                'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]), 'timings': t_frms,
-                'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)], 'ur': {}})
+        # -----------------------------------------------
+        # if PET frame timings not found, skip
+        if not t_frms:
+            log.warning(f'Missing time information from DICOM files (e.g., frame duration or acquisition time) in series {k}')
+            log.warning(f'Will pass all the limited DICOM info there is.')
+        else:
+            t_starts = [t[0] for t in t_frms]
+            t_stops = [t[1] for t in t_frms]
+            # -----------------------------------------------
 
-            if find_ur:
-                ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
+            # # -----------------------------------------------
+            # # > image path (input)
+            # impath = srs_t[next(iter(srs_t))]['files'][0].parent
+            # # -----------------------------------------------
 
-        elif acq_type == 'breakdyn':
-            t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
-            t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
 
-            frm_0 = t_starts.index(t0_dyn)
-            frm_1 = t_stops.index(t1_dyn)
+            # -----------------------------------------------
+            # > check if the frames qualify for static, fully dynamic or
+            # > coffee-break dynamic acquisition
+            acq_type = None
+            if t_frms[0][0] < 1:
+                if t_frms[-1][-1] > breakdyn_t[0] and t_frms[-1][-1] <= breakdyn_t[1]:
+                    acq_type = 'breakdyn'
+                elif t_frms[-1][-1] >= fulldyn_time:
+                    acq_type = 'fulldyn'
+            elif t_frms[0][0] > 1:
+                acq_type = 'static'
+        
+            # > is the static acquisition covering the provided UR frame definition?
+            if acq_type == 'static':
+                msrs_dscr.append({
+                    'acq': [acq_type], 'time': (t_starts[0], t_stops[-1]), 'timings': t_frms,
+                    'idxs': (0, len(t_frms) - 1), 'frms': [s for i, s in enumerate(srs_t)], 'ur': {}})
 
-            msrs_dscr.append({
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
-                'idxs': (frm_0, frm_1),
-                'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
-            # 'inpath':impath
+                if find_ur:
+                    ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
 
-        elif acq_type == 'fulldyn':
-            t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
-            t1_dyn = min(t_stops, key=lambda x: (x - fulldyn_time))
+            elif acq_type == 'breakdyn':
+                t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
+                t1_dyn = min(t_stops, key=lambda x: abs(x - break_time))
 
-            frm_0 = t_starts.index(t0_dyn)
-            frm_1 = t_stops.index(t1_dyn)
+                frm_0 = t_starts.index(t0_dyn)
+                frm_1 = t_stops.index(t1_dyn)
 
-            msrs_dscr.append({
-                'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
-                'idxs': (frm_0, frm_1),
-                'frms': [s for i, s in enumerate(srs_t)
-                         if i in range(frm_0, frm_1 + 1)], 'ur': {}})
+                msrs_dscr.append({
+                    'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                    'idxs': (frm_0, frm_1),
+                    'frms': [s for i, s in enumerate(srs_t) if i in range(frm_0, frm_1 + 1)]})
+                # 'inpath':impath
 
-            if find_ur:
-                ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
+            elif acq_type == 'fulldyn':
+                t0_dyn = min(t_starts, key=lambda x: abs(x - 0))
+                t1_dyn = min(t_stops, key=lambda x: (x - fulldyn_time))
+
+                frm_0 = t_starts.index(t0_dyn)
+                frm_1 = t_stops.index(t1_dyn)
+
+                msrs_dscr.append({
+                    'acq': [acq_type], 'time': (t0_dyn, t1_dyn), 'timings': t_frms,
+                    'idxs': (frm_0, frm_1),
+                    'frms': [s for i, s in enumerate(srs_t)
+                             if i in range(frm_0, frm_1 + 1)], 'ur': {}})
+
+                if find_ur:
+                    ur_inf(msrs_dscr[-1], t_frms, srs_t, Cnt, ur_win_def=ur_win_def, tracer=tracer)
+
+
+        # -----------------------------------------------
 
     return {'series': msrs_t, 'descr': msrs_dscr, 'outpath': amyout, 'tracer': tracer, 'tracer_dcm':tracer_dcm}
 
