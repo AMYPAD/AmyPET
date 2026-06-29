@@ -409,7 +409,7 @@ def explore_indicom(input_fldr, Cnt, tracer=None, ur_win_def=None, outpath=None,
                         tracer = t
 
             # > when tracer info not provided and not in DICOMs
-            if acq_type == 'static' and not tracer:
+            if not tracer: #acq_type == 'static' and 
                 tracer = 'unknown'
 
                 # # > assuming the first of the following tracers then
@@ -672,7 +672,7 @@ def convert2nii(indct, outpath=None, use_stored=False, ignore_derived=True):
             _fnii = dicom2nifti(indct['series'][sti][k]['files'][0].parent, outpath=niidir, ignore_derived=ignore_derived)
 
             # > get the converted NIfTI file
-            fnii = list(niidir.glob(str(indct['series'][sti][k]['tacq']) + '*.nii*'))
+            fnii = list(niidir.glob(str('*' + indct['series'][sti][k]['tacq']) + '*.nii*'))
             niidat['series'][sti][k].pop('files', None)
             if len(fnii) > 1:
                 log.warning('Converted to more than one NIfTI files')

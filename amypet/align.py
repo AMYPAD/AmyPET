@@ -438,6 +438,25 @@ def align(niidat, Cnt,
     # IDENTIFY UR/STATIC SERIES DATA
     stat_tdata = id_acq(niidat, acq_type='ur')
 
+    if not stat_tdata:
+        log.warning('No static data was found.  Alignment abandoned.')
+
+        # > check how many series there are
+        Sn = len(niidat['series'])
+        # > in case of only one NIfTI file (one time frame)
+        if Sn==1:
+            # >find the first and only series
+            k = next(iter(niidat['series'][0]))
+            out = dict(ur={'fur':niidat['series'][0][k]['fnii']})
+        elif Sn>1:
+            log.error('Cannot deal yet with multiple frames with missing DICOM info')
+            out = None
+        else:
+            log.error('Cannot find any DICOM series info')
+            out = None
+            
+        return out
+
     # ALIGN PET FRAMES FOR STATIC/DYNAMIC IMAGING
     # > align the PET frames around the equilibrium static scan/uptake ration (UR)
     aligned_ur = align_ur(stat_tdata, Cnt, reg_tool=reg_tool, 
