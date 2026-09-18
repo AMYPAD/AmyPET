@@ -25,6 +25,8 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import ndimage
+
 import spm12
 from miutil.fdio import hasext, nsort
 from niftypet import nimpa
@@ -596,6 +598,12 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
             fwhm=3.,
             dev_id=False)
 
+        #>--------------------
+        # > prepare contour masks
+        cmsk = masks[msk] + masks[mskr]
+        cmsk = cmsk>0
+        #>--------------------
+
         nimpa.create_dir(opths)
 
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -609,19 +617,22 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
         # initialise mosaic for PET and masks
         mscp_t = np.zeros((shp[0], shp[1]) + showpet[0, ...].shape, dtype=np.float32)
-        mscm_t = mscp_t.copy()
 
         # fill in the images
         for i in range(shp[0]):
             for j in range(shp[1]):
-                mscp_t[i, j, ...] = showpet[izs[i, j], ...]
-                mscm_t[i, j, ...] = masks[msk][izs[i, j], ...] + masks[mskr][izs[i, j], ...]
+                # > pet and mask slices
+                p_sl = showpet[izs[i, j], ...]
+                m_sl = cmsk[izs[i, j], ...]
+                c_sl = (m_sl^ndimage.binary_erosion(m_sl))>0
+                # > put the contour into PET slices and get it to the mosaic
+                p_sl[c_sl] = np.min(showpet)
+                mscp_t[i, j, ...] = p_sl
+
 
         # reshape for the final touch
         mscp_t = mscp_t.swapaxes(1, 2)
-        mscm_t = mscm_t.swapaxes(1, 2)
         mscp_t = mscp_t.reshape(shp[0] * showpet.shape[1], shp[1] * showpet.shape[2])
-        mscm_t = mscm_t.reshape(shp[0] * showpet.shape[1], shp[1] * showpet.shape[2])
 
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # Sagittal tiling for QC
@@ -635,32 +646,31 @@ def run(fpets, fmris, Cnt, tracer='pib', flip_pet=None, bias_corr=True, cmass_co
 
         # initialise mosaic for PET and masks
         mscp_s = np.zeros((shp[0], shp[1]) + showpet[..., 0].shape, dtype=np.float32)
-        mscm_s = mscp_s.copy()
 
         # fill in the images
         for i in range(shp[0]):
             for j in range(shp[1]):
-                mscp_s[i, j, ...] = showpet[..., ixs[i, j]]
-                mscm_s[i, j, ...] = masks[msk][..., ixs[i, j]] + masks[mskr][..., ixs[i, j]]
+                # > pet and mask slices
+                p_sl = showpet[..., ixs[i, j]]
+                m_sl = cmsk[..., ixs[i, j]]
+                c_sl = (m_sl^ndimage.binary_erosion(m_sl))>0
+                # > put the contour into PET slices and get it to the mosaic
+                p_sl[c_sl] = np.min(showpet)
+                mscp_s[i, j, ...] = p_sl
 
         # reshape for the final touch
         mscp_s = mscp_s.swapaxes(1, 2)
-        mscm_s = mscm_s.swapaxes(1, 2)
         mscp_s = mscp_s.reshape(shp[0] * showpet.shape[0], shp[1] * showpet.shape[1])
-        mscm_s = mscm_s.reshape(shp[0] * showpet.shape[0], shp[1] * showpet.shape[1])
-
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         fig, ax = plt.subplots(2, 1, figsize=(9, 12))
 
         thrsh = 0.9 * showpet.max()
 
         ax[0].imshow(mscp_t, cmap=_cmap, vmax=thrsh)
-        ax[0].imshow(mscm_t, cmap='gray_r', alpha=0.25)
         ax[0].set_axis_off()
         ax[0].set_title(f'{onm}: transaxial centiloid sampling')
 
         ax[1].imshow(mscp_s, cmap=_cmap, vmax=thrsh)
-        ax[1].imshow(mscm_s, cmap='gray_r', alpha=0.25)
         ax[1].set_axis_off()
         ax[1].set_title(f'{onm} sagittal centiloid sampling')
 
