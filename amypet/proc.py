@@ -457,3 +457,34 @@ def iinorm(cldct, fpet=None, refvoi=None, atlas='hammers', fcomment=None, outpat
     nimpa.array2nii(ipet, dpet['affine'], fout, trnsp=dpet['transpose'], flip=dpet['flip'])
 
     return fout
+
+# ========================================================================================
+# Adapted from Kjell's code for correcting skull uptake in tau PET
+# ========================================================================================
+
+def pvc_reblur(img, msk, psf, dev_id=0):
+    '''
+    Reblur a PVC image region by region (adapted from MATLAB `pvc_reblur`).
+    Arguments:
+        img: PVC-corrected image (3D, z, y, x)
+        msk: integer region labels 0..max covering the whole image
+        psf: separable kernel, `ndim` x `width` (rows z, y, x), e.g. from
+             `nimpa.psf_gaussian` or your own (3, 17) PSF
+        dev_id: GPU device ID (`False` forces CPU)
+    '''
+    img = np.nan_to_num(np.asarray(img, dtype=np.float32))
+    msk = np.nan_to_num(np.asarray(msk)).astype(np.int32)
+    out = np.zeros(img.shape, dtype=np.float32)
+
+    for ir in range(int(msk.max()) + 1):
+        d = (msk == ir).astype(np.float32)
+        if not d.any():
+            continue
+        # > region keeps its own detail, scaled by the fraction of its PSF staying inside
+        dc = nimpa.conv_separable(d, psf, dev_id=dev_id)
+        out += dc * img * d
+        # > spill-out of the region's activity into all other voxels
+        ac = nimpa.conv_separable(d * img, psf, dev_id=dev_id)
+        out += ac * (1-d)
+
+    return out
