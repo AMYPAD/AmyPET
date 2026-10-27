@@ -502,7 +502,7 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, segment_ct=F
 
 #=====================================================================================
 
-def bone_corr(fpet, fseg, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None):
+def bone_corr(fpet, fseg, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None, outpath_bc=None):
     '''
     Correct PET for bone (skull) uptake using the CT segmentation:
     (1) iterative Yang PVC with CT regions (PVC_CT), (2) removal of
@@ -516,9 +516,11 @@ def bone_corr(fpet, fseg, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None):
     fwhm:       FWHM [mm] of the scanner PSF in (z, y, x)
     itr:        number of iterations of the iterative Yang PVC
     dev_id:     GPU device ID (`False` forces CPU)
-    outpath:    output folder for the intermediate PVC and bone-
-                corrected images; by default `bone_corr` subfolder
-                next to `fpet`
+    outpath:    output folder for the PVC image (and the bone-corrected
+                image if `outpath_bc` is not given); by default
+                `bone_corr` subfolder next to `fpet`
+    outpath_bc: output folder for the bone-corrected image; by default
+                the same as `outpath`
     '''
 
     # > segmentation image based on the CT: 0 = air, 1 = soft tissue, 2 = bone
@@ -576,6 +578,8 @@ def bone_corr(fpet, fseg, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None):
         outpath = Path(fpet).parent/'bone_corr'
     opth = Path(outpath)
     nimpa.create_dir(opth)
+    opth_bc = opth if outpath_bc is None else Path(outpath_bc)
+    nimpa.create_dir(opth_bc)
 
     fnm = Path(fpet).name.split('.nii')[0]
 
@@ -585,7 +589,7 @@ def bone_corr(fpet, fseg, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None):
     log.info(f'PVC (CT regions) PET saved to: {fpvc}')
 
     # > bone-corrected image
-    fbc = opth/(fnm+'_bone-corrected.nii.gz')
+    fbc = opth_bc/(fnm+'_bone-corrected.nii.gz')
     nimpa.array2nii(petbc, dpet['affine'], fbc, storage_as=dpet)
     log.info(f'bone-corrected PET saved to: {fbc}')
 
@@ -618,8 +622,9 @@ def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=Non
                 aligned PET
     use_stored: if True, use the stored output dictionary if present
     del_intermediate: if True, delete the intermediate folder with the
-                native CT segmentations and the native PVC and bone-
-                corrected frames, after all outputs have been saved
+                native CT segmentations and the native PVC frames,
+                after all outputs have been saved; the native bone-
+                corrected frames (`bcorrected`) are kept
     '''
 
     if 'ct_seg' not in aligned_ct:
@@ -632,12 +637,14 @@ def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=Non
     if outpath is None:
         outpath = Path(aligned_ct['fsum']).parent
     opth = Path(outpath)/'bone_corr'
-    # > intermediate: native CT segmentations and native PVC/bone-corrected frames
+    # > intermediate: native CT segmentations and native PVC frames
     intpth = opth/'intermediate'
     segpth = intpth/'CT_seg_native'
-    petpth = intpth/'PET_native'
+    pvcpth = intpth/'PVC_native'
+    # > native bone-corrected frames (input for further processing, e.g., MNI)
+    bcpth = opth/'bcorrected'
     algnpth = opth/'aligned'
-    for p in (opth, intpth, segpth, petpth, algnpth):
+    for p in (opth, intpth, segpth, pvcpth, bcpth, algnpth):
         nimpa.create_dir(p)
 
     # > output dictionary file
@@ -661,7 +668,8 @@ def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=Non
     dcycrr = aligned_ct['dcycrr']
     nfrmA = aligned_ct['nfrm_t'][0]
 
-    # > bone-corrected (native) and fully aligned frames
+    # > PVC (native), bone-corrected (native) and fully aligned frames
+    fpvc_nat = []
     fbc_nat = []
     fbc_algn = []
     # > native segmentations, one for each frame
@@ -700,7 +708,9 @@ def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=Non
             #-----------------------------------
 
             # > bone correction in the native frame space
-            bc = bone_corr(f, fseg_nat[-1], fwhm=fwhm, itr=itr, dev_id=dev_id, outpath=petpth)
+            bc = bone_corr(f, fseg_nat[-1], fwhm=fwhm, itr=itr, dev_id=dev_id,
+                           outpath=pvcpth, outpath_bc=bcpth)
+            fpvc_nat.append(bc['fpetpvc'])
             fbc_nat.append(bc['fpetbc'])
 
             #-----------------------------------
@@ -747,7 +757,8 @@ def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=Non
     #--------------------------------------------
 
     outdct = {
-        'faligned': fbc_algn, 'fpet4d': f4d, 'fpet4A': f4A, 'fpet4B': f4B, 'fsum': fsum}
+        'fbc_native': fbc_nat, 'faligned': fbc_algn, 'fpet4d': f4d, 'fpet4A': f4A,
+        'fpet4B': f4B, 'fsum': fsum}
 
     # > intermediate files (deleted only after all outputs are saved)
     if del_intermediate:
@@ -755,7 +766,7 @@ def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=Non
         log.info(f'deleted intermediate files: {intpth}')
     else:
         outdct['fseg_native'] = fseg_nat
-        outdct['fbc_native'] = fbc_nat
+        outdct['fpvc_native'] = fpvc_nat
 
     if use_stored:
         np.save(fout, outdct)

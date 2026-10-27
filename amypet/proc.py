@@ -149,6 +149,94 @@ def atl2pet(fatl, cldct, fpet=None, outpath=None):
 
 
 # ========================================================================================
+def frames2mni(fnii, faffines, cldct, outpath=None, voxsz=1., f4d=None, fsum=None,
+               del_modified=True):
+    '''
+    Move native PET frames to MNI space with a single interpolation:
+    native frame -> aligned PET (`faffines`) -> MR (`reg2` of the CL
+    dictionary) -> MNI (forward deformations of the CL dictionary).
+    Arguments:
+    - fnii:     list of native PET frames (NIfTI), e.g., the centre-of-mass
+                modified frames used for alignment, `aligned_ct['fnii_com']`,
+                or the bone-corrected ones, `bone_corr_dyn(...)['fbc_native']`
+    - faffines: list of affine files (one per frame) mapping each native
+                frame to the aligned PET space, e.g., `aligned_ct['faffines']`
+    - cldct:    the CL output dictionary (stage 'n' or later) with the
+                aligned PET registered to the MR; the PET must not be
+                centre-of-mass modified in the CL processing
+                (`cmass_corr_pet=False`), as `faffines` refer to its header
+    - outpath:  output folder for the MNI frames; by default `PET_dynamic`
+                in the CL output folder
+    - voxsz:    voxel size [mm] of the MNI output images
+    - f4d:      output 4D NIfTI file; by default in `outpath`
+    - fsum:     output summed NIfTI file; by default in `outpath`
+    - del_modified: if True, delete the uncompressed affine modified frames
+                after the normalisation
+    '''
+
+    if len(fnii) != len(faffines):
+        raise ValueError(f'the number of frames ({len(fnii)}) and affines ({len(faffines)}) differ')
+
+    # > decipher the CL dictionary
+    if len(cldct) == 1:
+        cl_dct = cldct[next(iter(cldct))]
+    elif 'norm' in cldct:
+        cl_dct = cldct
+    else:
+        raise ValueError('unrecognised CL dictionary')
+
+    # > output paths
+    if outpath is None:
+        opth = Path(cl_dct['fnorm'][0]).parent.parent/'PET_dynamic'
+    else:
+        opth = Path(outpath)
+    nimpa.create_dir(opth)
+
+    # > folder for affine modified frames (uncompressed for SPM)
+    nmod_pth = opth/'nii_modified'
+    nimpa.create_dir(nmod_pth)
+
+    import matlab as ml
+    eng = spm12.ensure_spm('')
+
+    # > the file list of affine modified native PET frames
+    fmods = []
+    for f, faff in zip(fnii, faffines):
+        # > total affine: frame -> aligned PET -> MR
+        M = np.matmul(np.loadtxt(faff), cl_dct['reg2']['affine'])
+
+        if hasext(f, 'gz'):
+            fmod = Path(nimpa.nii_ugzip(f, outpath=nmod_pth))
+        else:
+            fmod = nmod_pth/Path(f).name
+            shutil.copyfile(f, fmod)
+
+        eng.amypad_coreg_modify_affine(str(fmod), ml.double(M.tolist()))
+        log.info(f'affine modified frame: {fmod}')
+        fmods.append(fmod)
+
+    # > normalised (non-rigid) PET frames to MNI space
+    fmnipet = spm12.normw_spm(cl_dct['norm']['fordef'], fmods, voxsz=voxsz, outpath=opth)
+
+    if del_modified:
+        shutil.rmtree(nmod_pth)
+
+    # > combine all frames into one 4D PET NIfTI and their sum
+    imdct = nimpa.getnii(fmnipet[0], output='all')
+    im4d = np.zeros((len(fmnipet),) + imdct['shape'], dtype=np.float32)
+    for fi, f in enumerate(fmnipet):
+        im4d[fi, ...] = nimpa.getnii(f)
+    imsum = np.sum(im4d, axis=0)
+
+    f4d = opth/'PET-MNI-4D-aligned.nii.gz' if f4d is None else Path(f4d)
+    fsum = opth/'PET-MNI-summed-aligned.nii.gz' if fsum is None else Path(fsum)
+    nimpa.array2nii(im4d, imdct['affine'], f4d, storage_as=imdct)
+    nimpa.array2nii(imsum, imdct['affine'], fsum, storage_as=imdct)
+
+    return {'fmni': fmnipet, 'fpet4d': f4d, 'fsum': fsum, 'outpath': opth}
+
+
+# ========================================================================================
 def extract_vois(impet, atlas, voi_dct, atlas_mask=None, outpath=None, output_masks=False):
     '''
     Extract VOI mean values from PET image `impet` using image labels `atals`.
