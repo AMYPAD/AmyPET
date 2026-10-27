@@ -14,6 +14,7 @@ from niftypet import nimpa
 import spm12
 
 from .align import align_frames
+from .proc import pvc_reblur
 
 from scipy import ndimage
 
@@ -486,6 +487,8 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, segment_ct=F
                 del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
 
         outdct['ct_seg'] = [fsegA, fsegB] #fctseg
+        # > CT segmentations in the CT spaces (for bone correction in native PET spaces)
+        outdct['ct_seg_ct'] = fctseg
     #--------------------------------------
         
 
@@ -494,3 +497,267 @@ def align_break_petct(niidat, cts, Cnt, qcpth=None, refpetidx=None, segment_ct=F
 
     return outdct
 
+
+
+
+#=====================================================================================
+
+def bone_corr(fpet, fseg, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None):
+    '''
+    Correct PET for bone (skull) uptake using the CT segmentation:
+    (1) iterative Yang PVC with CT regions (PVC_CT), (2) removal of
+    the bone signal and (3) re-blurring across but not within regions
+    (PVC_inv).
+    Arguments:
+    ----------
+    fpet:       NIfTI file of the PET image to be corrected
+    fseg:       NIfTI file of the CT segmentation (0 = air, 1 = soft
+                tissue, 2 = bone) in the same space as `fpet`
+    fwhm:       FWHM [mm] of the scanner PSF in (z, y, x)
+    itr:        number of iterations of the iterative Yang PVC
+    dev_id:     GPU device ID (`False` forces CPU)
+    outpath:    output folder for the intermediate PVC and bone-
+                corrected images; by default `bone_corr` subfolder
+                next to `fpet`
+    '''
+
+    # > segmentation image based on the CT: 0 = air, 1 = soft tissue, 2 = bone
+    dsegct = nimpa.getnii(fseg, output='all')
+    segct = dsegct['im']
+
+    # > NaN / inf -> air (0)
+    bad = ~np.isfinite(segct)
+    if bad.any():
+        log.warning("%d NaN/inf voxels in CT segmentation: set to 0 (air)", bad.sum())
+        segct[bad] = 0
+
+    # > non-integer labels -> rounded to nearest integer
+    nonint = segct != np.round(segct)
+    if nonint.any():
+        log.warning("%d non-integer labels in CT segmentation: rounded "
+                    "(better to resample with nearest neighbour, intrp=0)", nonint.sum())
+        segct = np.round(segct)
+
+    # > labels outside 0..2 -> clipped to the nearest valid label
+    labels = np.unique(segct)
+    if not set(labels) <= {0, 1, 2}:
+        log.warning("unexpected labels in CT segmentation %s: clipped to 0..2", labels)
+        segct = np.clip(segct, 0, 2)
+
+    segct = segct.astype(np.int32)
+
+    #-----------------------------------
+    # > PET image
+    dpet = nimpa.getnii(fpet, output='all')
+    pet = np.nan_to_num(dpet['im'])
+
+    # > PET and segmentation must be in the same space
+    if pet.shape != segct.shape:
+        raise IndexError(f'PET {pet.shape} and CT segmentation {segct.shape} do not match')
+    if not np.allclose(dpet['affine'], dsegct['affine'], atol=1e-3):
+        raise ValueError('PET and CT segmentation are not in the same space (different affines)')
+
+    # > scanner PSF (z, y, x)
+    psf = nimpa.psf_gaussian(vx_size=dpet['voxsize'], fwhm=fwhm)
+
+    # > 1. PVC_CT (iterative Yang, CT regions)
+    petpvc, m_a = nimpa.iyang(pet, psf, segct, {'DEVID': dev_id}, itr=itr)
+
+    # > 2. bone subtraction: f_s = (1 - I_b) * f_pvc
+    bone = segct == 2
+    petsub = petpvc * (~bone)
+
+    # > 3. PVC_inv: re-blur across but not within regions
+    petbc = pvc_reblur(petsub, segct, psf, dev_id=dev_id)
+    #-----------------------------------
+
+    # > save the intermediate images in the PET geometry
+    if outpath is None:
+        outpath = Path(fpet).parent/'bone_corr'
+    opth = Path(outpath)
+    nimpa.create_dir(opth)
+
+    fnm = Path(fpet).name.split('.nii')[0]
+
+    # > PVC_CT image (before bone removal)
+    fpvc = opth/(fnm+'_pvc-ct.nii.gz')
+    nimpa.array2nii(petpvc, dpet['affine'], fpvc, storage_as=dpet)
+    log.info(f'PVC (CT regions) PET saved to: {fpvc}')
+
+    # > bone-corrected image
+    fbc = opth/(fnm+'_bone-corrected.nii.gz')
+    nimpa.array2nii(petbc, dpet['affine'], fbc, storage_as=dpet)
+    log.info(f'bone-corrected PET saved to: {fbc}')
+
+    return {
+        'fpetbc': fbc, 'petbc': petbc, 'fpetpvc': fpvc, 'petpvc': petpvc, 'm_a': m_a,
+        'psf': psf}
+
+
+
+
+def bone_corr_dyn(aligned_ct, fwhm=(6.4, 4.5, 4.5), itr=5, dev_id=0, outpath=None,
+                  use_stored=False, del_intermediate=False):
+    '''
+    Bone correction of dynamic break PET frames, each in its native
+    PET space, followed by the same alignment as in `align_break_petct`,
+    so that the output is in the space of the fully aligned PET.
+    For each frame the CT segmentation (in its CT space) is resampled
+    to the native frame, the frame is bone corrected (`bone_corr`) and
+    then transformed as the uncorrected frame:
+      A: the combined affine (frame -> PET-A ref -> CT A -> CT B -> PET-B ref),
+      B: the frame affine (frame -> PET-B ref) and decay correction.
+    Arguments:
+    ----------
+    aligned_ct: output dictionary of `align_break_petct` run with
+                `segment_ct=True` and PET reference frames (`refpetidx`)
+    fwhm:       FWHM [mm] of the scanner PSF in (z, y, x)
+    itr:        number of iterations of the iterative Yang PVC
+    dev_id:     GPU device ID (`False` forces CPU)
+    outpath:    output folder; by default the folder of the summed
+                aligned PET
+    use_stored: if True, use the stored output dictionary if present
+    del_intermediate: if True, delete the intermediate folder with the
+                native CT segmentations and the native PVC and bone-
+                corrected frames, after all outputs have been saved
+    '''
+
+    if 'ct_seg' not in aligned_ct:
+        raise ValueError('no CT segmentation: run `align_break_petct` with segment_ct=True')
+    if aligned_ct['petct_aff_A'] is None or aligned_ct['petct_aff_B'] is None:
+        raise NotImplementedError('bone correction is only available for alignment with'
+                                  ' PET reference frames (`refpetidx`)')
+
+    # > output paths
+    if outpath is None:
+        outpath = Path(aligned_ct['fsum']).parent
+    opth = Path(outpath)/'bone_corr'
+    # > intermediate: native CT segmentations and native PVC/bone-corrected frames
+    intpth = opth/'intermediate'
+    segpth = intpth/'CT_seg_native'
+    petpth = intpth/'PET_native'
+    algnpth = opth/'aligned'
+    for p in (opth, intpth, segpth, petpth, algnpth):
+        nimpa.create_dir(p)
+
+    # > output dictionary file
+    fout = opth/'bone_corr_dyn_output.npy'
+    if use_stored and fout.is_file():
+        return np.load(fout, allow_pickle=True).item()
+
+    # > CT segmentations in the CT spaces of acquisitions A and B
+    if 'ct_seg_ct' in aligned_ct:
+        fctseg = aligned_ct['ct_seg_ct']
+    else:
+        fctseg = [Path(f).parent/(Path(f).name.split('__aligned')[0]+'.nii.gz')
+                  for f in aligned_ct['ct_seg']]
+
+    # > PET-A -> CT-A and CT-B -> PET-B affines
+    M_A = aligned_ct['petct_aff_A']['affine']
+    M_B = aligned_ct['petct_aff_B']['affine']
+
+    # > reference of the full alignment (PET-B reference frame)
+    fref = aligned_ct['petref'][1]
+    dcycrr = aligned_ct['dcycrr']
+    nfrmA = aligned_ct['nfrm_t'][0]
+
+    # > bone-corrected (native) and fully aligned frames
+    fbc_nat = []
+    fbc_algn = []
+    # > native segmentations, one for each frame
+    fseg_nat = []
+
+    for i_acq in range(2):
+        algn = aligned_ct['align_acq'][i_acq]
+        if algn['fnii_com'] is None:
+            raise ValueError('frames have to be aligned with CoM correction (spm_com_corr=True)')
+
+        # > native segmentations per affine (frames in a mashed group share it)
+        segs = {}
+
+        for fi, f in enumerate(algn['fnii_com']):
+            log.info(f'bone correction of frame: {f}')
+
+            # > frame -> PET reference affine
+            S = np.loadtxt(algn['affines'][fi])
+
+            #-----------------------------------
+            # > CT segmentation in the native frame space
+            if algn['affines'][fi] not in segs:
+                if i_acq == 0:
+                    # > frame -> PET-A ref -> CT A
+                    M = np.linalg.inv(np.matmul(S, M_A))
+                else:
+                    # > frame -> PET-B ref <- CT B
+                    M = np.matmul(M_B, np.linalg.inv(S))
+
+                fseg = segpth/(fctseg[i_acq].name.split('.nii')[0]+'__'+Path(f).name.split('.nii')[0]+'.nii.gz')
+                nimpa.resample_spm(f, fctseg[i_acq], M, intrp=0, fimout=fseg,
+                    del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+                segs[algn['affines'][fi]] = fseg
+
+            fseg_nat.append(segs[algn['affines'][fi]])
+            #-----------------------------------
+
+            # > bone correction in the native frame space
+            bc = bone_corr(f, fseg_nat[-1], fwhm=fwhm, itr=itr, dev_id=dev_id, outpath=petpth)
+            fbc_nat.append(bc['fpetbc'])
+
+            #-----------------------------------
+            # > the same transformation as for the uncorrected frames
+            fbc = bc['fpetbc']
+            fnm = fbc.name.split('.nii')[0]
+            if i_acq == 0:
+                frs = nimpa.resample_spm(fref, fbc, np.loadtxt(aligned_ct['faffines'][fi]),
+                    fimout=algnpth/(fnm+'_full_reg.nii.gz'),
+                    del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+                fbc_algn.append(Path(frs))
+            else:
+                if algn['modified'][fi]:
+                    frs = nimpa.resample_spm(fref, fbc, S, intrp=1.,
+                        fimout=algnpth/(fnm+'_reg.nii.gz'),
+                        del_ref_uncmpr=True, del_flo_uncmpr=True, del_out_uncmpr=True)
+                else:
+                    # > not moved in the alignment (below the motion threshold)
+                    frs = fbc
+
+                # > correction for decay (dcycrr = 1 if not requested)
+                fdcrr = algnpth/(fnm+'_dcrr.nii.gz')
+                imd = nimpa.getnii(frs, output='all')
+                nimpa.array2nii(imd['im']*dcycrr, imd['affine'], fdcrr, storage_as=imd)
+                fbc_algn.append(fdcrr)
+            #-----------------------------------
+
+    #--------------------------------------------
+    # > combine all frames into one 4D PET NIfTI and two 4D dynamic break acquisitions
+    imdct = nimpa.getnii(fbc_algn[0], output='all')
+    im4d = np.zeros((len(fbc_algn),) + imdct['shape'], dtype=np.float32)
+    for fi, f in enumerate(fbc_algn):
+        im4d[fi, ...] = nimpa.getnii(f)
+    imsum = np.sum(im4d, axis=0)
+
+    f4d = opth/'PET-4D-aligned_bone-corrected.nii.gz'
+    f4A = opth/'PET-4D-aligned_break-A_bone-corrected.nii.gz'
+    f4B = opth/'PET-4D-aligned_break-B_bone-corrected.nii.gz'
+    fsum = opth/'PET-summed-aligned_bone-corrected.nii.gz'
+    nimpa.array2nii(im4d, imdct['affine'], f4d, storage_as=imdct)
+    nimpa.array2nii(im4d[:nfrmA], imdct['affine'], f4A, storage_as=imdct)
+    nimpa.array2nii(im4d[nfrmA:], imdct['affine'], f4B, storage_as=imdct)
+    nimpa.array2nii(imsum, imdct['affine'], fsum, storage_as=imdct)
+    #--------------------------------------------
+
+    outdct = {
+        'faligned': fbc_algn, 'fpet4d': f4d, 'fpet4A': f4A, 'fpet4B': f4B, 'fsum': fsum}
+
+    # > intermediate files (deleted only after all outputs are saved)
+    if del_intermediate:
+        shutil.rmtree(intpth)
+        log.info(f'deleted intermediate files: {intpth}')
+    else:
+        outdct['fseg_native'] = fseg_nat
+        outdct['fbc_native'] = fbc_nat
+
+    if use_stored:
+        np.save(fout, outdct)
+
+    return outdct
